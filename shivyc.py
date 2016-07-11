@@ -25,12 +25,30 @@ def get_arguments():
     parser.add_argument("file_name", metavar="filename")
     return parser.parse_args()
 
+def compile_code(source: str) -> str:
+    """Compile the provided source code into assembly.
+
+    source - The C source code to compile.
+    return - The asm output
+
+    """
+    return source
+
 def main():
-    """Run the compiler
+    """Load the input files, and dispatch to the compile function for the main
+    processing.
 
     """
     arguments = get_arguments()
-    print(arguments)
+
+    try:
+        c_file = open(arguments.file_name)
+    except IOError:
+        print("shivyc: error: no such file or directory: '{}'"
+              .format(arguments.file_name))
+    else:
+        compile_code(c_file.read())
+        c_file.close()
 
 if __name__ == "__main__":
     main()
