@@ -19,8 +19,10 @@ def get_arguments():
 
     parser = argparse.ArgumentParser(description="Compile C files.")
 
-    # The C file to compile
-    parser.add_argument("file_name")
+    # The file name of the C file to compile. The file name gets saved to the
+    # file_name attribute of the returned object, but this parameter appears as
+    # "filename" (no underscore) on the command line.
+    parser.add_argument("file_name", metavar="filename")
     return parser.parse_args()
 
 def main():
