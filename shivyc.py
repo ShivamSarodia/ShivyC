@@ -35,8 +35,12 @@ def compile_code(source: str) -> str:
     return source
 
 def main():
-    """Load the input files, and dispatch to the compile function for the main
+    """Load the input files and dispatch to the compile function for the main
     processing.
+
+    The main function handles interfacing with the user, like reading the
+    command line arguments, printing errors, and generating output files. The
+    compilation logic is in the compile_code function to facilitate testing.
 
     """
     arguments = get_arguments()
