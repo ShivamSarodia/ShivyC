@@ -2,6 +2,8 @@
 
 """Main executable for ShivyC compiler
 
+For usage, run "./shivyc.py --help".
+
 """
 
 import argparse
