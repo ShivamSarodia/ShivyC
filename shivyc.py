@@ -23,5 +23,4 @@ def get_arguments():
 
 
 if __name__ == "__main__":
-    arguments = get_arguments()
-    
+    arguments = get_arguments()  # pylint: disable=invalid-name
