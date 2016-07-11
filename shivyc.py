@@ -21,6 +21,12 @@ def get_arguments():
     parser.add_argument("file_name")
     return parser.parse_args()
 
+def main():
+    """Run the compiler
+
+    """
+    arguments = get_arguments()
+    print(arguments)
 
 if __name__ == "__main__":
-    arguments = get_arguments()  # pylint: disable=invalid-name
+    main()
