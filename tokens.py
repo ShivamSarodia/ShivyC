@@ -35,8 +35,8 @@ class TokenKind:
         return self.token_id == other.token_id
     
 class Token:
-    """A single unit element of the input. Produced by the tokenizing phase of the
-    lexer.
+    """A single unit element of the input. Produced by the tokenizing phase of
+    the lexer.
     
     token_kind (TokenKind) - The kind of this token
     content (str) - Stores additional content for some tokens:
