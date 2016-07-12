@@ -2,7 +2,7 @@
 
 """
 
-from tokens import TokenKind
+from token import TokenKind
 
 int_kw = TokenKind("int")  # `kw` is short for 'keyword'
 main = TokenKind("main")
