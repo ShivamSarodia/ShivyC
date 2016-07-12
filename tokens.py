@@ -1,6 +1,7 @@
-"""Defines a TokenKind class that represents the various kinds of tokens
-recognized, and also a Token class that represents a Token as produced by the
-lexer.
+"""Defines a TokenKind class and Token class
+
+A TokenKind instance represents one of the various kinds of tokens recognized. A
+Token instance represents a token as produced by the lexer.
 
 """
 
