@@ -6,7 +6,7 @@ Token instance represents a token as produced by the lexer.
 """
 
 class TokenKind:
-    """A general class for defining the various know kinds of tokens, such as:
+    """A general class for defining the various known kinds of tokens, such as:
            +, -, ), return, int
 
     token_id (int) - A unique ID assigned to each token
