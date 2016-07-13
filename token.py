@@ -29,8 +29,7 @@ class TokenKind:
         self.token_id = TokenKind.current_id
         TokenKind.current_id += 1
 
-        if text_repr:
-            TokenKind.all_kinds.append(self)
+        TokenKind.all_kinds.append(self)
 
     def __eq__(self, other):
         return self.token_id == other.token_id
