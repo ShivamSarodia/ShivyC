@@ -19,10 +19,9 @@ class TokenKind:
     # class. Incremented each time we create a new instance, so each instance
     # gets a unique ID.
     current_id = 0
-    # Stores all the TokenKind instances created thusfar that have text_repr
-    # set, in order of creation. Used by the lexer to iterate through for
-    # tokenizing.
-    concrete_kinds = []
+    # Stores all the TokenKind instances created. Used by the lexer to iterate
+    # through for tokenizing.
+    all_kinds = []
             
     def __init__(self, text_repr = ""):
         self.text_repr = text_repr
