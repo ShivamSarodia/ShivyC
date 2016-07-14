@@ -9,7 +9,7 @@ class TokenKind:
     """A general class for defining the various known kinds of tokens, such as:
            +, -, ), return, int
 
-    token_id (int) - A unique ID assigned to each token
+    kind_id (int) - A unique ID assigned to each token
     text_repr (str) - The way this token looks in text. Used only by the lexer
     to tokenize the input.
 
@@ -19,20 +19,30 @@ class TokenKind:
     # class. Incremented each time we create a new instance, so each instance
     # gets a unique ID.
     current_id = 0
-    # Stores all the TokenKind instances created. Used by the lexer to iterate
-    # through for tokenizing.
-    all_kinds = []
             
-    def __init__(self, text_repr = ""):
-        self.text_repr = text_repr
-        
-        self.token_id = TokenKind.current_id
-        TokenKind.current_id += 1
+    def __init__(self, text_repr = "", kinds = []):
+        """Initializes a new TokenKind and adds it to the list of kinds
+        passed in.
 
-        TokenKind.all_kinds.append(self)
+        text_repr (str) - See class docstring
+        kinds (List[TokenKind]) - A list of kinds to which this TokenKind is
+        automatically added
+
+        """
+        self.text_repr = text_repr
+        self.kind_id = self.__class__.current_id
+
+        self.__class__.current_id += 1
+        kinds.append(self)
 
     def __eq__(self, other):
-        return self.token_id == other.token_id
+        return self.kind_id == other.kind_id
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __str__(self):
+        return self.text_repr
     
 class Token:
     """A single unit element of the input. Produced by the tokenizing phase of
@@ -47,3 +57,10 @@ class Token:
     def __init__(self, token_kind, content = ""):
         self.token_kind = token_kind
         self.content = content
+        
+    def __eq__(self, other):
+        return (self.token_kind == other.token_kind and
+                self.content == other.content)
+
+    def __str__(self):
+        return self.content if self.content else str(self.token_kind)

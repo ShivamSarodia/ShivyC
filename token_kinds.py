@@ -2,13 +2,21 @@
 
 """
 
-from token import TokenKind
+from tokens import TokenKind
 
-int_kw = TokenKind("int")  # `kw` is short for 'keyword'
-main = TokenKind("main")
-open_paren = TokenKind("(")
-close_paren = TokenKind(")")
-open_brack = TokenKind("{")
-return_kw = TokenKind("return")
+keyword_kinds = []
+symbol_kinds = []
+
+# Until function definition is ready, we define `main` as a hardcoded keyword
+main = TokenKind("main", keyword_kinds)
+
+int_kw = TokenKind("int", keyword_kinds)
+return_kw = TokenKind("return", keyword_kinds)
+
+semicolon = TokenKind(";", symbol_kinds)
+open_paren = TokenKind("(", symbol_kinds)
+close_paren = TokenKind(")", symbol_kinds)
+open_brack = TokenKind("{", symbol_kinds)
+close_brack = TokenKind("}", symbol_kinds)
+
 number = TokenKind()
-close_brack = TokenKind("}")
