@@ -38,9 +38,6 @@ class TokenKind:
     def __eq__(self, other):
         return self.kind_id == other.kind_id
 
-    def __ne__(self, other):
-        return not self == other
-
     def __str__(self):
         return self.text_repr
     
