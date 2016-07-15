@@ -48,19 +48,18 @@ class Token:
     """A single unit element of the input. Produced by the tokenizing phase of
     the lexer.
     
-    token_kind (TokenKind) - The kind of this token
+    kind (TokenKind) - The kind of this token
     content (str) - Stores additional content for some tokens:
         1) For number tokens, stores the number itself
         2) For identifiers, stores the identifier name
 
     """
-    def __init__(self, token_kind, content = ""):
-        self.token_kind = token_kind
+    def __init__(self, kind, content = ""):
+        self.kind = kind
         self.content = content
         
     def __eq__(self, other):
-        return (self.token_kind == other.token_kind and
-                self.content == other.content)
+        return self.kind == other.kind and self.content == other.content
 
     def __str__(self):
-        return self.content if self.content else str(self.token_kind)
+        return self.content if self.content else str(self.kind)
