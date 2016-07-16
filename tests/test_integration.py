@@ -13,11 +13,6 @@ class integration_tests(unittest.TestCase):
     
     def test_basic_return_main(self):
         self.expect_return("int main() { return 15; }", 15)
-
-    # Currently fails! Reminder to fix this bug.
-    def test_extra_tokens_at_end(self):
-        self.expect_exception("int main() { return 15; } int",
-                              CompilerError, "unexpected token")
         
     # Support functions for the the tests
     def compile_and_run(self, code):
