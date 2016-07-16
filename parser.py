@@ -58,5 +58,7 @@ class Parser:
         else:
             if error:
                 raise CompilerError("expected main function starting at '{}'".
-                                    format(tokens[0].content))
+                                    format(tokens[0].content),
+                                    line_num = tokens[0].line_num,
+                                    file_name = tokens[0].file_name)
             else: return None

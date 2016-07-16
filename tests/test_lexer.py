@@ -29,51 +29,51 @@ class lexer_pure_unit_tests(unittest.TestCase):
         self.assertFalse(self.apple == self.app)
 
     def test_empty_content(self):
-        self.assertEqual(self.lexer.tokenize(""), [])
+        self.assertEqual(self.lexer.tokenize_line(""), [])
         
     def test_one_keyword(self):
-        self.assertEqual(self.lexer.tokenize("tok"), [Token(self.tok)])
+        self.assertEqual(self.lexer.tokenize_line("tok"), [Token(self.tok)])
 
     def test_one_long_keyword(self):
-        self.assertEqual(self.lexer.tokenize("token"), [Token(self.token)])
+        self.assertEqual(self.lexer.tokenize_line("token"), [Token(self.token)])
 
     def test_multiple_keywords(self):
         content = "tok token tok tok token"
         tokens = [Token(self.tok), Token(self.token), Token(self.tok),
                   Token(self.tok), Token(self.token)]
-        self.assertEqual(self.lexer.tokenize(content), tokens)
+        self.assertEqual(self.lexer.tokenize_line(content), tokens)
         
     def test_keywords_without_space(self):
         with self.assertRaisesRegex(CompilerError, "unrecognized token"):
-            self.lexer.tokenize("toktoken")
+            self.lexer.tokenize_line("toktoken")
 
     def test_keywords_with_extra_whitespace(self):
         content = "  tok  token  tok  tok  token  "
         tokens = [Token(self.tok), Token(self.token), Token(self.tok),
                   Token(self.tok), Token(self.token)]
-        self.assertEqual(self.lexer.tokenize(content), tokens)
+        self.assertEqual(self.lexer.tokenize_line(content), tokens)
 
     def test_one_symbol(self):
-        self.assertEqual(self.lexer.tokenize("app"), [Token(self.app)])
+        self.assertEqual(self.lexer.tokenize_line("app"), [Token(self.app)])
 
     def test_one_long_symbol(self):
-        self.assertEqual(self.lexer.tokenize("apple"), [Token(self.apple)])
+        self.assertEqual(self.lexer.tokenize_line("apple"), [Token(self.apple)])
 
     def test_symbol_splits_keywords(self):
-        self.assertEqual(self.lexer.tokenize("tokenapptok"),
+        self.assertEqual(self.lexer.tokenize_line("tokenapptok"),
                          [Token(self.token), Token(self.app), Token(self.tok)])
         
     def test_multiple_symbols(self):
         content = "appleappappappleapp"
         tokens = [Token(self.apple), Token(self.app), Token(self.app),
                   Token(self.apple), Token(self.app)]
-        self.assertEqual(self.lexer.tokenize(content), tokens)
+        self.assertEqual(self.lexer.tokenize_line(content), tokens)
 
     def test_symbols_with_extra_whitespace(self):
         content = "   apple appapp apple    app  "
         tokens = [Token(self.apple), Token(self.app), Token(self.app),
                   Token(self.apple), Token(self.app)]
-        self.assertEqual(self.lexer.tokenize(content), tokens)
+        self.assertEqual(self.lexer.tokenize_line(content), tokens)
 
 class lexer_integration_tests(unittest.TestCase):
     """Tests the lexer on the actual token_kinds, as defined in token_kinds.py
@@ -83,11 +83,23 @@ class lexer_integration_tests(unittest.TestCase):
         self.lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
 
     def test_number(self):
-        self.assertEqual(self.lexer.tokenize("10"),
+        self.assertEqual(self.lexer.tokenize_line("10"),
                          [Token(token_kinds.number, "10")])
 
-    def test_basic_program(self):
+    def test_basic_program_one_line(self):
         content = "int main() { return 15; }"
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+                  Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
+                  Token(token_kinds.close_brack)]
+        self.assertEqual(self.lexer.tokenize_line(content), tokens)
+
+    def test_basic_program_multi_line(self):
+        content = [("int main()", "main.c", 1),
+                   ("{", "main.c", 2),
+                   ("return 15;", "main.c", 3),
+                   ("}", "main.c", 4)]
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
                   Token(token_kinds.open_paren), Token(token_kinds.close_paren),
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),

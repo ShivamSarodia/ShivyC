@@ -49,11 +49,17 @@ class Token:
     content (str) - Stores additional content for some tokens:
         1) For number tokens, stores the number itself
         2) For identifiers, stores the identifier name
+    file_name (str) - The name of the file from which this token came. Used for
+    error reporting.
+    line_num (int) - The line number from which this token came. Used for error
+    reporting.
 
     """
     def __init__(self, kind, content = ""):
         self.kind = kind
         self.content = content if content else kind.text_repr
+        self.file_name = None
+        self.line_num = None
         
     def __eq__(self, other):
         return self.kind == other.kind and self.content == other.content

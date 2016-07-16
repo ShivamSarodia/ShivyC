@@ -32,20 +32,56 @@ class Lexer:
         self.keyword_kinds = sorted(keyword_kinds,
                                     key=lambda kind: -len(kind.text_repr))
         
-    def tokenize(self, content):
-        """Convert the content string into a list of tokens
+    def tokenize(self, code_lines):
+        """Convert the given lines of code into a list of tokens.
         
         The tokenizing algorithm proceeds through the content linearly in one
         pass, producing the list of tokens as we go. Has direct external
         reference to token_kinds.number.
 
-        content (str) - The input string to tokenize
+        content (List(tuple)) - The lines of code to tokenize, provided in the
+        following form:
+
+           [("int main()", "main.c", 1),
+            ("{", "main.c", 2),
+            ("return 5;", "main.c", 3),
+            ("}", "main.c", 4)]
+
+        where the first element is the contents of the line, the second is the
+        file name, and the third is the line number.
+        
         returns (List[Token]) - A list of the tokens parsed from the input
         string
 
         """
 
-        # content[chunk_start:chunk_end] is the section of the content currently
+        all_tokens = []
+        for line_with_info in code_lines:
+            # This strange logic allows the tokenize_line function to be
+            # ignorant to the file-context of the line passed in.
+            try:
+                tokens = self.tokenize_line(line_with_info[0])
+            except CompilerError as e:
+                e.file_name = line_with_info[1]
+                e.line_num = line_with_info[2]
+                raise e
+                
+            for token in tokens:
+                token.file_name = line_with_info[1]
+                token.line_num = line_with_info[2]
+                all_tokens.append(token)
+        return all_tokens
+
+    def tokenize_line(self, line):
+        """Convert the given line of code into a list of tokens that have no
+        file-context dependent attributes (like line number) set.
+
+        line (str) - a line of code
+        returns (Token) - a token without file-context dependent attributes
+
+        """
+        
+        # line[chunk_start:chunk_end] is the section of the line currently
         # being considered for conversion into a token; this string will be
         # called the 'chunk'. Everything before the chunk has already been
         # tokenized, and everything after has not yet been examined
@@ -55,21 +91,21 @@ class Lexer:
         # Stores the tokens as they are generated
         tokens = []
 
-        # While we still have characters in the content left to parse
-        while chunk_end < len(content):
-            # Checks if content[chunk_end:] starts with a symbol token kind
-            symbol_kind = self.match_symbol_kind_at(content, chunk_end)
+        # While we still have characters in the line left to parse
+        while chunk_end < len(line):
+            # Checks if line[chunk_end:] starts with a symbol token kind
+            symbol_kind = self.match_symbol_kind_at(line, chunk_end)
             if symbol_kind:
                 symbol_token = Token(symbol_kind)
 
-                self.add_chunk(content[chunk_start:chunk_end], tokens)
+                self.add_chunk(line[chunk_start:chunk_end], tokens)
                 tokens.append(symbol_token)
 
                 chunk_start = chunk_end + len(symbol_kind.text_repr)
                 chunk_end = chunk_start
         
-            elif content[chunk_end].isspace():
-                self.add_chunk(content[chunk_start:chunk_end], tokens)
+            elif line[chunk_end].isspace():
+                self.add_chunk(line[chunk_start:chunk_end], tokens)
                 chunk_start = chunk_end + 1
                 chunk_end = chunk_start
 
@@ -77,7 +113,7 @@ class Lexer:
                 chunk_end += 1
 
         # Flush out anything that is left in the chunk to the output
-        self.add_chunk(content[chunk_start:chunk_end], tokens)
+        self.add_chunk(line[chunk_start:chunk_end], tokens)
 
         return tokens
             

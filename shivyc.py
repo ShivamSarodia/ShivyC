@@ -28,13 +28,14 @@ def main():
 
     try:
         with open(arguments.file_name) as c_file:
-            c_source = c_file.read()
+            code_lines = [(line_text.strip(), arguments.file_name, line_num+1)
+                          for line_num, line_text in enumerate(c_file)]
     except IOError:
         raise CompilerError("could not read file: '{}'"
                             .format(arguments.file_name))
 
     # Compile the code
-    s_source = compile_code(c_source)
+    s_source = compile_code(code_lines)
 
     try:
         with open("out.s", "w") as s_file:
@@ -63,9 +64,10 @@ def get_arguments():
     return parser.parse_args()
 
 def compile_code(source):
-    """Compile the provided source code into assembly.
+    """Compile the provided source code lines into assembly.
 
-    source (str) - The C source code to compile.
+    source_lines (List(tuple)) - Annotated lines of source code. See
+    lexer.tokenize docstring for details.
     return (str) - The asm output
 
     """
