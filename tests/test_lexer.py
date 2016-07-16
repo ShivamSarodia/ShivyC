@@ -3,6 +3,7 @@
 """
 import unittest
 
+from errors import CompilerError
 from lexer import Lexer
 import token_kinds
 from tokens import Token
@@ -43,7 +44,7 @@ class lexer_pure_unit_tests(unittest.TestCase):
         self.assertEqual(self.lexer.tokenize(content), tokens)
         
     def test_keywords_without_space(self):
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaisesRegex(CompilerError, "unrecognized token"):
             self.lexer.tokenize("toktoken")
 
     def test_keywords_with_extra_whitespace(self):

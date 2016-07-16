@@ -10,6 +10,7 @@ import argparse
 import subprocess
 
 from code_gen import CodeStore
+from errors import CompilerError
 from lexer import Lexer
 from parser import Parser
 import token_kinds
@@ -25,53 +26,22 @@ def main():
     """
     arguments = get_arguments()
 
-    # Open C file
     try:
-        c_file = open(arguments.file_name)
+        with open(arguments.file_name) as c_file:
+            c_source = c_file.read()
     except IOError:
-        # TODO: return errors in a universal way
-        print("shivyc: error: no such file or directory: '{}'"
-              .format(arguments.file_name))
-        return
-
-    # Read C file
-    try:
-        c_source = c_file.read()
-    except IOError:
-        # TODO: return errors in a universal way
-        print("shivyc: error: cannot read file '{}'"
-              .format(arguments.file_name))
-        c_file.close()
-        return
-    c_file.close()
+        raise CompilerError("could not read file: '{}'"
+                            .format(arguments.file_name))
 
     # Compile the code
-    try:
-        s_source = compile_code(c_source)
-    except NotImplementedError:
-        # TODO: return errors in a universal way
-        print("shivyc: error: NotImplementedError")
-        return
+    s_source = compile_code(c_source)
 
-    # Open asm file
     try:
-        s_file = open("out.s", "w")
+        with open("out.s", "w") as s_file:
+            s_file.write(s_source)
     except IOError:
-        # TODO: return errors in a universal way
-        print("shivyc: error: cannot open output file '{}'"
-              .format("out.s"))
-        return
-
-    # Write asm file
-    try:
-        s_file.write(s_source)
-    except IOError:
-        # TODO: return errors in a universal way
-        print("shivyc: error: cannot write output file '{}'"
-              .format("out.s"))
-        s_file.close()
-        return
-    s_file.close()
+        raise CompilerError("could not write output file '{}'"
+                            .format("out.s"))
 
     assemble_and_link("out", "out.s", "out.o")
 
@@ -124,4 +94,7 @@ def assemble_and_link(binary_name, asm_name, obj_name):
     subprocess.run(["ld", obj_name, "-o", binary_name]).check_returncode()
     
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except CompilerError as e:
+        print(e.__str__())

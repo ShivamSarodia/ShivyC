@@ -4,6 +4,7 @@ C source to executable"""
 import subprocess
 import unittest
 
+from errors import CompilerError
 import shivyc
 
 class integration_tests(unittest.TestCase):
@@ -17,10 +18,7 @@ class integration_tests(unittest.TestCase):
     # Currently fails! Reminder to fix this bug.
     def test_extra_tokens_at_end(self):
         self.expect_exception("int main() { return 15; } int",
-                              NotImplementedError)
-
-
-
+                              CompilerError)
         
     # Support functions for the the tests
     def compile_and_run(self, code):

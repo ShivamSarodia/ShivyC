@@ -3,6 +3,8 @@ generators are no fun.
 
 """
 import ast
+
+from errors import CompilerError
 import token_kinds
 
 class Parser:
@@ -55,6 +57,6 @@ class Parser:
             return ast.MainNode(tokens[6])
         else:
             if error:
-                # TODO: implement compiler errors
-                raise NotImplementedError
+                raise CompilerError("expected main function starting at '{}'".
+                                    format(tokens[0].content))
             else: return None

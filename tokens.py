@@ -53,7 +53,7 @@ class Token:
     """
     def __init__(self, kind, content = ""):
         self.kind = kind
-        self.content = content
+        self.content = content if content else kind.text_repr
         
     def __eq__(self, other):
         return self.kind == other.kind and self.content == other.content

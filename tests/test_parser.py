@@ -4,6 +4,7 @@
 import unittest
 
 import ast
+from errors import CompilerError
 from parser import Parser
 import token_kinds
 from tokens import Token
@@ -32,7 +33,7 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.close_brack)]
         
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaisesRegex(CompilerError, "expected main function"):
             ast_root = self.parser.parse(tokens)
 
 if __name__ == "__main__":

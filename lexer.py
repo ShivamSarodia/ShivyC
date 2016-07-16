@@ -6,6 +6,8 @@ currently no preproccesor implemented, the input text string is simply the file
 contents.
 
 """
+
+from errors import CompilerError
 from tokens import TokenKind
 from tokens import Token
 import token_kinds
@@ -116,9 +118,7 @@ class Lexer:
                                      number_string))
                 return
 
-            # TODO: raise a compiler error here, because none of the above
-            # matched
-            raise NotImplementedError
+            raise CompilerError("unrecognized token: '{}'".format(chunk))
             
     def match_keyword_kind(self, token_repr):
         """Return the longest keyword token kind with representation exactly
