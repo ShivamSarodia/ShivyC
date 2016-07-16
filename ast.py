@@ -25,3 +25,11 @@ class MainNode(Node):
     def __init__(self, return_value):
         super().__init__()
         self.return_value = return_value
+        
+    def make_code(self, code_store):
+        code_store.add_label("main")
+        code_store.add_command(("push", "rbp"))
+        code_store.add_command(("mov", "rbp", "rsp"))
+        code_store.add_command(("mov", "rax", self.return_value.content))
+        code_store.add_command(("pop", "rbp"))
+        code_store.add_command(("ret",))
