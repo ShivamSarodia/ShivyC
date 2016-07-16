@@ -34,6 +34,7 @@ class code_gen_tests(unittest.TestCase):
 
         self.assertEqual(code_store.full_code(),
                          "\n".join(expected_code))
-            
+
+
 if __name__ == "__main__":
     unittest.main()
