@@ -25,6 +25,7 @@ def main():
     """
     arguments = get_arguments()
 
+    # Open C file
     try:
         c_file = open(arguments.file_name)
     except IOError:
@@ -33,6 +34,7 @@ def main():
               .format(arguments.file_name))
         return
 
+    # Read C file
     try:
         c_source = c_file.read()
     except IOError:
@@ -42,14 +44,16 @@ def main():
         c_file.close()
         return
     c_file.close()
-    
+
+    # Compile the code
     try:
         s_source = compile_code(c_source)
     except NotImplementedError:
         # TODO: return errors in a universal way
         print("shivyc: error: NotImplementedError")
         return
-    
+
+    # Open asm file
     try:
         s_file = open("out.s", "w")
     except IOError:
@@ -57,7 +61,8 @@ def main():
         print("shivyc: error: cannot open output file '{}'"
               .format("out.s"))
         return
-        
+
+    # Write asm file
     try:
         s_file.write(s_source)
     except IOError:
@@ -68,9 +73,7 @@ def main():
         return
     s_file.close()
 
-    # TODO: return errors in a universal way
-    subprocess.run(["nasm", "-f", "elf64", "-o", "out.o", "out.s"]).check_returncode()
-    subprocess.run(["ld", "out.o", "-o", "out"]).check_returncode()
+    assemble_and_link("out", "out.s", "out.o")
 
 def get_arguments():
     """Set up the argument parser and return an object storing the
@@ -107,5 +110,18 @@ def compile_code(source):
 
     return code_store.full_code()
 
+def assemble_and_link(binary_name, asm_name, obj_name):
+    """Assmble and link the assembly file into an object file and
+    binary. If the assembly/linking fails, raise an exception.
+
+    binary_name (str) - name of the binary file to output
+    asm_name (str) - name of the assembly file to read in
+    obj_name (str) - name of the obj file to output
+
+    """
+    # TODO: return errors in a universal way
+    subprocess.run(["nasm", "-f", "elf64", "-o", obj_name, asm_name]).check_returncode()
+    subprocess.run(["ld", obj_name, "-o", binary_name]).check_returncode()
+    
 if __name__ == "__main__":
     main()
