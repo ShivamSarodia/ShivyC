@@ -13,7 +13,8 @@ class code_gen_tests(unittest.TestCase):
         pass
 
     def test_asm_output(self):
-        main_node = ast.MainNode(Token(token_kinds.number, "15"))
+        main_node = ast.MainNode(
+            ast.NumberNode(Token(token_kinds.number, "15")))
 
         code_store = CodeStore()
         main_node.make_code(code_store)
@@ -29,6 +30,7 @@ class code_gen_tests(unittest.TestCase):
                          "     push rbp",
                          "     mov rbp, rsp",
                          "     mov rax, 15",
+                         "     mov rax, rax",
                          "     pop rbp",
                          "     ret"]
 

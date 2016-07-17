@@ -23,7 +23,8 @@ class parser_tests(unittest.TestCase):
 
         ast_root = self.parser.parse(tokens)
         self.assertEqual(ast_root,
-                         ast.MainNode(Token(token_kinds.number, "15")))
+                         ast.MainNode(
+                             ast.NumberNode(Token(token_kinds.number, "15"))))
 
     def test_bad_parse_main(self):
         """ Missing semicolon: int main() { return 15 } """
@@ -32,8 +33,9 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.close_brack)]
-        with self.assertRaisesRegex(CompilerError,
-                                    "expected main function starting at 'int'"):
+        with self.assertRaisesRegex(
+                CompilerError,
+                "expected end of main function starting at '}'"):
             ast_root = self.parser.parse(tokens)
 
     def test_extra_tokens_at_end(self):
