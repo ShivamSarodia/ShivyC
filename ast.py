@@ -37,22 +37,27 @@ class MainNode(Node):
     """ General rule for the main function. Will be removed once function
     definition is supported. Ex: int main() { return `return_value`; }
     
-    statement (statement) - a statement in main function
+    statements (List[statement]) - a list of the statement in main function
 
     """
     symbol = "main_function"
     
-    def __init__(self, statement):
+    def __init__(self, statements):
         super().__init__()
 
-        self.assert_symbol(statement, "statement")
-        self.statement = statement
+        for statement in statements: self.assert_symbol(statement, "statement")
+        self.statements = statements
         
     def make_code(self, code_store):
         code_store.add_label("main")
         code_store.add_command(("push", "rbp"))
         code_store.add_command(("mov", "rbp", "rsp"))
-        self.statement.make_code(code_store)
+        for statement in self.statements:
+            statement.make_code(code_store)
+        # We return 0 at the end, in case the code did not return
+        code_store.add_command(("mov", "rax", "0"))
+        code_store.add_command(("pop", "rbp"))
+        code_store.add_command(("ret", ))
 
 class ReturnNode(Node):
     """ Return statement

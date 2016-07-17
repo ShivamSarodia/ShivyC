@@ -24,10 +24,32 @@ class parser_tests(unittest.TestCase):
         ast_root = self.parser.parse(tokens)
         self.assertEqual(ast_root,
                          ast.MainNode(
-                             ast.ReturnNode(
-                                 ast.NumberNode(Token(token_kinds.number, "15"
-                                 )))))
+                             [ast.ReturnNode(
+                                 ast.NumberNode(Token(token_kinds.number, "15"))
+                             )]
+                         ))
 
+    def test_parse_multiple_return(self):
+        """ int main() { return 15; return 10; } """
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack),
+                  Token(token_kinds.return_kw), Token(token_kinds.number, "15"),
+                  Token(token_kinds.semicolon),
+                  Token(token_kinds.return_kw), Token(token_kinds.number, "10"),
+                  Token(token_kinds.semicolon),
+                  Token(token_kinds.close_brack)]
+
+        ast_root = self.parser.parse(tokens)
+        self.assertEqual(ast_root,
+                         ast.MainNode(
+                             [ast.ReturnNode(
+                                 ast.NumberNode(Token(token_kinds.number, "15"))
+                             ), ast.ReturnNode(
+                                 ast.NumberNode(Token(token_kinds.number, "10"))
+                             )]
+                         ))
+        
     def test_extra_tokens_at_end(self):
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
                   Token(token_kinds.open_paren), Token(token_kinds.close_paren),

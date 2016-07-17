@@ -14,8 +14,8 @@ class code_gen_tests(unittest.TestCase):
 
     def test_asm_output(self):
         main_node = ast.MainNode(
-            ast.ReturnNode(
-            ast.NumberNode(Token(token_kinds.number, "15"))))
+            [ast.ReturnNode(
+                ast.NumberNode(Token(token_kinds.number, "15")))])
 
         code_store = CodeStore()
         main_node.make_code(code_store)
@@ -33,11 +33,36 @@ class code_gen_tests(unittest.TestCase):
                          "     mov rax, 15",
                          "     mov rax, rax",
                          "     pop rbp",
+                         "     ret",
+                         "     mov rax, 0",
+                         "     pop rbp",
                          "     ret"]
 
         self.assertEqual(code_store.full_code(),
                          "\n".join(expected_code))
 
+    def test_empty_asm_output(self):
+        main_node = ast.MainNode([])
+
+        code_store = CodeStore()
+        main_node.make_code(code_store)
+
+        expected_code = ["global _start",
+                         "",
+                         "_start:",
+                         "     call main",
+                         "     mov rdi, rax",
+                         "     mov rax, 60",
+                         "     syscall",
+                         "main:",
+                         "     push rbp",
+                         "     mov rbp, rsp",
+                         "     mov rax, 0",
+                         "     pop rbp",
+                         "     ret"]
+
+        self.assertEqual(code_store.full_code(),
+                         "\n".join(expected_code))
 
 if __name__ == "__main__":
     unittest.main()

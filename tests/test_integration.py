@@ -19,6 +19,9 @@ class integration_tests(unittest.TestCase):
     
     def test_basic_return_main(self):
         self.expect_return("int main() { return 15; }", 15)
+            
+    def test_multiple_return_main(self):
+        self.expect_return("int main() { return 15; return 20; return 10; }", 15)
         
     # Support functions for the the tests
     def compile_and_run(self, code):

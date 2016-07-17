@@ -37,8 +37,9 @@ class Parser:
         node, index = self.expect_main(tokens, 0)
         if not node:
             # Parsing failed, so we return the error that was most successsful
-            # at parsing.
-            raise max(self.errors, key=lambda error: error[1])[0]
+            # at parsing. If multiple errors parsed the same number of tokens,
+            # return the one added later.
+            raise sorted(self.errors, key=lambda error: error[1])[-1][0]
 
         # Ensure there's no tokens left at after the main function
         if tokens[index:]:
@@ -58,9 +59,15 @@ class Parser:
             err = "expected main function starting"
             return self.add_error(err, index, tokens, self.AT)
 
-        node, index = self.expect_return(tokens, index)
-        if not node:
-            return (None, 0)
+        nodes = []
+        while True:
+            prev_index = index
+            node, index = self.expect_statement(tokens, index)
+            
+            if not node:
+                index = prev_index
+                break
+            else: nodes.append(node)
 
         if (len(tokens) > index and
             tokens[index].kind == token_kinds.close_brack):
@@ -68,7 +75,11 @@ class Parser:
         else:
             err = "expected closing brace"
             return self.add_error(err, index, tokens, self.GOT)
-        return (ast.MainNode(node), index)
+        return (ast.MainNode(nodes), index)
+
+    def expect_statement(self, tokens, index):
+        node, index = self.expect_return(tokens, index)
+        return (node, index)
 
     def expect_return(self, tokens, index):
         if len(tokens) > index and tokens[index].kind == token_kinds.return_kw:
