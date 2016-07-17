@@ -24,7 +24,9 @@ class parser_tests(unittest.TestCase):
         ast_root = self.parser.parse(tokens)
         self.assertEqual(ast_root,
                          ast.MainNode(
-                             ast.NumberNode(Token(token_kinds.number, "15"))))
+                             ast.ReturnNode(
+                                 ast.NumberNode(Token(token_kinds.number, "15"
+                                 )))))
 
     def test_missing_semicolon_main(self):
         """ Missing semicolon: int main() { return 15 } """
@@ -35,7 +37,7 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.close_brack)]
         with self.assertRaisesRegex(
                 CompilerError,
-                "expected end of main function at '}'"):
+                "expected semicolon at '}'"):
             ast_root = self.parser.parse(tokens)
 
     def test_extra_tokens_at_end(self):
@@ -53,7 +55,7 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15")]
         with self.assertRaisesRegex(CompilerError,
-                                    "expected end of main function after '15'"):
+                                    "expected semicolon after '15'"):
             ast_root = self.parser.parse(tokens)
 
 if __name__ == "__main__":

@@ -37,21 +37,38 @@ class MainNode(Node):
     """ General rule for the main function. Will be removed once function
     definition is supported. Ex: int main() { return `return_value`; }
     
-    return_value (expression) - value to return
+    statement (statement) - a statement in main function
 
     """
     symbol = "main_function"
     
-    def __init__(self, return_value):
+    def __init__(self, statement):
         super().__init__()
 
-        self.assert_symbol(return_value, "expression")
-        self.return_value = return_value
+        self.assert_symbol(statement, "statement")
+        self.statement = statement
         
     def make_code(self, code_store):
         code_store.add_label("main")
         code_store.add_command(("push", "rbp"))
         code_store.add_command(("mov", "rbp", "rsp"))
+        self.statement.make_code(code_store)
+
+class ReturnNode(Node):
+    """ Return statement
+
+    return_value (expression) - value to return
+
+    """
+    symbol = "statement"
+
+    def __init__(self, return_value):
+        super().__init__()
+
+        self.assert_symbol(return_value, "expression")
+        self.return_value = return_value
+
+    def make_code(self, code_store):
         # For now, the expression always returns its value in the rax register.
         # This will be changed shortly, so the "mov rax rax" command will be
         # made more useful.

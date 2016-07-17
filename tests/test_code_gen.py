@@ -14,7 +14,8 @@ class code_gen_tests(unittest.TestCase):
 
     def test_asm_output(self):
         main_node = ast.MainNode(
-            ast.NumberNode(Token(token_kinds.number, "15")))
+            ast.ReturnNode(
+            ast.NumberNode(Token(token_kinds.number, "15"))))
 
         code_store = CodeStore()
         main_node.make_code(code_store)
