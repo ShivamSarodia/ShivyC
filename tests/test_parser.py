@@ -28,18 +28,6 @@ class parser_tests(unittest.TestCase):
                                  ast.NumberNode(Token(token_kinds.number, "15"
                                  )))))
 
-    def test_missing_semicolon_main(self):
-        """ Missing semicolon: int main() { return 15 } """
-        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
-                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
-                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
-                  Token(token_kinds.number, "15"),
-                  Token(token_kinds.close_brack)]
-        with self.assertRaisesRegex(
-                CompilerError,
-                "expected semicolon at '}'"):
-            ast_root = self.parser.parse(tokens)
-
     def test_extra_tokens_at_end(self):
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
                   Token(token_kinds.open_paren), Token(token_kinds.close_paren),
@@ -57,6 +45,18 @@ class parser_tests(unittest.TestCase):
         with self.assertRaisesRegex(CompilerError,
                                     "expected semicolon after '15'"):
             ast_root = self.parser.parse(tokens)
+            
+    def test_missing_final_brace_main(self):
+        """ Missing semicolon: int main() { return 15 } """
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+                  Token(token_kinds.number, "15"), Token(token_kinds.semicolon)]
+        with self.assertRaisesRegex(
+                CompilerError,
+                "expected closing brace after ';'"):
+            ast_root = self.parser.parse(tokens)
+
 
 if __name__ == "__main__":
     unittest.main()

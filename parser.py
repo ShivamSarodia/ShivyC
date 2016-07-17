@@ -42,7 +42,7 @@ class Parser:
 
         # Ensure there's no tokens left at after the main function
         if tokens[index:]:
-            raise self.make_error("unexpected token", index, tokens)
+            raise self.make_error("unexpected token", index, tokens, self.AT)
         return node
 
     def expect_main(self, tokens, index):
@@ -56,7 +56,7 @@ class Parser:
             index += match_start
         else:
             err = "expected main function starting"
-            return self.add_error(err, index, tokens)
+            return self.add_error(err, index, tokens, self.AT)
 
         node, index = self.expect_return(tokens, index)
         if not node:
@@ -67,7 +67,7 @@ class Parser:
             index += 1
         else:
             err = "expected closing brace"
-            return self.add_error(err, index, tokens)
+            return self.add_error(err, index, tokens, self.GOT)
         return (ast.MainNode(node), index)
 
     def expect_return(self, tokens, index):
@@ -75,7 +75,7 @@ class Parser:
             index += 1
         else:
             err = "expected return keyword"
-            return self.add_error(err, index, tokens)
+            return self.add_error(err, index, tokens, self.GOT)
 
         node, index = self.expect_expression(tokens, index)
         if not node:
@@ -85,7 +85,7 @@ class Parser:
             index += 1
         else:
             err = "expected semicolon"
-            return self.add_error(err, index, tokens)
+            return self.add_error(err, index, tokens, self.AFTER)
         return (ast.ReturnNode(node), index)
         
     def expect_expression(self, tokens, index):
@@ -96,7 +96,7 @@ class Parser:
         if tokens[index].kind == token_kinds.number:
             return (ast.NumberNode(tokens[index]), index + 1)
         else:
-            return self.add_error("expected number", index, tokens)
+            return self.add_error("expected number", index, tokens, self.GOT)
 
     #
     # Utility functions for the parser
@@ -117,39 +117,66 @@ class Parser:
             return len(kinds_expected)
         else: return 0
 
-    def add_error(self, message, index, tokens):
+    # AT generates a message like "expected semicolon at '}'", GOT generates a
+    # message like "expected semicolon, got '}'", and AFTER generates a message
+    # like "expected semicolon after '15'" (if possible).
+    #
+    # As a very general guide, use AT when a token should be removed, use AFTER
+    # when a token should be to be inserted (esp. because of what came before),
+    # and GOT when a token should be changed.
+    AT = 1
+    GOT = 2
+    AFTER = 3 
+    def add_error(self, message, index, tokens, message_type):
         """Generates a CompilerError and adds it to the list of errors at the
         given index. For convenience, also returns (None, 0)
 
         message (str) - the base message to put in the error
         tokens (List[Token]) - a list of tokens
         index (int) - the index of the offending token
+        message_type (int) - either self.AT, self.GOT, or self.AFTER. 
         returns - (None, 0)
 
         """
-        self.errors.append((self.make_error(message, index, tokens),
-                           index))
+        self.errors.append(
+            (self.make_error(message, index, tokens, message_type),
+             index))
         return (None, 0)
         
-    def make_error(self, message, index, tokens):
+    def make_error(self, message, index, tokens, message_type):
         """Generate a CompilerError. 
 
         message (str) - the base message to put in the error
         tokens (List[Token]) - a list of tokens
         index (int) - the index of the offending token
+        prefer_after (bool) - if true, tries to generate an error that
+        references the token before. e.g. "expected semicolon after 15" when
+        true, and "expected semicolon at }" when false.
 
         """
         if len(tokens) == 0:
             return CompilerError("{} at beginning of source".format(message))
-        elif index < 0:
-            return CompilerError(
-                "{} before '{}'".format(message, tokens[0].content),
-                tokens[0].file_name, tokens[0].line_num)
-        elif index < len(tokens):
+
+        # If the index is too big, we're always using the AFTER form
+        if index >= len(tokens):
+            index = len(tokens)
+            message_type = self.AFTER
+        # If the index is too small, we should not use the AFTER form
+        elif index <= 0:
+            index = 0
+            if message_type == self.AFTER: message_type = self.GOT
+
+        if message_type == self.AT:
             return CompilerError(
                 "{} at '{}'".format(message, tokens[index].content),
                 tokens[index].file_name, tokens[index].line_num)
-        else:  # index >= len(tokens)
+        elif message_type == self.GOT:
             return CompilerError(
-                "{} after '{}'".format(message, tokens[-1].content),
-                tokens[-1].file_name, tokens[-1].line_num)
+                "{}, got '{}'".format(message, tokens[index].content),
+                tokens[index].file_name, tokens[index].line_num)
+        elif message_type == self.AFTER:
+            return CompilerError(
+                "{} after '{}'".format(message, tokens[index-1].content),
+                tokens[index-1].file_name, tokens[index-1].line_num)
+        else:
+            raise ValueError("Unknown error message type")
