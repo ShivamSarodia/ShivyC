@@ -35,7 +35,7 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.close_brack)]
         with self.assertRaisesRegex(
                 CompilerError,
-                "expected end of main function starting at '}'"):
+                "expected end of main function at '}'"):
             ast_root = self.parser.parse(tokens)
 
     def test_extra_tokens_at_end(self):

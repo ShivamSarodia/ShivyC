@@ -42,10 +42,7 @@ class Parser:
 
         # Ensure there's no tokens left at after the main function
         if tokens[length:]:
-            raise CompilerError("unexpected token at '{}'".
-                                format(tokens[length].content),
-                                line_num = tokens[length].line_num,
-                                file_name = tokens[0].file_name)
+            raise self.make_error("unexpected token", length, tokens)
         return node
 
     def expect_main(self, tokens, index):
@@ -58,13 +55,8 @@ class Parser:
         if match_start:
             index += match_start
         else:
-            self.errors.append(
-                (CompilerError("expected main function starting at '{}'"
-                               .format(tokens[index].content),
-                               line_num = tokens[index].line_num,
-                               file_name = tokens[index].file_name),
-                 index))
-            return (None, 0)
+            err = "expected main function starting"
+            return self.add_error(err, index, tokens)
 
         node, length = self.expect_expression(tokens, index)
         if node:
@@ -77,13 +69,8 @@ class Parser:
         if match_end:
             index += match_end
         else:
-            self.errors.append(
-                (CompilerError("expected end of main function starting at '{}'"
-                               .format(tokens[index].content),
-                               line_num = tokens[index].line_num,
-                               file_name = tokens[index].file_name),
-                 index))
-            return (None, 0)
+            err = "expected end of main function"
+            return self.add_error(err, index, tokens)
         return (ast.MainNode(node), index)
         
     def expect_expression(self, tokens, index):
@@ -94,14 +81,12 @@ class Parser:
         if tokens[index].kind == token_kinds.number:
             return (ast.NumberNode(tokens[index]), 1)
         else:
-            self.errors.append(
-                (CompilerError("expected number at '{}'"
-                               .format(tokens[index].content),
-                               line_num = tokens[index].line_num,
-                               file_name = tokens[index].file_name),
-                 index))
-            return (None, 0)
-        
+            return self.add_error("expected number", index, tokens)
+
+    #
+    # Utility functions for the parser
+    #
+    
     def match_tokens(self, tokens, kinds_expected):
         """Checks if the provided tokens match the expected token kinds, in
         order. If the tokens all have the expected kind, returns the length of
@@ -116,3 +101,40 @@ class Parser:
                in zip(kinds_expected, tokens)):
             return len(kinds_expected)
         else: return 0
+
+    def add_error(self, message, index, tokens):
+        """Generates a CompilerError and adds it to the list of errors at the
+        given index. For convenience, also returns (None, 0)
+
+        message (str) - the base message to put in the error
+        tokens (List[Token]) - a list of tokens
+        index (int) - the index of the offending token
+        returns - (None, 0)
+
+        """
+        self.errors.append((self.make_error(message, index, tokens),
+                           index))
+        return (None, 0)
+        
+    def make_error(self, message, index, tokens):
+        """Generate a CompilerError. 
+
+        message (str) - the base message to put in the error
+        tokens (List[Token]) - a list of tokens
+        index (int) - the index of the offending token
+
+        """
+        if len(tokens) == 0:
+            return CompilerError("{} at beginning of source".format(message))
+        elif index < 0:
+            return CompilerError(
+                "{} before '{}'".format(message, tokens[0].content),
+                tokens[0].file_name, tokens[0].line_num)
+        elif index < len(tokens):
+            return CompilerError(
+                "{} at '{}'".format(message, tokens[index].content),
+                tokens[index].file_name, tokens[index].line_num)
+        else:  # index >= len(tokens)
+            return CompilerError(
+                "{} after '{}'".format(message, tokens[-1].content),
+                tokens[-1].file_name, tokens[-1].line_num)

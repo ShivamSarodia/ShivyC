@@ -8,21 +8,16 @@ class CompilerError(Exception):
     context (str) - the context around which the error occurred
 
     """
-    def __init__(self, descrip, file_name = None, line_num = None,
-                 context = None):
+    def __init__(self, descrip, file_name = None, line_num = None):
         self.descrip = descrip
         self.file_name = file_name
         self.line_num = line_num
-        self.context = context
         
     def __str__(self):
         if self.file_name and self.line_num:
-            prefix = "{0}:{1}: error: ".format(
-                self.file_name, self.line_num)
+            return "{}:{}: error: {}".format(
+                self.file_name, self.line_num, self.descrip)
         elif self.file_name:
-            prefix = "{0}: error: ".format(self.file_name)
+            return "{}: error: {}".format(self.file_name, self.descrip)
         else:
-            prefix = "shivyc: error: "
-
-        return prefix + self.descrip + ("\n    " + self.context
-                                        if self.context else "")
+            return "shivyc: error: {}".format(self.descrip)
