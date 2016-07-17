@@ -44,7 +44,8 @@ class lexer_pure_unit_tests(unittest.TestCase):
         self.assertEqual(self.lexer.tokenize_line(content), tokens)
         
     def test_keywords_without_space(self):
-        with self.assertRaisesRegex(CompilerError, "unrecognized token"):
+        with self.assertRaisesRegex(CompilerError,
+                                    "unrecognized token at 'toktoken'"):
             self.lexer.tokenize_line("toktoken")
 
     def test_keywords_with_extra_whitespace(self):

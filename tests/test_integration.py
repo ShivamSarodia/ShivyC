@@ -1,5 +1,11 @@
 """Integration tests for the compiler. Tests the entire pipeline, from
-C source to executable"""
+C source to executable.
+
+These tests should focus on verifying that the generated asm code behaves as
+expected. If the main test is verifying the lexer/parser steps, put the test in
+the corresponding test_* file.
+
+"""
 
 import subprocess
 import unittest

@@ -57,7 +57,7 @@ class Token:
     """
     def __init__(self, kind, content = ""):
         self.kind = kind
-        self.content = content if content else kind.text_repr
+        self.content = content if content else str(self.kind)
         self.file_name = None
         self.line_num = None
         
@@ -65,4 +65,4 @@ class Token:
         return self.kind == other.kind and self.content == other.content
 
     def __str__(self):
-        return self.content if self.content else str(self.kind)
+        return self.content

@@ -32,8 +32,8 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.close_brack)]
-        
-        with self.assertRaisesRegex(CompilerError, "expected main function"):
+        with self.assertRaisesRegex(CompilerError,
+                                    "expected main function starting at 'int'"):
             ast_root = self.parser.parse(tokens)
 
     def test_extra_tokens_at_end(self):
@@ -42,7 +42,7 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack), Token(token_kinds.int_kw)]
-        with self.assertRaisesRegex(CompilerError, "unexpected token"):
+        with self.assertRaisesRegex(CompilerError, "unexpected token at 'int'"):
             ast_root = self.parser.parse(tokens)
 
 if __name__ == "__main__":

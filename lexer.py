@@ -154,7 +154,7 @@ class Lexer:
                                      number_string))
                 return
 
-            raise CompilerError("unrecognized token: '{}'".format(chunk))
+            raise CompilerError("unrecognized token at '{}'".format(chunk))
             
     def match_keyword_kind(self, token_repr):
         """Return the longest keyword token kind with representation exactly
