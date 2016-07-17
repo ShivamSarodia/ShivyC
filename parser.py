@@ -61,16 +61,14 @@ class Parser:
 
         nodes = []
         while True:
-            prev_index = index
-            node, index = self.expect_statement(tokens, index)
+            node, new_index = self.expect_statement(tokens, index)
             
-            if not node:
-                index = prev_index
-                break
-            else: nodes.append(node)
+            if not node: break
+            else:
+                index = new_index
+                nodes.append(node)
 
-        if (len(tokens) > index and
-            tokens[index].kind == token_kinds.close_brack):
+        if self.match_token(tokens[index:], token_kinds.close_brack):
             index += 1
         else:
             err = "expected closing brace"
@@ -82,7 +80,7 @@ class Parser:
         return (node, index)
 
     def expect_return(self, tokens, index):
-        if len(tokens) > index and tokens[index].kind == token_kinds.return_kw:
+        if self.match_token(tokens[index:], token_kinds.return_kw):
             index += 1
         else:
             err = "expected return keyword"
@@ -92,7 +90,7 @@ class Parser:
         if not node:
             return (None, 0)
 
-        if len(tokens) > index and tokens[index].kind == token_kinds.semicolon:
+        if self.match_token(tokens[index:], token_kinds.semicolon):
             index += 1
         else:
             err = "expected semicolon"
@@ -104,7 +102,7 @@ class Parser:
 
         We will soon remake this to be a shift-reduce parser."""
 
-        if tokens[index].kind == token_kinds.number:
+        if self.match_token(tokens[index:], token_kinds.number):
             return (ast.NumberNode(tokens[index]), index + 1)
         else:
             return self.add_error("expected number", index, tokens, self.GOT)
@@ -112,6 +110,8 @@ class Parser:
     #
     # Utility functions for the parser
     #
+    def match_token(self, tokens, kind_expected):
+        return self.match_tokens(tokens, [kind_expected])
     
     def match_tokens(self, tokens, kinds_expected):
         """Checks if the provided tokens match the expected token kinds, in
