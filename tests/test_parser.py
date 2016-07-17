@@ -26,7 +26,7 @@ class parser_tests(unittest.TestCase):
                          ast.MainNode(
                              ast.NumberNode(Token(token_kinds.number, "15"))))
 
-    def test_bad_parse_main(self):
+    def test_missing_semicolon_main(self):
         """ Missing semicolon: int main() { return 15 } """
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
                   Token(token_kinds.open_paren), Token(token_kinds.close_paren),
@@ -45,6 +45,15 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack), Token(token_kinds.int_kw)]
         with self.assertRaisesRegex(CompilerError, "unexpected token at 'int'"):
+            ast_root = self.parser.parse(tokens)
+
+    def test_missing_end_of_main(self):
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+                  Token(token_kinds.number, "15")]
+        with self.assertRaisesRegex(CompilerError,
+                                    "expected end of main function after '15'"):
             ast_root = self.parser.parse(tokens)
 
 if __name__ == "__main__":
