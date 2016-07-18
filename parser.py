@@ -5,6 +5,7 @@ generators are no fun.
 import ast
 
 from errors import CompilerError
+from tokens import Token
 import token_kinds
 
 class Parser:
@@ -98,14 +99,64 @@ class Parser:
         return (ast.ReturnNode(node), index)
         
     def expect_expression(self, tokens, index):
-        """Ex: 5, 3, etc. Currently only supports single integers.
+        """Implemented as a shift-reduce parser. Tries to comprehend as much as
+        possible of tokens past index as being an expression, and the index
+        returned is the first token that could not be parsed into the
+        expression. If literally none of it could be parsed as an expression,
+        returns (None, 0) like usual.
 
-        We will soon remake this to be a shift-reduce parser."""
+        TODO(shivam): find a way to avoid trying to parse the entire remaining
+        list of tokens every time this function is called, because that's really
+        terrible.
 
-        if self.match_token(tokens[index:], token_kinds.number):
-            return (ast.NumberNode(tokens[index]), index + 1)
+        """
+                
+        # List of tuples (TokenKind, precedence) where higher precedence is
+        # higher.
+        binary_operators = [(token_kinds.plus, 11)]
+
+        # List of tuples currently being conidered. Either (token, 1) or (node,
+        # length), where Node is a node representing a rule that generates an
+        # expression, and length is the number of tokens consumed in this node.
+        stack = []
+
+        i = index
+        while True:
+            # If the top of the stack is a number, reduce it to an expression
+            # node
+            if (stack and isinstance(stack[-1][0], Token)
+                and stack[-1][0].kind == token_kinds.number):
+                stack[-1] = (ast.NumberNode(stack[-1][0]), 1)
+            # If the top of the stack matches a binary operator, reduce it to an
+            # expression node. TODO(shivam): check precedence of next operator
+            elif (len(stack) >= 3
+                  and isinstance(stack[-1][0], ast.Node)
+                  and isinstance(stack[-2][0], Token)
+                  and stack[-2][0].kind in [op[0] for op in binary_operators]
+                  and isinstance(stack[-3][0], ast.Node)):
+                left_expr = stack[-3]
+                right_expr = stack[-1]
+                operator = stack[-2]
+                
+                # Remove these last 3 elements
+                del stack[-3:]
+                stack.append((ast.BinaryOperatorNode(left_expr[0],
+                                                     operator[0].kind,
+                                                     right_expr[0]),
+                              left_expr[1] + operator[1] + right_expr[1]))
+            else:
+                # If there was no match, shift another token onto the stack
+                # (if possible)
+                if i == len(tokens): break
+                
+                stack.append((tokens[i], 1))
+                i += 1
+
+        if isinstance(stack[0][0], ast.Node):
+            return (stack[0][0], index + stack[0][1])
         else:
-            return self.add_error("expected number", index, tokens, self.GOT)
+            return self.add_error("expected expression", index, tokens,
+                                  self.GOT)
 
     #
     # Utility functions for the parser

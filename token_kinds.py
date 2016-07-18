@@ -13,10 +13,12 @@ main = TokenKind("main", keyword_kinds)
 int_kw = TokenKind("int", keyword_kinds)
 return_kw = TokenKind("return", keyword_kinds)
 
-semicolon = TokenKind(";", symbol_kinds)
+plus = TokenKind("+", symbol_kinds)
 open_paren = TokenKind("(", symbol_kinds)
 close_paren = TokenKind(")", symbol_kinds)
 open_brack = TokenKind("{", symbol_kinds)
 close_brack = TokenKind("}", symbol_kinds)
+
+semicolon = TokenKind(";", symbol_kinds)
 
 number = TokenKind()

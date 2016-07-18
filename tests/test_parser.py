@@ -49,6 +49,28 @@ class parser_tests(unittest.TestCase):
                                  ast.NumberNode(Token(token_kinds.number, "10"))
                              )]
                          ))
+
+    def test_sum_expression(self):
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+                  Token(token_kinds.number, "15"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "10"), Token(token_kinds.semicolon),
+                  Token(token_kinds.close_brack)]
+
+        ast_root = self.parser.parse(tokens)
+        self.assertEqual(ast_root,
+                         ast.MainNode(
+                             [ast.ReturnNode(
+                                 ast.BinaryOperatorNode(
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "15")),
+                                     token_kinds.plus,
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "10")
+                                     ))
+                             )]
+                         ))
         
     def test_extra_tokens_at_end(self):
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
