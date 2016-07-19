@@ -2,8 +2,9 @@
 generators are no fun.
 
 """
-import ast
+from collections import namedtuple
 
+import ast
 from errors import CompilerError
 from tokens import Token
 import token_kinds
@@ -111,49 +112,58 @@ class Parser:
 
         """
                 
-        # List of tuples (TokenKind, precedence) where higher precedence is
-        # higher.
-        binary_operators = [(token_kinds.plus, 11)]
+        # Dictionay of key-value pairs {TokenKind: precedence} where higher
+        # precedence is higher.
+        binary_operators = {token_kinds.plus: 11}
 
-        # List of tuples currently being conidered. Either (token, 1) or (node,
-        # length), where Node is a node representing a rule that generates an
-        # expression, and length is the number of tokens consumed in this node.
+        # An item in the parsing stack. The item is either a Node or Token,
+        # where the node must generate an expression, and the length is the
+        # number of tokens consumed in generating this node.
+        StackItem = namedtuple("StackItem", ['item', 'length'])
         stack = []
 
         i = index
         while True:
             # If the top of the stack is a number, reduce it to an expression
             # node
-            if (stack and isinstance(stack[-1][0], Token)
-                and stack[-1][0].kind == token_kinds.number):
-                stack[-1] = (ast.NumberNode(stack[-1][0]), 1)
+            if (stack and isinstance(stack[-1].item, Token)
+                and stack[-1].item.kind == token_kinds.number):
+                stack[-1] = StackItem(ast.NumberNode(stack[-1].item), 1)
             # If the top of the stack matches a binary operator, reduce it to an
             # expression node. TODO(shivam): check precedence of next operator
             elif (len(stack) >= 3
-                  and isinstance(stack[-1][0], ast.Node)
-                  and isinstance(stack[-2][0], Token)
-                  and stack[-2][0].kind in [op[0] for op in binary_operators]
-                  and isinstance(stack[-3][0], ast.Node)):
+                  and isinstance(stack[-1].item, ast.Node)
+                  and isinstance(stack[-2].item, Token)
+                  and stack[-2].item.kind in binary_operators.keys()
+                  and isinstance(stack[-3].item, ast.Node)):
                 left_expr = stack[-3]
                 right_expr = stack[-1]
                 operator = stack[-2]
                 
                 # Remove these last 3 elements
                 del stack[-3:]
-                stack.append((ast.BinaryOperatorNode(left_expr[0],
-                                                     operator[0].kind,
-                                                     right_expr[0]),
-                              left_expr[1] + operator[1] + right_expr[1]))
+                stack.append(
+                    StackItem(ast.BinaryOperatorNode(left_expr.item,
+                                                     operator.item.kind,
+                                                     right_expr.item),
+                              left_expr.length + operator.length +
+                              right_expr.length))
             else:
+                # If we're at the end of the token list, or we've reached a
+                # token that can never appear in an expression, stop reading.
+                if i == len(tokens): break
+                elif (tokens[i].kind != token_kinds.number
+                      and tokens[i].kind not in binary_operators.keys()): break
+
                 # If there was no match, shift another token onto the stack
                 # (if possible)
                 if i == len(tokens): break
                 
-                stack.append((tokens[i], 1))
+                stack.append(StackItem(tokens[i], 1))
                 i += 1
 
-        if isinstance(stack[0][0], ast.Node):
-            return (stack[0][0], index + stack[0][1])
+        if isinstance(stack[0].item, ast.Node):
+            return (stack[0].item, index + stack[0].length)
         else:
             return self.add_error("expected expression", index, tokens,
                                   self.GOT)
