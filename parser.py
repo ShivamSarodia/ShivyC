@@ -114,7 +114,8 @@ class Parser:
                 
         # Dictionay of key-value pairs {TokenKind: precedence} where higher
         # precedence is higher.
-        binary_operators = {token_kinds.plus: 11}
+        binary_operators = {token_kinds.plus: 11,
+                            token_kinds.star: 12}
 
         # An item in the parsing stack. The item is either a Node or Token,
         # where the node must generate an expression, and the length is the
@@ -135,7 +136,13 @@ class Parser:
                   and isinstance(stack[-1].item, ast.Node)
                   and isinstance(stack[-2].item, Token)
                   and stack[-2].item.kind in binary_operators.keys()
-                  and isinstance(stack[-3].item, ast.Node)):
+                  and isinstance(stack[-3].item, ast.Node)
+
+                  # Make sure next token is not higher precedence
+                  and not (i < len(tokens)
+                           and tokens[i].kind in binary_operators.keys()
+                           and (binary_operators[tokens[i].kind] >
+                                binary_operators[stack[-2].item.kind]))):
                 left_expr = stack[-3]
                 right_expr = stack[-1]
                 operator = stack[-2]
@@ -154,10 +161,6 @@ class Parser:
                 if i == len(tokens): break
                 elif (tokens[i].kind != token_kinds.number
                       and tokens[i].kind not in binary_operators.keys()): break
-
-                # If there was no match, shift another token onto the stack
-                # (if possible)
-                if i == len(tokens): break
                 
                 stack.append(StackItem(tokens[i], 1))
                 i += 1

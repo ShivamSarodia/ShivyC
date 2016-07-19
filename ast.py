@@ -123,4 +123,4 @@ class BinaryOperatorNode(Node):
         self.right_expr = right_expr
 
     def make_code(self, code_store):
-        return NotImplementedError
+        raise NotImplementedError
