@@ -55,8 +55,35 @@ class parser_tests(unittest.TestCase):
                   Token(token_kinds.open_paren), Token(token_kinds.close_paren),
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"), Token(token_kinds.plus),
-                  Token(token_kinds.number, "10"), Token(token_kinds.semicolon),
+                  Token(token_kinds.number, "10"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "5"), Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack)]
+
+        ast_root = self.parser.parse(tokens)
+        self.assertEqual(ast_root,
+                         ast.MainNode(
+                             [ast.ReturnNode(
+                                 ast.BinaryOperatorNode(ast.BinaryOperatorNode(
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "15")),
+                                     token_kinds.plus,
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "10"))
+                                 ),
+                                 token_kinds.plus,
+                                 ast.NumberNode(Token(token_kinds.number, "5"))
+                                 ))
+                             ]))
+
+    def test_two_expressions(self):
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+                  Token(token_kinds.number, "15"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "10"), Token(token_kinds.semicolon),
+                  Token(token_kinds.return_kw), Token(token_kinds.number, "6"),
+                  Token(token_kinds.plus), Token(token_kinds.number, "8"),
+                  Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
 
         ast_root = self.parser.parse(tokens)
         self.assertEqual(ast_root,
@@ -68,6 +95,15 @@ class parser_tests(unittest.TestCase):
                                      token_kinds.plus,
                                      ast.NumberNode(
                                          Token(token_kinds.number, "10")
+                                     ))
+                             ),
+                             ast.ReturnNode(
+                                 ast.BinaryOperatorNode(
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "6")),
+                                     token_kinds.plus,
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "8")
                                      ))
                              )]
                          ))
