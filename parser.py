@@ -2,9 +2,11 @@
 generators are no fun.
 
 """
-import ast
+from collections import namedtuple
 
+import ast
 from errors import CompilerError
+from tokens import Token
 import token_kinds
 
 class Parser:
@@ -98,14 +100,76 @@ class Parser:
         return (ast.ReturnNode(node), index)
         
     def expect_expression(self, tokens, index):
-        """Ex: 5, 3, etc. Currently only supports single integers.
+        """Implemented as a shift-reduce parser. Tries to comprehend as much as
+        possible of tokens past index as being an expression, and the index
+        returned is the first token that could not be parsed into the
+        expression. If literally none of it could be parsed as an expression,
+        returns (None, 0) like usual.
 
-        We will soon remake this to be a shift-reduce parser."""
+        TODO(shivam): find a way to avoid trying to parse the entire remaining
+        list of tokens every time this function is called, because that's really
+        terrible.
 
-        if self.match_token(tokens[index:], token_kinds.number):
-            return (ast.NumberNode(tokens[index]), index + 1)
+        """
+                
+        # Dictionay of key-value pairs {TokenKind: precedence} where higher
+        # precedence is higher.
+        binary_operators = {token_kinds.plus: 11,
+                            token_kinds.star: 12}
+
+        # An item in the parsing stack. The item is either a Node or Token,
+        # where the node must generate an expression, and the length is the
+        # number of tokens consumed in generating this node.
+        StackItem = namedtuple("StackItem", ['item', 'length'])
+        stack = []
+
+        i = index
+        while True:
+            # If the top of the stack is a number, reduce it to an expression
+            # node
+            if (stack and isinstance(stack[-1].item, Token)
+                and stack[-1].item.kind == token_kinds.number):
+                stack[-1] = StackItem(ast.NumberNode(stack[-1].item), 1)
+            # If the top of the stack matches a binary operator, reduce it to an
+            # expression node. TODO(shivam): check precedence of next operator
+            elif (len(stack) >= 3
+                  and isinstance(stack[-1].item, ast.Node)
+                  and isinstance(stack[-2].item, Token)
+                  and stack[-2].item.kind in binary_operators.keys()
+                  and isinstance(stack[-3].item, ast.Node)
+
+                  # Make sure next token is not higher precedence
+                  and not (i < len(tokens)
+                           and tokens[i].kind in binary_operators.keys()
+                           and (binary_operators[tokens[i].kind] >
+                                binary_operators[stack[-2].item.kind]))):
+                left_expr = stack[-3]
+                right_expr = stack[-1]
+                operator = stack[-2]
+                
+                # Remove these last 3 elements
+                del stack[-3:]
+                stack.append(
+                    StackItem(ast.BinaryOperatorNode(left_expr.item,
+                                                     operator.item.kind,
+                                                     right_expr.item),
+                              left_expr.length + operator.length +
+                              right_expr.length))
+            else:
+                # If we're at the end of the token list, or we've reached a
+                # token that can never appear in an expression, stop reading.
+                if i == len(tokens): break
+                elif (tokens[i].kind != token_kinds.number
+                      and tokens[i].kind not in binary_operators.keys()): break
+                
+                stack.append(StackItem(tokens[i], 1))
+                i += 1
+
+        if isinstance(stack[0].item, ast.Node):
+            return (stack[0].item, index + stack[0].length)
         else:
-            return self.add_error("expected number", index, tokens, self.GOT)
+            return self.add_error("expected expression", index, tokens,
+                                  self.GOT)
 
     #
     # Utility functions for the parser

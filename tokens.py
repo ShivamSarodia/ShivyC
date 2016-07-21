@@ -8,6 +8,8 @@ Token instance represents a token as produced by the lexer.
 class TokenKind:
     """A general class for defining the various known kinds of tokens, such as:
            +, -, ), return, int
+    We define a bunch of TokenKind objects in token_kinds.py, and treat these as
+    const objects.
 
     kind_id (int) - A unique ID assigned to each token
     text_repr (str) - The way this token looks in text. Used only by the lexer
@@ -40,6 +42,9 @@ class TokenKind:
 
     def __str__(self):
         return self.text_repr
+
+    def __hash__(self):
+        return self.kind_id
     
 class Token:
     """A single unit element of the input. Produced by the tokenizing phase of
