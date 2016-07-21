@@ -107,10 +107,10 @@ class ExpressionTests(unittest.TestCase):
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
                                  ast.NumberNode(Token(token_kinds.number, "1")),
-                                 token_kinds.plus,
+                                 Token(token_kinds.plus),
                                  ast.NumberNode(Token(token_kinds.number, "2")),
                              ),
-                             token_kinds.plus,
+                             Token(token_kinds.plus),
                              ast.NumberNode(Token(token_kinds.number, "3"))
                          ))
 
@@ -125,10 +125,10 @@ class ExpressionTests(unittest.TestCase):
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
                                  ast.NumberNode(Token(token_kinds.number, "1")),
-                                 token_kinds.plus,
+                                 Token(token_kinds.plus),
                                  ast.NumberNode(Token(token_kinds.number, "2")),
                              ),
-                             token_kinds.plus,
+                             Token(token_kinds.plus),
                              ast.NumberNode(Token(token_kinds.number, "3"))
                          ))
 
@@ -144,15 +144,15 @@ class ExpressionTests(unittest.TestCase):
                              ast.BinaryOperatorNode(
                                  ast.NumberNode(
                                      Token(token_kinds.number, "15")),
-                                 token_kinds.star,
+                                 Token(token_kinds.star),
                                  ast.NumberNode(
                                      Token(token_kinds.number, "10"))
                              ),
-                             token_kinds.plus,
+                             Token(token_kinds.plus),
                              ast.BinaryOperatorNode(
                                  ast.NumberNode(
                                      Token(token_kinds.number, "5")),
-                                 token_kinds.star,
+                                 Token(token_kinds.star),
                                  ast.NumberNode(
                                      Token(token_kinds.number, "0"))
                              )

@@ -151,7 +151,7 @@ class Parser:
                 del stack[-3:]
                 stack.append(
                     StackItem(ast.BinaryOperatorNode(left_expr.item,
-                                                     operator.item.kind,
+                                                     operator.item,
                                                      right_expr.item),
                               left_expr.length + operator.length +
                               right_expr.length))

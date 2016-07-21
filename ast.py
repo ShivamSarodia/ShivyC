@@ -3,7 +3,7 @@ corresponds to a rule in the C grammar.
 
 """
 
-from tokens import TokenKind
+from tokens import Token
 import token_kinds
 
 class Node:
@@ -94,7 +94,7 @@ class NumberNode(Node):
     def __init__(self, number):
         super().__init__()
 
-        assert number.kind == token_kinds.number
+        self.assert_kind(number, token_kinds.number)
         self.number = number
 
     def make_code(self, code_store):
@@ -104,7 +104,7 @@ class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
     
     left_expr (expression) - expression on left side
-    operator (token_kind) - the token kind representing this operator
+    operator (Token) - the token representing this operator
     right_expr (expression) - expression on the right side
 
     """
@@ -116,7 +116,7 @@ class BinaryOperatorNode(Node):
         self.assert_symbol(left_expr, "expression")
         self.left_expr = left_expr
         
-        assert isinstance(operator, TokenKind)
+        assert isinstance(operator, Token)
         self.operator = operator
         
         self.assert_symbol(right_expr, "expression")
