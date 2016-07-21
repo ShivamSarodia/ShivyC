@@ -127,10 +127,31 @@ class BinaryOperatorNode(Node):
         self.assert_symbol(right_expr, "expression")
         self.right_expr = right_expr
 
-    def add(self, left_expr, right_expr, code_store):
-        left_expr.make_code(code_store)
-        
-        right_expr.make_code(code_store)
+    def add(self, left_value, right_value, code_store):
+        if (left_value.storage_type == ValueInfo.LITERAL and
+            right_value.storage_type == ValueInfo.LITERAL):
+            return ValueInfo(ValueInfo.LITERAL,
+                             str(int(left_value.storage_info) +
+                                 int(right_value.storage_info)))
+        else:
+            raise NotImplementedError
+
+    def multiply(self, left_value, right_value, code_store):
+        if (left_value.storage_type == ValueInfo.LITERAL and
+            right_value.storage_type == ValueInfo.LITERAL):
+            return ValueInfo(ValueInfo.LITERAL,
+                             str(int(left_value.storage_info) *
+                                 int(right_value.storage_info)))
+        else:
+            return NotImplementedError
         
     def make_code(self, code_store):
-        raise NotImplementedError
+        left_value = self.left_expr.make_code(code_store)
+        right_value = self.right_expr.make_code(code_store)
+        
+        if self.operator == Token(token_kinds.plus):
+            return self.add(left_value, right_value, code_store)
+        elif self.operator == Token(token_kinds.star):
+            return self.multiply(left_value, right_value, code_store)
+        else:
+            raise NotImplementedError

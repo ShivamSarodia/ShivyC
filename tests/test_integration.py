@@ -22,6 +22,12 @@ class integration_tests(unittest.TestCase):
             
     def test_multiple_return_main(self):
         self.expect_return("int main() { return 15; return 20; return 10; }", 15)
+
+    def test_sum_integers(self):
+        self.expect_return("int main() { return 15 + 10 + 5; }", 30)
+
+    def test_product_integers(self):
+        self.expect_return("int main() { return 5 * 2 * 3; }", 30)
         
     # Support functions for the the tests
     def compile_and_run(self, code):
