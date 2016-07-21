@@ -3,12 +3,16 @@ corresponds to a rule in the C grammar.
 
 """
 
+from code_gen import ValueInfo
 from tokens import Token
 import token_kinds
 
 class Node:
     """A general class for representing a single node in the AST. Inherit all
-    AST nodes from this class.
+    AST nodes from this class. Every AST node also has a make_code function that
+    accepts a code_store to which the generated code should be saved. Nodes 
+    representing expressions also return a ValueInfo object describing the
+    generated value.
 
     symbol (str) - Each node must set the value of this class attribute to the
     non-terminal symbol the corresponding rule produces. This helps enforce tree
@@ -75,13 +79,14 @@ class ReturnNode(Node):
         self.return_value = return_value
 
     def make_code(self, code_store):
-        # For now, the expression always returns its value in the rax register.
-        # This will be changed shortly, so the "mov rax rax" command will be
-        # made more useful.
-        self.return_value.make_code(code_store)
-        code_store.add_command(("mov", "rax", "rax"))
-        code_store.add_command(("pop", "rbp"))
-        code_store.add_command(("ret",))
+        value_info = self.return_value.make_code(code_store)
+        if value_info.storage_type == ValueInfo.LITERAL:
+            code_store.add_command(("mov", "rax", value_info.storage_info))
+            code_store.add_command(("pop", "rbp"))
+            code_store.add_command(("ret",))
+        else:
+            raise NotImplementedError
+        
 
 class NumberNode(Node):
     """ Expression that is just a single number. 
@@ -98,7 +103,7 @@ class NumberNode(Node):
         self.number = number
 
     def make_code(self, code_store):
-        code_store.add_command(("mov", "rax", self.number.content))
+        return ValueInfo(ValueInfo.LITERAL, self.number.content)
 
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
@@ -122,5 +127,10 @@ class BinaryOperatorNode(Node):
         self.assert_symbol(right_expr, "expression")
         self.right_expr = right_expr
 
+    def add(self, left_expr, right_expr, code_store):
+        left_expr.make_code(code_store)
+        
+        right_expr.make_code(code_store)
+        
     def make_code(self, code_store):
         raise NotImplementedError

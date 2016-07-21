@@ -60,3 +60,21 @@ class CodeStore:
                   "     mov rax, 60",
                   "     syscall"]
         return "\n".join(header + [to_string(line) for line in self.lines])
+
+class ValueInfo:
+    """Stores information about the value of an expression. This will eventually
+    include storage location information (is it just a number literal? is it in
+    a register? in memory?) and the value type.
+
+    storage_type - One of the provided enum values.
+    storage_info - For literal storage, a string of the integer value stored
+
+    """
+    # Options for storage_type
+    LITERAL = 1 
+
+    def __init__(self, storage_type, storage_info):
+        self.storage_type = storage_type
+        self.storage_info = storage_info
+    
+    

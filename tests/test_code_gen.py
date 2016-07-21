@@ -31,7 +31,6 @@ class code_gen_tests(unittest.TestCase):
                          "     push rbp",
                          "     mov rbp, rsp",
                          "     mov rax, 15",
-                         "     mov rax, rax",
                          "     pop rbp",
                          "     ret",
                          "     mov rax, 0",
