@@ -23,4 +23,5 @@ close_brack = TokenKind("}", symbol_kinds)
 
 semicolon = TokenKind(";", symbol_kinds)
 
+identifier = TokenKind()
 number = TokenKind()

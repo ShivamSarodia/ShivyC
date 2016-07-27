@@ -42,11 +42,10 @@ class lexer_pure_unit_tests(unittest.TestCase):
         tokens = [Token(self.tok), Token(self.token), Token(self.tok),
                   Token(self.tok), Token(self.token)]
         self.assertEqual(self.lexer.tokenize_line(content), tokens)
-        
-    def test_keywords_without_space(self):
-        with self.assertRaisesRegex(CompilerError,
-                                    "unrecognized token at 'toktoken'"):
-            self.lexer.tokenize_line("toktoken")
+
+    def test_keywords_without_space_as_identifier(self):
+        self.assertEqual(self.lexer.tokenize_line("toktoken"),
+                         [Token(token_kinds.identifier, "toktoken")])
 
     def test_keywords_with_extra_whitespace(self):
         content = "  tok  token  tok  tok  token  "
@@ -87,6 +86,19 @@ class lexer_integration_tests(unittest.TestCase):
         self.assertEqual(self.lexer.tokenize_line("10"),
                          [Token(token_kinds.number, "10")])
 
+    def test_easy_identifier(self):
+        self.assertEqual(self.lexer.tokenize_line("identifier"),
+                         [Token(token_kinds.identifier, "identifier")])
+
+    def test_hard_identifier(self):
+        self.assertEqual(self.lexer.tokenize_line("_ident123ifier"),
+                         [Token(token_kinds.identifier, "_ident123ifier")])
+
+    def test_bad_identifier(self):
+        with self.assertRaisesRegex(CompilerError,
+                                    "unrecognized token at '1identifier'"):
+            self.lexer.tokenize_line("1identifier")
+        
     def test_basic_program_one_line(self):
         content = "int main() { return 15; }"
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),

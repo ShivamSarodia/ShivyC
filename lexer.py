@@ -6,6 +6,7 @@ currently no preproccesor implemented, the input text string is simply the file
 contents.
 
 """
+import re
 
 from errors import CompilerError
 from tokens import TokenKind
@@ -136,7 +137,8 @@ class Lexer:
     def add_chunk(self, chunk, tokens):
         """Convert the provided chunk into a token and add to the provided
         tokens variable. If chunk is non-empty but cannot be made into a token,
-        raise a compiler error.
+        raise a compiler error. We don't need to check for symbol kind tokens
+        here because they are converted before they are shifted into the chunk.
 
         chunk (str) - The chunk to convert into a token
         tokens (List[Token]) - A list of the tokens thusfar parsed
@@ -154,8 +156,17 @@ class Lexer:
                                      number_string))
                 return
 
+            identifier_name = self.match_identifier_name(chunk)
+            if identifier_name:
+                tokens.append(Token(token_kinds.identifier,
+                                    identifier_name))
+                return
+
             raise CompilerError("unrecognized token at '{}'".format(chunk))
-            
+
+    # These match_* functions can safely assume the input token_repr is
+    # non-empty.
+
     def match_keyword_kind(self, token_repr):
         """Return the longest keyword token kind with representation exactly
         equal to the given token_repr, or None if not found.
@@ -178,3 +189,17 @@ class Lexer:
 
         """
         return token_repr if token_repr.isdigit() else None
+
+    def match_identifier_name(self, token_repr):
+        """Retunr a string that represents the name of an identifier, or None if
+        not possible
+
+        token_repr (str) - The string to make into a token
+        returns (str, or None) - The string name of the identifier
+
+        """
+        if re.match(r"[_a-zA-Z][_a-zA-Z0-9]*$", token_repr):
+            return token_repr
+        else: return None
+        
+        
