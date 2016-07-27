@@ -5,6 +5,7 @@ corresponds to a rule in the C grammar.
 
 from code_gen import ValueInfo
 from tokens import Token
+import ctypes
 import token_kinds
 
 class Node:
@@ -40,7 +41,7 @@ class Node:
 
 class MainNode(Node):
     """ General rule for the main function. Will be removed once function
-    definition is supported. Ex: int main() { return `return_value`; }
+    definition is supported.
     
     statements (List[statement]) - a list of the statement in main function
 
@@ -80,7 +81,8 @@ class ReturnNode(Node):
 
     def make_code(self, code_store):
         value_info = self.return_value.make_code(code_store)
-        if value_info.storage_type == ValueInfo.LITERAL:
+        if (value_info.value_type == ctypes.integer and
+            value_info.storage_type == ValueInfo.LITERAL):
             code_store.add_command(("mov", "rax", value_info.storage_info))
             code_store.add_command(("pop", "rbp"))
             code_store.add_command(("ret",))
@@ -103,7 +105,7 @@ class NumberNode(Node):
         self.number = number
 
     def make_code(self, code_store):
-        return ValueInfo(ValueInfo.LITERAL, self.number.content)
+        return ValueInfo(ctypes.integer, ValueInfo.LITERAL, self.number.content)
 
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
@@ -128,18 +130,24 @@ class BinaryOperatorNode(Node):
         self.right_expr = right_expr
 
     def add(self, left_value, right_value, code_store):
-        if (left_value.storage_type == ValueInfo.LITERAL and
+        if (left_value.value_type == ctypes.integer and
+            left_value.storage_type == ValueInfo.LITERAL and
+            right_value.value_type == ctypes.integer and
             right_value.storage_type == ValueInfo.LITERAL):
-            return ValueInfo(ValueInfo.LITERAL,
+            return ValueInfo(ctypes.integer,
+                             ValueInfo.LITERAL,
                              str(int(left_value.storage_info) +
                                  int(right_value.storage_info)))
         else:
             raise NotImplementedError
 
     def multiply(self, left_value, right_value, code_store):
-        if (left_value.storage_type == ValueInfo.LITERAL and
+        if (left_value.value_type == ctypes.integer and
+            left_value.storage_type == ValueInfo.LITERAL and
+            right_value.value_type == ctypes.integer and
             right_value.storage_type == ValueInfo.LITERAL):
-            return ValueInfo(ValueInfo.LITERAL,
+            return ValueInfo(ctypes.integer,
+                             ValueInfo.LITERAL,
                              str(int(left_value.storage_info) *
                                  int(right_value.storage_info)))
         else:

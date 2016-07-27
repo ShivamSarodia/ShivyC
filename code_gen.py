@@ -61,20 +61,30 @@ class CodeStore:
                   "     syscall"]
         return "\n".join(header + [to_string(line) for line in self.lines])
 
-class ValueInfo:
-    """Stores information about the value of an expression. This will eventually
-    include storage location information (is it just a number literal? is it in
-    a register? in memory?) and the value type.
 
-    storage_type - One of the provided enum values.
-    storage_info - For literal storage, a string of the integer value stored
+class Type:
+    """Represents a C type, like 32-bit int, char, pointer to char, etc.
+    
+    size(int) - Size in bytes of this type in memory
+    """
+
+    def __init__(self, size):
+        self.size = size
+    
+class ValueInfo:
+    """Stores information about the value and type of an expression. This will
+    eventually also include storage location information (is it just a number
+    literal? is it in a register? in memory?).
+
+    value_type (Type) - The C type of the value
+    storage_type (enum) - One of the provided enum values.
+    storage_info (str) - For literal storage, a string of the integer value stored
 
     """
     # Options for storage_type
-    LITERAL = 1 
+    LITERAL = 1 # A number literal
 
-    def __init__(self, storage_type, storage_info):
+    def __init__(self, value_type, storage_type, storage_info):
+        self.value_type = value_type
         self.storage_type = storage_type
         self.storage_info = storage_info
-    
-    
