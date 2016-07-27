@@ -65,10 +65,12 @@ class Parser:
         while True:
             node, new_index = self.expect_statement(tokens, index)
             
-            if not node: break
-            else:
-                index = new_index
-                nodes.append(node)
+            if not node:
+                node, new_index = self.expect_declaration(tokens, index)
+                if not node: break                
+
+            index = new_index
+            nodes.append(node)
 
         if self.match_token(tokens[index:], token_kinds.close_brack):
             index += 1
@@ -170,6 +172,27 @@ class Parser:
         else:
             return self.add_error("expected expression", index, tokens,
                                   self.GOT)
+        
+    def expect_declaration(self, tokens, index):
+        if self.match_token(tokens[index:], token_kinds.int_kw):
+            index += 1
+        else:
+            err = "expected type name"
+            return self.add_error(err, index, tokens, self.GOT)
+
+        if self.match_token(tokens[index:], token_kinds.identifier):
+            variable_name = tokens[index]
+            index += 1
+        else:
+            err = "expected identifier"
+            return self.add_error(err, index, tokens, self.AFTER)
+        
+        if self.match_token(tokens[index:], token_kinds.semicolon):
+            index += 1
+        else:
+            err = "expected semicolon"
+            return self.add_error(err, index, tokens, self.AFTER)
+        return (ast.DeclarationNode(variable_name), index)
 
     #
     # Utility functions for the parser
@@ -224,9 +247,7 @@ class Parser:
         message (str) - the base message to put in the error
         tokens (List[Token]) - a list of tokens
         index (int) - the index of the offending token
-        prefer_after (bool) - if true, tries to generate an error that
-        references the token before. e.g. "expected semicolon after 15" when
-        true, and "expected semicolon at }" when false.
+        message_type (enum) - either self.AT, self.GOT, or self.AFTER.
 
         """
         if len(tokens) == 0:

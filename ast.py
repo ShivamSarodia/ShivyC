@@ -31,13 +31,13 @@ class Node:
 
         """
         if node.symbol != symbol_name:
-            raise ValueError("malformed tree: expected symbol ", symbol_name,
-                             ", got ", node.symbol)
+            raise ValueError("malformed tree: expected symbol " + symbol_name +
+                             ", got " + node.symbol)
 
     def assert_kind(self, token, kind):
         if token.kind != kind:
-            raise ValueError("malformed tree: expected token kind ", kind,
-                             ", got ", token.kind)
+            raise ValueError("malformed tree: expected token kind " + str(kind) +
+                             ", got " + str(token.kind))
 
 class MainNode(Node):
     """ General rule for the main function. Will be removed once function
@@ -48,18 +48,19 @@ class MainNode(Node):
     """
     symbol = "main_function"
     
-    def __init__(self, statements):
+    def __init__(self, block_items):
         super().__init__()
 
-        for statement in statements: self.assert_symbol(statement, "statement")
-        self.statements = statements
+        # TODO(shivam): Add an assertion that all block_items are either a
+        # statement or declaration.
+        self.block_items = block_items
         
     def make_code(self, code_store):
         code_store.add_label("main")
         code_store.add_command(("push", "rbp"))
         code_store.add_command(("mov", "rbp", "rsp"))
-        for statement in self.statements:
-            statement.make_code(code_store)
+        for block_item in self.block_items:
+            block_item.make_code(code_store)
         # We return 0 at the end, in case the code did not return
         code_store.add_command(("mov", "rax", "0"))
         code_store.add_command(("pop", "rbp"))
@@ -163,3 +164,24 @@ class BinaryOperatorNode(Node):
             return self.multiply(left_value, right_value, code_store)
         else:
             raise NotImplementedError
+
+class DeclarationNode(Node):
+    """Represents info about a line of a general variable declaration(s), like
+
+    int a = 3, *b, c[] = {3, 2, 5};
+
+    Currently only supports declaration of a single integer variable, with no
+    initializer.
+
+    variable_name (Token(identifier)) - The identifier representing the new
+    variable name.
+
+    """
+    symbol = "declaration"
+    
+    def __init__(self, variable_name):
+        self.assert_kind(variable_name, token_kinds.identifier)
+        self.variable_name = variable_name
+    
+    def make_code(self, code_store):
+        raise NotImplementedError

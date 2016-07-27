@@ -92,6 +92,20 @@ class GeneralTests(unittest.TestCase):
                 "expected closing brace after ';'"):
             ast_root = self.parser.parse(tokens)
 
+    def test_declaration_in_main(self):
+        """ int main() { int var; }"""
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack), Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
+
+        ast_root = self.parser.parse(tokens)
+        self.assertEqual(ast_root,
+                         ast.MainNode(
+                             [ast.DeclarationNode(
+                                 Token(token_kinds.identifier, "var"))]))
+
 class ExpressionTests(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
@@ -157,6 +171,19 @@ class ExpressionTests(unittest.TestCase):
                                      Token(token_kinds.number, "0"))
                              )
                          ))
+
+class DeclarationTests(unittest.TestCase):
+    def setUp(self):
+        self.parser = Parser()
+        
+    def test_basic_declaration(self):
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.semicolon)]
+        ast_root = self.parser.expect_declaration(tokens, 0)[0]
+        self.assertEqual(ast_root,
+                         ast.DeclarationNode(
+                             Token(token_kinds.identifier, "var")))
 
 if __name__ == "__main__":
     unittest.main()
