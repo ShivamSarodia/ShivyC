@@ -16,11 +16,6 @@ class TokenKind:
     to tokenize the input.
 
     """
-
-    # Stores the ID that should be assigned to the next instance of this
-    # class. Incremented each time we create a new instance, so each instance
-    # gets a unique ID.
-    current_id = 0
             
     def __init__(self, text_repr = "", kinds = []):
         """Initializes a new TokenKind and adds it to the list of kinds
@@ -32,19 +27,10 @@ class TokenKind:
 
         """
         self.text_repr = text_repr
-        self.kind_id = self.__class__.current_id
-
-        self.__class__.current_id += 1
         kinds.append(self)
-
-    def __eq__(self, other):
-        return self.kind_id == other.kind_id
 
     def __str__(self):
         return self.text_repr
-
-    def __hash__(self):
-        return self.kind_id
     
 class Token:
     """A single unit element of the input. Produced by the tokenizing phase of
