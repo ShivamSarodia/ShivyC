@@ -57,16 +57,40 @@ class MainNode(Node):
         self.block_items = block_items
         
     def make_code(self, code_store, symbol_state):
+        # Run through all declarations in this function and determine how much
+        # stack space altogether is needed. We pre-allocate this much space on
+        # the stack by moving the RSP, and restore it before returning from the
+        # function.
+        symbol_state.stack_space = 0
+        for block_item in self.block_items:
+            try: 
+                symbol_state.stack_space += block_item.stack_space
+            except AttributeError: pass
+
+        # Align symbol_state.stack_space to be a multiple of 16 so the stack
+        # frame is always aligned to a multiple of 16
+        if symbol_state.stack_space % 16 != 0:
+            symbol_state.stack_space += 16 - (symbol_state.stack_space % 16)
+        
         with symbol_state.new_symbol_table():
             code_store.add_label("main")
             code_store.add_command(("push", "rbp"))
             code_store.add_command(("mov", "rbp", "rsp"))
+
+            # Reserve the required amount of space on the stack
+            if symbol_state.stack_space:
+                code_store.add_command(("sub", "rsp",
+                                        str(symbol_state.stack_space)))
+
+            # Make the code for each item
             for block_item in self.block_items:
                 block_item.make_code(code_store, symbol_state)
-            # We return 0 at the end, in case the code did not return
-            code_store.add_command(("mov", "rax", "0"))
-            code_store.add_command(("pop", "rbp"))
-            code_store.add_command(("ret", ))
+
+            # TODO: This is kind of hacky. Fix.
+            # Return 0 at the end of the main function if nothing has been
+            # returned yet.
+            ReturnNode(NumberNode(Token(token_kinds.number, "0"))).make_code(
+                code_store, symbol_state)
 
 class ReturnNode(Node):
     """ Return statement
@@ -87,10 +111,16 @@ class ReturnNode(Node):
         if (value_info.value_type == ctypes.integer and
             value_info.storage_type == ValueInfo.LITERAL):
             code_store.add_command(("mov", "rax", value_info.storage_info))
-            code_store.add_command(("pop", "rbp"))
-            code_store.add_command(("ret",))
         else:
             raise NotImplementedError
+
+        # Move RSP back to where it was before the function executed
+        if symbol_state.stack_space:
+            code_store.add_command(("add", "rsp",
+                                    str(symbol_state.stack_space)))
+        code_store.add_command(("pop", "rbp"))
+        code_store.add_command(("ret",))
+
         
 
 class NumberNode(Node):
@@ -177,6 +207,8 @@ class DeclarationNode(Node):
 
     variable_name (Token(identifier)) - The identifier representing the new
     variable name.
+    stack_space (int) - The number of bytes on the stack that this
+    declaration line requires. Used to preallocate space on the stack.
 
     """
     symbol = "declaration"
@@ -184,6 +216,11 @@ class DeclarationNode(Node):
     def __init__(self, variable_name):
         self.assert_kind(variable_name, token_kinds.identifier)
         self.variable_name = variable_name
+        
+        self.stack_space = 4
     
     def make_code(self, code_store, symbol_state):
-        raise NotImplementedError
+        status = symbol_state.add_symbol(self.variable_name.content,
+                                         ctypes.integer)
+        # TODO: Real error!
+        if not status: raise NotImplementedError

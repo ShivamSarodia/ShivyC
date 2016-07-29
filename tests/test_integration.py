@@ -28,6 +28,9 @@ class integration_tests(unittest.TestCase):
 
     def test_product_integers(self):
         self.expect_return("int main() { return 5 * 2 * 3; }", 30)
+
+    def test_declaration_integer(self):
+        self.expect_return("int main() { int a; return 15; }", 15)
         
     # Support functions for the the tests
     def compile_and_run(self, code):

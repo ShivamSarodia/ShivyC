@@ -69,11 +69,17 @@ class SymbolState:
     most global. Each symbol table is a dictionary mapping identifier names to 
     a ValueInfo object with information on where in memory this object is
     stored.
-
+    next_free (int) - The next location on stack, measured in bytes below RBP,
+    that currently has no variable occupying that space.
+    stack_space_required (int) - An upper bound on the amount of space required
+    on the stack to store all variables declared in the current function. Must
+    round up to multiple of 16.
+    
     """
     def __init__(self):
         self.symbol_tables = []
         self.next_free = 8
+        self.stack_space = 0
     
     @contextmanager
     def new_symbol_table(self):
