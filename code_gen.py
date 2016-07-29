@@ -73,6 +73,7 @@ class SymbolState:
     """
     def __init__(self):
         self.symbol_tables = []
+        self.next_free = 8
     
     @contextmanager
     def new_symbol_table(self):
@@ -85,38 +86,48 @@ class SymbolState:
         pop it afterwards.
 
         """
-        symbol_tables.push_back(dict())
+        # We save the current value of self.next_free because after this symbol
+        # table is popped off, we must reset self.next_free to its previous
+        # value.
+        next_free = self.next_free
+        self.symbol_tables.append(dict())
         yield
-        symbol_tables.pop()
+        self.symbol_tables.pop()
+        self.next_free = next_free
 
-    def add_symbol(self, identifier, value_info):
+    def add_symbol(self, identifier, ctype):
         """Add a symbol to the topmost symbol table. Returns False if variable
         was already defined.
 
         identifier (str) - the variable name
-        value_info (ValueInfo) - stores info about the value of this variable.
-        (specifically, where on the stack it is stored)
+        ctype (Type) - the type of this variable
         returns - True if it is OK, False if the variable was already defined or
         declared with a different type
         
         """
-        # TODO: add in assertion that the ValueInfo object describes something
-        # in memory
         # TODO: support variables that have been declared but not defined
         if identifier in self.symbol_tables[-1]:
             return False
-        symbol_tables[-1][identifier] = value_info
-        return True
+        else:
+            self.symbol_tables[-1][identifier] = ValueInfo(ctype,
+                                                           ValueInfo.STACK,
+                                                           self.next_free)
+            self.next_free += ctype.size
+            return True
 
     def get_symbol(self, identifier):
         """Gets a symbol from the symbol tables, starting search from the most
         local and proceeding to the most global. Returns the corresponding 
         ValueInfo object for the identifier a match is found, or None otherwise.
+
+        identifier (str) - the identifier to search for
+        returns (ValueInfo) - object containing storage location of returned
+        value
         """
-        for table in symbol_tables[::-1]:
+        for table in self.symbol_tables[::-1]:
             if identifier in table: return table[identifier]
         return None
-
+        
 class Type:
     """Represents a C type, like 32-bit int, char, pointer to char, etc.
     
@@ -130,18 +141,20 @@ class ValueInfo:
 
     value_type (Type) - The C type of the value
     storage_type (enum) - One of the provided enum values.
-    storage_info (many types):
-    1) If value_type is integer and storage_type is literal, then storage_info
-       is a string of the integer value.
+    storage_info (many types) - See comments on each value of storage_type enum
 
     """
     # Options for storage_type:
 
     # A literal value. Not actually stored in the compiled code, simply
     # remembered by the compiler because it appeared as a literal in the
-    # provided source.
+    # provided source. The storage_info is a string representing the value.
     LITERAL = 1
-
+    # A value stored on the stack. storage_info is an integer representing the
+    # first (lowermost, closest to RBP) position in the stack containing this
+    # object.
+    STACK = 2
+    
     def __init__(self, value_type, storage_type, storage_info):
         self.value_type = value_type
         self.storage_type = storage_type

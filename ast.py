@@ -57,15 +57,16 @@ class MainNode(Node):
         self.block_items = block_items
         
     def make_code(self, code_store, symbol_state):
-        code_store.add_label("main")
-        code_store.add_command(("push", "rbp"))
-        code_store.add_command(("mov", "rbp", "rsp"))
-        for block_item in self.block_items:
-            block_item.make_code(code_store, symbol_state)
-        # We return 0 at the end, in case the code did not return
-        code_store.add_command(("mov", "rax", "0"))
-        code_store.add_command(("pop", "rbp"))
-        code_store.add_command(("ret", ))
+        with symbol_state.new_symbol_table():
+            code_store.add_label("main")
+            code_store.add_command(("push", "rbp"))
+            code_store.add_command(("mov", "rbp", "rsp"))
+            for block_item in self.block_items:
+                block_item.make_code(code_store, symbol_state)
+            # We return 0 at the end, in case the code did not return
+            code_store.add_command(("mov", "rax", "0"))
+            code_store.add_command(("pop", "rbp"))
+            code_store.add_command(("ret", ))
 
 class ReturnNode(Node):
     """ Return statement
