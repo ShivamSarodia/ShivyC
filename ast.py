@@ -11,9 +11,10 @@ import token_kinds
 class Node:
     """A general class for representing a single node in the AST. Inherit all
     AST nodes from this class. Every AST node also has a make_code function that
-    accepts a code_store to which the generated code should be saved. Nodes 
-    representing expressions also return a ValueInfo object describing the
-    generated value.
+    accepts a code_store (CodeStore) to which the generated code should be saved
+    and a symbol_state (SymbolState) that represents the compiler-internal state
+    of symbols (e.g. the symbol table). Nodes representing expressions also
+    return a ValueInfo object describing the generated value.
 
     symbol (str) - Each node must set the value of this class attribute to the
     non-terminal symbol the corresponding rule produces. This helps enforce tree
@@ -55,12 +56,12 @@ class MainNode(Node):
         # statement or declaration.
         self.block_items = block_items
         
-    def make_code(self, code_store):
+    def make_code(self, code_store, symbol_state):
         code_store.add_label("main")
         code_store.add_command(("push", "rbp"))
         code_store.add_command(("mov", "rbp", "rsp"))
         for block_item in self.block_items:
-            block_item.make_code(code_store)
+            block_item.make_code(code_store, symbol_state)
         # We return 0 at the end, in case the code did not return
         code_store.add_command(("mov", "rax", "0"))
         code_store.add_command(("pop", "rbp"))
@@ -80,8 +81,8 @@ class ReturnNode(Node):
         self.assert_symbol(return_value, "expression")
         self.return_value = return_value
 
-    def make_code(self, code_store):
-        value_info = self.return_value.make_code(code_store)
+    def make_code(self, code_store, symbol_state):
+        value_info = self.return_value.make_code(code_store, symbol_state)
         if (value_info.value_type == ctypes.integer and
             value_info.storage_type == ValueInfo.LITERAL):
             code_store.add_command(("mov", "rax", value_info.storage_info))
@@ -105,7 +106,7 @@ class NumberNode(Node):
         self.assert_kind(number, token_kinds.number)
         self.number = number
 
-    def make_code(self, code_store):
+    def make_code(self, code_store, symbol_state):
         return ValueInfo(ctypes.integer, ValueInfo.LITERAL, self.number.content)
 
 class BinaryOperatorNode(Node):
@@ -154,9 +155,9 @@ class BinaryOperatorNode(Node):
         else:
             return NotImplementedError
         
-    def make_code(self, code_store):
-        left_value = self.left_expr.make_code(code_store)
-        right_value = self.right_expr.make_code(code_store)
+    def make_code(self, code_store, symbol_state):
+        left_value = self.left_expr.make_code(code_store, symbol_state)
+        right_value = self.right_expr.make_code(code_store, symbol_state)
         
         if self.operator == Token(token_kinds.plus):
             return self.add(left_value, right_value, code_store)
@@ -183,5 +184,5 @@ class DeclarationNode(Node):
         self.assert_kind(variable_name, token_kinds.identifier)
         self.variable_name = variable_name
     
-    def make_code(self, code_store):
+    def make_code(self, code_store, symbol_state):
         raise NotImplementedError

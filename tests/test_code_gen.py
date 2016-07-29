@@ -5,6 +5,7 @@ import unittest
 
 import ast
 from code_gen import CodeStore
+from code_gen import SymbolState
 from tokens import Token
 import token_kinds
 
@@ -16,9 +17,10 @@ class code_gen_tests(unittest.TestCase):
         main_node = ast.MainNode(
             [ast.ReturnNode(
                 ast.NumberNode(Token(token_kinds.number, "15")))])
-
+        
         code_store = CodeStore()
-        main_node.make_code(code_store)
+        symbol_state = SymbolState()
+        main_node.make_code(code_store, symbol_state)
 
         expected_code = ["global _start",
                          "",
@@ -44,7 +46,8 @@ class code_gen_tests(unittest.TestCase):
         main_node = ast.MainNode([])
 
         code_store = CodeStore()
-        main_node.make_code(code_store)
+        symbol_state = SymbolState()
+        main_node.make_code(code_store, symbol_state)
 
         expected_code = ["global _start",
                          "",

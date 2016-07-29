@@ -10,6 +10,7 @@ import argparse
 import subprocess
 
 from code_gen import CodeStore
+from code_gen import SymbolState
 from errors import CompilerError
 from lexer import Lexer
 from parser import Parser
@@ -78,7 +79,8 @@ def compile_code(source):
     ast_root = parser.parse(token_list)
 
     code_store = CodeStore()
-    ast_root.make_code(code_store)
+    symbol_state = SymbolState()
+    ast_root.make_code(code_store, symbol_state)
 
     return code_store.full_code()
 
