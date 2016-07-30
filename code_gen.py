@@ -71,15 +71,17 @@ class SymbolState:
     stored.
     next_free (int) - The next location on stack, measured in bytes below RBP,
     that currently has no variable occupying that space.
-    stack_space_required (int) - An upper bound on the amount of space required
-    on the stack to store all variables declared in the current function. Must
-    round up to multiple of 16.
-    
+    stack_shift (int) - Stores how much the RSP has been moved since the
+    beginning of the function call, so we know how much to move the RSP back
+    before returning. This is an upper bound on the amount of space required
+    on the stack to store all variables declared in the current function and
+    should round up to a multiple of 16.
+
     """
     def __init__(self):
         self.symbol_tables = []
         self.next_free = 8
-        self.stack_space = 0
+        self.stack_shift = 0
     
     @contextmanager
     def new_symbol_table(self):
@@ -133,7 +135,31 @@ class SymbolState:
         for table in self.symbol_tables[::-1]:
             if identifier in table: return table[identifier]
         return None
-        
+
+class ASTData:
+    """Every node in the AST stores an instance of the ASTData class. This class
+    is useful for recording information about the tree so the entire tree need
+    not be traversed to get information about the program. For example, the
+    code generation step needs to know the total amount of memory required by
+    local declarations in a function before generating any function code. By
+    storing in each node the total amount of memory required by local
+    declarations in the subtree rooted at that node, we can easily calculate the
+    total.
+
+    stack_space_required (int) - Stores the total amount of stack space required
+    by all declarations in this subtree
+
+    """
+    def __init__(self, stack_space_required = 0):
+        self.stack_space_required = stack_space_required
+
+    def __add__(self, other):
+        return ASTData(
+            stack_space_required=(self.stack_space_required
+                                  + other.stack_space_required))
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
 class Type:
     """Represents a C type, like 32-bit int, char, pointer to char, etc.
     
