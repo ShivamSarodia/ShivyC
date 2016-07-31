@@ -160,7 +160,7 @@ class Parser:
                 stack[-1] = StackItem(ast.IdentifierNode(stack[-1].item), 1)
             
             # If the top of the stack matches a binary operator, reduce it to an
-            # expression node. TODO(shivam): check precedence of next operator
+            # expression node.
             elif (len(stack) >= 3
                   and isinstance(stack[-1].item, ast.Node)
                   and isinstance(stack[-2].item, Token)
