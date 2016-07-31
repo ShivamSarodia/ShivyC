@@ -1,9 +1,12 @@
 """Integration tests for the compiler. Tests the entire pipeline, from
 C source to executable.
 
-These tests should focus on verifying that the generated asm code behaves as
-expected. If the main test is verifying the lexer/parser steps, put the test in
-the corresponding test_* file.
+The tests in IntegrationTests should focus on verifying that the generated asm
+code behaves as expected, and the tests in ErrorTests should focus on verifying
+that the correct code generation errors are raised.
+
+If the main test point of a test is to verify the lexer/parser steps, put the
+test in test_lexer.py or test_parser.py.
 
 """
 
@@ -13,10 +16,29 @@ import unittest
 from errors import CompilerError
 import shivyc
 
-class integration_tests(unittest.TestCase):
-    def setUp(self):
-        pass
-    
+class TestUtil:
+    """Contains useful functions for the tests below"""
+    def compile_and_run(self, code):
+        """Compile, assemble, link, and run the provided C code. Raises an
+        exception if any of these steps fails; otherwise, returns the return
+        code of the executed program.
+
+        """
+        asm_code = shivyc.compile_code([(code, "file_name.c", 7)])
+        with open("tests/temp/out.s", "w") as asm_file:
+            asm_file.write(asm_code)
+        shivyc.assemble_and_link("tests/temp/out", "tests/temp/out.s",
+                                 "tests/temp/temp.o")
+        return subprocess.run(["tests/temp/out"]).returncode
+
+    def expect_return(self, code, value):
+        self.assertEqual(self.compile_and_run(code), value)
+
+    def expect_error(self, code, regex):
+        with self.assertRaisesRegex(CompilerError, regex):
+            self.compile_and_run(code)
+
+class IntegrationTests(unittest.TestCase, TestUtil):
     def test_basic_return_main(self):
         self.expect_return("int main() { return 15; }", 15)
             
@@ -41,25 +63,15 @@ class integration_tests(unittest.TestCase):
                     int a; int b; int c; int d;
                     a = 10; b = 20;
                     return a;
-             }""", 10)
-        
-    # Support functions for the the tests
-    def compile_and_run(self, code):
-        """Compile, assemble, link, and run the provided C code. Raises an
-        exception if any of these steps fails; otherwise, returns the return
-        code of the executed program.
+             }""", 10)    
 
-        """
-        asm_code = shivyc.compile_code([(code, "file_name.c", 7)])
-        with open("tests/temp/out.s", "w") as asm_file:
-            asm_file.write(asm_code)
-        shivyc.assemble_and_link("tests/temp/out", "tests/temp/out.s",
-                                 "tests/temp/temp.o")
-        return subprocess.run(["tests/temp/out"]).returncode
-
-    def expect_return(self, code, value):
-        self.assertEqual(self.compile_and_run(code), value)
-
-    def expect_exception(self, code, exception, regex):
-        with self.assertRaisesRegex(exception, regex):
-            self.compile_and_run(code)
+class ErrorTests(unittest.TestCase, TestUtil):
+    def test_redeclaration(self):
+        self.expect_error("int main() { int var; int var; return 10; }",
+                          "redeclaration of 'var'")
+    def test_undeclared_return(self):
+        self.expect_error("int main() { return var; }",
+                          "undeclared identifier 'var'")
+    def test_undeclared_equals(self):
+        self.expect_error("int main() { a = 10; return a; }",
+                          "undeclared identifier 'a'")

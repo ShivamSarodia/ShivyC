@@ -21,3 +21,13 @@ class CompilerError(Exception):
             return "{}: error: {}".format(self.file_name, self.descrip)
         else:
             return "shivyc: error: {}".format(self.descrip)
+
+def token_error(descrip, token):
+    """Returns a CompilerError with based on the given description and token.
+
+    descrip (string) - a string containing '{}' where the token content should
+    be inserted
+    token (Token) - the token for which an error is being reported
+    """
+    return CompilerError(descrip.format(str(token)), token.file_name,
+                         token.line_num)

@@ -5,6 +5,8 @@ corresponds to a rule in the C grammar.
 
 from code_gen import ValueInfo
 from code_gen import ASTData
+from errors import CompilerError
+import errors
 from tokens import Token
 import ctypes
 import token_kinds
@@ -166,11 +168,7 @@ class IdentifierNode(Node):
         self.ast_data = ASTData()
 
     def make_code(self, code_store, symbol_state):
-        value = symbol_state.get_symbol(self.identifier.content)
-        if value:
-            return value
-        else:
-            raise NotImplementedError
+        return symbol_state.get_symbol_or_error(self.identifier)
 
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
@@ -242,19 +240,16 @@ class BinaryOperatorNode(Node):
         argument
         """
         if isinstance(left_expr, IdentifierNode):
-            left_value = symbol_state.get_symbol(left_expr.identifier.content)
-            if not left_value:
-                raise NotImplementedError
-            elif not left_value.value_type == ctypes.integer:
-                raise NotImplementedError
-            
+            left_value = symbol_state.get_symbol_or_error(left_expr.identifier)
+
             location = "DWORD [rbp - " + str(left_value.storage_info) + "]"
-            if (right_value.value_type == ctypes.integer and
+            if (left_value.value_type == ctypes.integer and
+                right_value.value_type == ctypes.integer and
                 right_value.storage_type == ValueInfo.LITERAL):
                 code_store.add_command(("mov", location,
                                         right_value.storage_info))
                 return right_value
-            elif right_value.storage_type == ValueInfo.STACK:
+            else:
                 raise NotImplementedError
         else:
             raise NotImplementedError
@@ -271,8 +266,9 @@ class BinaryOperatorNode(Node):
             return self.equals(self.left_expr, right_value, code_store,
                                symbol_state)
         else:
-            raise NotImplementedError
-
+            raise errors.token_error("unsupported binary operator: '{}'",
+                                     self.operator)
+        
 class DeclarationNode(Node):
     """Represents info about a line of a general variable declaration(s), like
 
@@ -299,5 +295,6 @@ class DeclarationNode(Node):
     def make_code(self, code_store, symbol_state):
         status = symbol_state.add_symbol(self.variable_name.content,
                                          ctypes.integer)
-        # TODO: Real error!
-        if not status: raise NotImplementedError
+        if not status:
+            raise errors.token_error("redeclaration of '{}'",
+                                     self.variable_name)

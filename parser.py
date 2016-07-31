@@ -6,6 +6,7 @@ from collections import namedtuple
 
 import ast
 from errors import CompilerError
+import errors
 from tokens import Token
 import token_kinds
 
@@ -302,16 +303,13 @@ class Parser:
             if message_type == self.AFTER: message_type = self.GOT
 
         if message_type == self.AT:
-            return CompilerError(
-                "{} at '{}'".format(message, tokens[index].content),
-                tokens[index].file_name, tokens[index].line_num)
+            return errors.token_error("{} at '{{}}'".format(message),
+                                      tokens[index])
         elif message_type == self.GOT:
-            return CompilerError(
-                "{}, got '{}'".format(message, tokens[index].content),
-                tokens[index].file_name, tokens[index].line_num)
+            return errors.token_error("{}, got '{{}}'".format(message),
+                                      tokens[index])
         elif message_type == self.AFTER:
-            return CompilerError(
-                "{} after '{}'".format(message, tokens[index-1].content),
-                tokens[index-1].file_name, tokens[index-1].line_num)
+            return errors.token_error("{} after '{{}}'".format(message),
+                                      tokens[index-1])
         else:
             raise ValueError("Unknown error message type")

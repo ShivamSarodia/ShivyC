@@ -3,6 +3,9 @@
 """
 from contextlib import contextmanager
 
+from errors import CompilerError
+import errors
+
 class CodeStore:
     """Stores the literal lines of asm code being generated.
 
@@ -136,6 +139,17 @@ class SymbolState:
         for table in self.symbol_tables[::-1]:
             if identifier in table: return table[identifier]
         return None
+
+    def get_symbol_or_error(self, identifier_token):
+        """Similar to get_symbol, but raises an exception if the symbol is not
+        found.
+
+        identifier_token (Token(identifier)) - the identifier to search for"""
+        value = self.get_symbol(identifier_token.content)
+        if value: return value
+        if not value:
+            raise errors.token_error("undeclared identifier '{}'",
+                                     identifier_token)
 
 class ASTData:
     """Every node in the AST stores an instance of the ASTData class. This class
