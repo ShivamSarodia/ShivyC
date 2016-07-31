@@ -89,6 +89,16 @@ class Parser:
 
         return (None, 0)
 
+    def expect_semicolon(self, node, tokens, index):
+        """Expect a semicolon at tokens[index]. If one is found, returns
+        (node, index + 1). Otherwise, returns (None, 0) and adds an error.
+        """
+        if self.match_token(tokens[index:], token_kinds.semicolon):
+            return (node, index + 1)
+        else:
+            err = "expected semicolon"
+            return self.add_error(err, index, tokens, self.AFTER)
+        
     def expect_return(self, tokens, index):
         if self.match_token(tokens[index:], token_kinds.return_kw):
             index += 1
@@ -97,28 +107,17 @@ class Parser:
             return self.add_error(err, index, tokens, self.GOT)
 
         node, index = self.expect_expression(tokens, index)
-        if not node:
-            return (None, 0)
+        if not node: return (None, 0)
 
-        if self.match_token(tokens[index:], token_kinds.semicolon):
-            index += 1
-        else:
-            err = "expected semicolon"
-            return self.add_error(err, index, tokens, self.AFTER)
-        return (ast.ReturnNode(node), index)
+        return self.expect_semicolon(ast.ReturnNode(node), tokens, index)
 
     def expect_expr_statement(self, tokens, index):
         """Try to parse an expression, and also expect a semicolon after what
         was parsed."""
         node, index = self.expect_expression(tokens, index)
         if not node: return (None, 0)
-        else:
-            # Expect semicolon
-            if self.match_token(tokens[index:], token_kinds.semicolon):
-                return (node, index + 1)
-            else:
-                err = "expected semicolon"
-                return self.add_error(err, index, tokens, self.AFTER)
+
+        return self.expect_semicolon(node, tokens, index)
     
     def expect_expression(self, tokens, index):
         """Implemented as a shift-reduce parser. Tries to comprehend as much as
@@ -226,13 +225,9 @@ class Parser:
         else:
             err = "expected identifier"
             return self.add_error(err, index, tokens, self.AFTER)
-        
-        if self.match_token(tokens[index:], token_kinds.semicolon):
-            index += 1
-        else:
-            err = "expected semicolon"
-            return self.add_error(err, index, tokens, self.AFTER)
-        return (ast.DeclarationNode(variable_name), index)
+
+        return self.expect_semicolon(ast.DeclarationNode(variable_name), tokens,
+                                     index)
 
     #
     # Utility functions for the parser
