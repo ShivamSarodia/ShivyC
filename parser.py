@@ -117,7 +117,11 @@ class Parser:
         # Dictionay of key-value pairs {TokenKind: precedence} where higher
         # precedence is higher.
         binary_operators = {token_kinds.plus: 11,
-                            token_kinds.star: 12}
+                            token_kinds.star: 12,
+                            token_kinds.equals: 1}
+
+        # The set of assignment_tokens (because these are right-associative)
+        assignment_operators = {token_kinds.equals}
 
         # An item in the parsing stack. The item is either a Node or Token,
         # where the node must generate an expression, and the length is the
@@ -125,6 +129,7 @@ class Parser:
         StackItem = namedtuple("StackItem", ['item', 'length'])
         stack = []
 
+        # TODO: clean up  the if-statements here
         i = index
         while True:
             # If the top of the stack is a number, reduce it to an expression
@@ -132,6 +137,13 @@ class Parser:
             if (stack and isinstance(stack[-1].item, Token)
                 and stack[-1].item.kind == token_kinds.number):
                 stack[-1] = StackItem(ast.NumberNode(stack[-1].item), 1)
+            
+            # If the top of the stack is an identifier, reduce it to
+            # an identifier node
+            elif (stack and isinstance(stack[-1].item, Token)
+                and stack[-1].item.kind == token_kinds.identifier):
+                stack[-1] = StackItem(ast.IdentifierNode(stack[-1].item), 1)
+            
             # If the top of the stack matches a binary operator, reduce it to an
             # expression node. TODO(shivam): check precedence of next operator
             elif (len(stack) >= 3
@@ -144,11 +156,17 @@ class Parser:
                   and not (i < len(tokens)
                            and tokens[i].kind in binary_operators.keys()
                            and (binary_operators[tokens[i].kind] >
-                                binary_operators[stack[-2].item.kind]))):
+                                binary_operators[stack[-2].item.kind]))
+                  
+                  # Make sure this and next token are not both assignment
+                  # tokens, because assignment tokens are right associative.
+                  and not (i < len(tokens)
+                           and stack[-2].item.kind in assignment_operators
+                           and tokens[i].kind in assignment_operators)):
                 left_expr = stack[-3]
                 right_expr = stack[-1]
                 operator = stack[-2]
-                
+
                 # Remove these last 3 elements
                 del stack[-3:]
                 stack.append(
@@ -160,8 +178,11 @@ class Parser:
             else:
                 # If we're at the end of the token list, or we've reached a
                 # token that can never appear in an expression, stop reading.
+                # Note we must update this every time the parser is expanded to
+                # accept more identifiers.
                 if i == len(tokens): break
                 elif (tokens[i].kind != token_kinds.number
+                      and tokens[i].kind != token_kinds.identifier
                       and tokens[i].kind not in binary_operators.keys()): break
                 
                 stack.append(StackItem(tokens[i], 1))

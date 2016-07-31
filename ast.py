@@ -126,7 +126,7 @@ class ReturnNode(Node):
         code_store.add_command(("ret",))
 
 class NumberNode(Node):
-    """ Expression that is just a single number. 
+    """Expression that is just a single number. 
 
     number (Token(Number)) - number this expression represents
 
@@ -144,6 +144,24 @@ class NumberNode(Node):
 
     def make_code(self, code_store, symbol_state):
         return ValueInfo(ctypes.integer, ValueInfo.LITERAL, self.number.content)
+
+class IdentifierNode(Node):
+    """ Expression that is a single identifier.
+    
+    identifier (Token(Identifier)) - identifier this expression represents
+    """
+    symbol = "expression"
+
+    def __init__(self, identifier):
+        super().__init__()
+
+        self.assert_kind(identifier, token_kinds.identifier)
+
+        self.identifier = identifier
+
+        self.ast_data = ASTData()
+
+    def make_code(self, code_store, symbol_state): pass
 
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 

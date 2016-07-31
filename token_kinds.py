@@ -15,6 +15,7 @@ return_kw = TokenKind("return", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
 star = TokenKind("*", symbol_kinds)
+equals = TokenKind("=", symbol_kinds)
 
 open_paren = TokenKind("(", symbol_kinds)
 close_paren = TokenKind(")", symbol_kinds)

@@ -110,7 +110,7 @@ class ExpressionTests(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
 
-    def test_sum_expression_associative(self):
+    def test_sum_associative(self):
         """ 15 + 10 + 5 """
         tokens = [Token(token_kinds.number, "1"), Token(token_kinds.plus),
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
@@ -128,7 +128,7 @@ class ExpressionTests(unittest.TestCase):
                              ast.NumberNode(Token(token_kinds.number, "3"))
                          ))
 
-    def test_product_expression_associative(self):
+    def test_product_associative(self):
         """ 1 * 2 * 3 """
         tokens = [Token(token_kinds.number, "1"), Token(token_kinds.plus),
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
@@ -146,7 +146,7 @@ class ExpressionTests(unittest.TestCase):
                              ast.NumberNode(Token(token_kinds.number, "3"))
                          ))
 
-    def test_product_sum_expression_order_of_operations(self):
+    def test_product_sum_order_of_operations(self):
         tokens = [Token(token_kinds.number, "15"), Token(token_kinds.star),
                   Token(token_kinds.number, "10"), Token(token_kinds.plus),
                   Token(token_kinds.number, "5"), Token(token_kinds.star),
@@ -172,6 +172,44 @@ class ExpressionTests(unittest.TestCase):
                              )
                          ))
 
+    def test_equals_right_associative(self):
+        tokens = [Token(token_kinds.identifier, "a"), Token(token_kinds.equals),
+                  Token(token_kinds.identifier, "b"), Token(token_kinds.equals),
+                  Token(token_kinds.number, "10")]
+
+        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        self.assertEqual(ast_root,
+                         ast.BinaryOperatorNode(
+                             ast.IdentifierNode(
+                                 Token(token_kinds.identifier, "a")),
+                             Token(token_kinds.equals),
+                             ast.BinaryOperatorNode(
+                                 ast.IdentifierNode(
+                                     Token(token_kinds.identifier, "b")),
+                                 Token(token_kinds.equals),
+                                 ast.NumberNode(Token(token_kinds.number, "10"))
+                             )
+                         ))
+
+    def test_equals_precedence_with_plus(self):
+        tokens = [Token(token_kinds.identifier, "a"), Token(token_kinds.equals),
+                  Token(token_kinds.identifier, "b"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "10")]
+
+        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        self.assertEqual(ast_root,
+                         ast.BinaryOperatorNode(
+                             ast.IdentifierNode(
+                                 Token(token_kinds.identifier, "a")),
+                             Token(token_kinds.equals),
+                             ast.BinaryOperatorNode(
+                                 ast.IdentifierNode(
+                                     Token(token_kinds.identifier, "b")),
+                                 Token(token_kinds.plus),
+                                 ast.NumberNode(Token(token_kinds.number, "10"))
+                             )
+                         ))
+        
 class DeclarationTests(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
