@@ -127,6 +127,7 @@ class SymbolState:
         """Gets a symbol from the symbol tables, starting search from the most
         local and proceeding to the most global. Returns the corresponding 
         ValueInfo object for the identifier a match is found, or None otherwise.
+        Guarantees that the returned ValueInfo object has storage_type STACK.
 
         identifier (str) - the identifier to search for
         returns (ValueInfo) - object containing storage location of returned

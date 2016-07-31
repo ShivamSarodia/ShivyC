@@ -32,10 +32,10 @@ class code_gen_tests(unittest.TestCase):
                          "main:",
                          "     push rbp",
                          "     mov rbp, rsp",
-                         "     mov rax, 15",
+                         "     mov eax, 15",
                          "     pop rbp",
                          "     ret",
-                         "     mov rax, 0",
+                         "     mov eax, 0",
                          "     pop rbp",
                          "     ret"]
 
@@ -59,7 +59,7 @@ class code_gen_tests(unittest.TestCase):
                          "main:",
                          "     push rbp",
                          "     mov rbp, rsp",
-                         "     mov rax, 0",
+                         "     mov eax, 0",
                          "     pop rbp",
                          "     ret"]
 
@@ -96,11 +96,11 @@ class code_gen_tests(unittest.TestCase):
                          "     push rbp",
                          "     mov rbp, rsp",
                          "     sub rsp, 48",
-                         "     mov rax, 15",
+                         "     mov eax, 15",
                          "     add rsp, 48",
                          "     pop rbp",
                          "     ret",
-                         "     mov rax, 0",
+                         "     mov eax, 0",
                          "     add rsp, 48",
                          "     pop rbp",
                          "     ret"]

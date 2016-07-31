@@ -18,7 +18,7 @@ class Parser:
     try to match a grammar rule that generates the desired symbol. If a match is
     found, it returns a tuple (Node, index) where Node is an AST node for that
     match and index is one more than that of the last token consumed in that
-    parse.  If a match is not found, returns (None, 0) and saves the potential
+    parse.  If no match is not found, returns (None, 0) and saves the potential
     error to the errors variable.
 
     errors (List[Tuple[CompilerError, int]]) - Stores a list of compiler errors
@@ -80,8 +80,13 @@ class Parser:
         return (ast.MainNode(nodes), index)
 
     def expect_statement(self, tokens, index):
-        node, index = self.expect_return(tokens, index)
-        return (node, index)
+        node, new_index = self.expect_return(tokens, index)
+        if node: return (node, new_index)
+
+        node, new_index = self.expect_expr_statement(tokens, index)
+        if node: return (node, new_index)
+
+        return (None, 0)
 
     def expect_return(self, tokens, index):
         if self.match_token(tokens[index:], token_kinds.return_kw):
@@ -100,7 +105,20 @@ class Parser:
             err = "expected semicolon"
             return self.add_error(err, index, tokens, self.AFTER)
         return (ast.ReturnNode(node), index)
-        
+
+    def expect_expr_statement(self, tokens, index):
+        """Try to parse an expression, and also expect a semicolon after what
+        was parsed."""
+        node, index = self.expect_expression(tokens, index)
+        if not node: return (None, 0)
+        else:
+            # Expect semicolon
+            if self.match_token(tokens[index:], token_kinds.semicolon):
+                return (node, index + 1)
+            else:
+                err = "expected semicolon"
+                return self.add_error(err, index, tokens, self.AFTER)
+    
     def expect_expression(self, tokens, index):
         """Implemented as a shift-reduce parser. Tries to comprehend as much as
         possible of tokens past index as being an expression, and the index
@@ -188,7 +206,7 @@ class Parser:
                 stack.append(StackItem(tokens[i], 1))
                 i += 1
 
-        if isinstance(stack[0].item, ast.Node):
+        if stack and isinstance(stack[0].item, ast.Node):
             return (stack[0].item, index + stack[0].length)
         else:
             return self.add_error("expected expression", index, tokens,

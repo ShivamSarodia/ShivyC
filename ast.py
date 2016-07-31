@@ -114,7 +114,11 @@ class ReturnNode(Node):
         value_info = self.return_value.make_code(code_store, symbol_state)
         if (value_info.value_type == ctypes.integer and
             value_info.storage_type == ValueInfo.LITERAL):
-            code_store.add_command(("mov", "rax", value_info.storage_info))
+            code_store.add_command(("mov", "eax", value_info.storage_info))
+        elif (value_info.value_type == ctypes.integer and
+              value_info.storage_type == ValueInfo.STACK):
+            location = "DWORD [rbp - " + str(value_info.storage_info) + "]"
+            code_store.add_command(("mov", "eax", location))
         else:
             raise NotImplementedError
 
@@ -161,7 +165,12 @@ class IdentifierNode(Node):
 
         self.ast_data = ASTData()
 
-    def make_code(self, code_store, symbol_state): pass
+    def make_code(self, code_store, symbol_state):
+        value = symbol_state.get_symbol(self.identifier.content)
+        if value:
+            return value
+        else:
+            raise NotImplementedError
 
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
@@ -187,6 +196,13 @@ class BinaryOperatorNode(Node):
         self.ast_data = left_expr.ast_data + right_expr.ast_data
 
     def add(self, left_value, right_value, code_store):
+        """Generate code for addition of values
+
+        left_value (ValueInfo) - the ValueInfo returned by make_code on the
+        left argument
+        right_value (ValueInfo) - the ValueInfo returned by make_code on the
+        right argument
+        """
         if (left_value.value_type == ctypes.integer and
             left_value.storage_type == ValueInfo.LITERAL and
             right_value.value_type == ctypes.integer and
@@ -199,6 +215,13 @@ class BinaryOperatorNode(Node):
             raise NotImplementedError
 
     def multiply(self, left_value, right_value, code_store):
+        """Generate code for multiplication of values
+
+        left_value (ValueInfo) - the ValueInfo returned by make_code on the
+        left argument
+        right_value (ValueInfo) - the ValueInfo returned by make_code on the
+        right argument
+        """
         if (left_value.value_type == ctypes.integer and
             left_value.storage_type == ValueInfo.LITERAL and
             right_value.value_type == ctypes.integer and
@@ -209,7 +232,33 @@ class BinaryOperatorNode(Node):
                                  int(right_value.storage_info)))
         else:
             return NotImplementedError
-        
+
+    def equals(self, left_expr, right_value, code_store, symbol_state):
+        """Generate code for setting left_expr equal to right_value
+
+        left_expr (Node(expression)) - Node representing the left side of equals
+        sign
+        right_value (ValueInfo) - ValueInfo returned by make_code on the right
+        argument
+        """
+        if isinstance(left_expr, IdentifierNode):
+            left_value = symbol_state.get_symbol(left_expr.identifier.content)
+            if not left_value:
+                raise NotImplementedError
+            elif not left_value.value_type == ctypes.integer:
+                raise NotImplementedError
+            
+            location = "DWORD [rbp - " + str(left_value.storage_info) + "]"
+            if (right_value.value_type == ctypes.integer and
+                right_value.storage_type == ValueInfo.LITERAL):
+                code_store.add_command(("mov", location,
+                                        right_value.storage_info))
+                return right_value
+            elif right_value.storage_type == ValueInfo.STACK:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+            
     def make_code(self, code_store, symbol_state):
         left_value = self.left_expr.make_code(code_store, symbol_state)
         right_value = self.right_expr.make_code(code_store, symbol_state)
@@ -218,6 +267,9 @@ class BinaryOperatorNode(Node):
             return self.add(left_value, right_value, code_store)
         elif self.operator == Token(token_kinds.star):
             return self.multiply(left_value, right_value, code_store)
+        elif self.operator == Token(token_kinds.equals):
+            return self.equals(self.left_expr, right_value, code_store,
+                               symbol_state)
         else:
             raise NotImplementedError
 

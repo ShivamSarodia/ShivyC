@@ -31,6 +31,17 @@ class integration_tests(unittest.TestCase):
 
     def test_declaration_integer(self):
         self.expect_return("int main() { int a; return 15; }", 15)
+
+    def test_equals_and_return(self):
+        self.expect_return("int main() { int a; a = 10; return a; }", 10)
+
+    def test_multiple_declarations_and_return(self):
+        self.expect_return(
+            """int main() {
+                    int a; int b; int c; int d;
+                    a = 10; b = 20;
+                    return a;
+             }""", 10)
         
     # Support functions for the the tests
     def compile_and_run(self, code):

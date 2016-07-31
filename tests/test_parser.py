@@ -106,6 +106,27 @@ class GeneralTests(unittest.TestCase):
                              [ast.DeclarationNode(
                                  Token(token_kinds.identifier, "var"))]))
 
+    def test_equals_in_main(self):
+        """ int main() { a = 10; } """
+        # This wouldn't compile, but it should still parse.
+        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
+                  Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack),
+                  Token(token_kinds.identifier, "a"), Token(token_kinds.equals),
+                  Token(token_kinds.number, "10"),
+                  Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
+
+        ast_root = self.parser.parse(tokens)
+        self.assertEqual(ast_root,
+                         ast.MainNode(
+                             [ast.BinaryOperatorNode(
+                                 ast.IdentifierNode(
+                                     Token(token_kinds.identifier, "a")),
+                                 Token(token_kinds.equals),
+                                 ast.NumberNode(
+                                     Token(token_kinds.number, "10")))
+                             ]))
+
 class ExpressionTests(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
