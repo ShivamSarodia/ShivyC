@@ -55,13 +55,7 @@ class CodeStore:
                                             if len(line) > 1 else "")
         
         # This code starts every asm program, so we put it here.
-        header = ["global _start",
-                  "",
-                  "_start:",
-                  "     call main",
-                  "     mov rdi, rax",
-                  "     mov rax, 60",
-                  "     syscall"]
+        header = ["global main"]
         return "\n".join(header + [to_string(line) for line in self.lines])
 
 class SymbolState:
