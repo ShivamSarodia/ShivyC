@@ -40,13 +40,23 @@ class Node:
 
         """
         if node.symbol != symbol_name:
-            raise ValueError("malformed tree: expected symbol " + symbol_name +
-                             ", got " + node.symbol)
+            raise ValueError("malformed tree: expected symbol '" + symbol_name +
+                             "' but got '" + node.symbol + "'")
+
+    def assert_symbols(self, node, symbol_names):
+        """Useful for enforcing tree structure. Raises an exception if the node
+        represents a rule that produces none of the symbols in symbol_names."""
+        if node.symbol not in symbol_names:
+            raise ValueError("malformed tree: unexpected symbol '"
+                             + node.symbol + "'")
 
     def assert_kind(self, token, kind):
+        """Useful for enforcing tree structure. Raises an exception if the token
+        does not have the given kind.
+        """
         if token.kind != kind:
-            raise ValueError("malformed tree: expected token kind " + str(kind) +
-                             ", got " + str(token.kind))
+            raise ValueError("malformed tree: expected token_kind '"
+                             + kind + "' but got '" + token.kind + "'")
 
 class MainNode(Node):
     """ General rule for the main function. Will be removed once function
@@ -59,10 +69,9 @@ class MainNode(Node):
     
     def __init__(self, block_items):
         super().__init__()
-        
-        # TODO(shivam): Add an assertion that all block_items are either a
-        # statement or declaration.
 
+        for item in block_items:
+            self.assert_symbols(item, ["statement", "declaration"])
         self.block_items = block_items
 
         self.ast_data = sum((item.ast_data for item in block_items), ASTData())
@@ -182,7 +191,6 @@ class BinaryOperatorNode(Node):
         super().__init__()
 
         self.assert_symbol(left_expr, "expression")
-        assert isinstance(operator, Token)
         self.assert_symbol(right_expr, "expression")
         
         self.left_expr = left_expr
