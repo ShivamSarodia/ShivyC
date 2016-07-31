@@ -206,3 +206,7 @@ class ValueInfo:
         self.value_type = value_type
         self.storage_type = storage_type
         self.storage_info = storage_info
+
+    def has_types(self, value_type, storage_type):
+        return (value_type == self.value_type
+                and storage_type == self.storage_type)

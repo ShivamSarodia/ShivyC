@@ -114,11 +114,9 @@ class ReturnNode(Node):
 
     def make_code(self, code_store, symbol_state):
         value_info = self.return_value.make_code(code_store, symbol_state)
-        if (value_info.value_type == ctypes.integer and
-            value_info.storage_type == ValueInfo.LITERAL):
+        if value_info.has_types(ctypes.integer, ValueInfo.LITERAL):
             code_store.add_command(("mov", "eax", value_info.storage_info))
-        elif (value_info.value_type == ctypes.integer and
-              value_info.storage_type == ValueInfo.STACK):
+        elif value_info.has_types(ctypes.integer, ValueInfo.STACK):
             location = "DWORD [rbp - " + str(value_info.storage_info) + "]"
             code_store.add_command(("mov", "eax", location))
         else:
@@ -201,10 +199,8 @@ class BinaryOperatorNode(Node):
         right_value (ValueInfo) - the ValueInfo returned by make_code on the
         right argument
         """
-        if (left_value.value_type == ctypes.integer and
-            left_value.storage_type == ValueInfo.LITERAL and
-            right_value.value_type == ctypes.integer and
-            right_value.storage_type == ValueInfo.LITERAL):
+        if (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
+            and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
             return ValueInfo(ctypes.integer,
                              ValueInfo.LITERAL,
                              str(int(left_value.storage_info) +
@@ -220,10 +216,8 @@ class BinaryOperatorNode(Node):
         right_value (ValueInfo) - the ValueInfo returned by make_code on the
         right argument
         """
-        if (left_value.value_type == ctypes.integer and
-            left_value.storage_type == ValueInfo.LITERAL and
-            right_value.value_type == ctypes.integer and
-            right_value.storage_type == ValueInfo.LITERAL):
+        if (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
+            and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
             return ValueInfo(ctypes.integer,
                              ValueInfo.LITERAL,
                              str(int(left_value.storage_info) *
@@ -243,9 +237,8 @@ class BinaryOperatorNode(Node):
             left_value = symbol_state.get_symbol_or_error(left_expr.identifier)
 
             location = "DWORD [rbp - " + str(left_value.storage_info) + "]"
-            if (left_value.value_type == ctypes.integer and
-                right_value.value_type == ctypes.integer and
-                right_value.storage_type == ValueInfo.LITERAL):
+            if (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+                and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
                 code_store.add_command(("mov", location,
                                         right_value.storage_info))
                 return right_value
