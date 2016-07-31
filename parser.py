@@ -126,10 +126,6 @@ class Parser:
         expression. If literally none of it could be parsed as an expression,
         returns (None, 0) like usual.
 
-        TODO(shivam): find a way to avoid trying to parse the entire remaining
-        list of tokens every time this function is called, because that's really
-        terrible.
-
         """
                 
         # Dictionay of key-value pairs {TokenKind: precedence} where higher
