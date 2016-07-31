@@ -117,7 +117,8 @@ class Parser:
         node, index = self.expect_expression(tokens, index)
         if not node: return (None, 0)
 
-        return self.expect_semicolon(node, tokens, index)
+        return self.expect_semicolon(ast.ExprStatementNode(node), tokens,
+                                     index)
     
     def expect_expression(self, tokens, index):
         """Implemented as a shift-reduce parser. Tries to comprehend as much as

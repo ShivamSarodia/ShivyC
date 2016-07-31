@@ -119,12 +119,13 @@ class GeneralTests(unittest.TestCase):
         ast_root = self.parser.parse(tokens)
         self.assertEqual(ast_root,
                          ast.MainNode(
-                             [ast.BinaryOperatorNode(
-                                 ast.IdentifierNode(
-                                     Token(token_kinds.identifier, "a")),
-                                 Token(token_kinds.equals),
-                                 ast.NumberNode(
-                                     Token(token_kinds.number, "10")))
+                             [ast.ExprStatementNode(
+                                 ast.BinaryOperatorNode(
+                                     ast.IdentifierNode(
+                                         Token(token_kinds.identifier, "a")),
+                                     Token(token_kinds.equals),
+                                     ast.NumberNode(
+                                         Token(token_kinds.number, "10"))))
                              ]))
 
 class ExpressionTests(unittest.TestCase):

@@ -177,6 +177,23 @@ class IdentifierNode(Node):
     def make_code(self, code_store, symbol_state):
         return symbol_state.get_symbol_or_error(self.identifier)
 
+class ExprStatementNode(Node):
+    """ Contains an expression, because an expression can be a statement. """
+    
+    symbol = "statement"
+
+    def __init__(self, expr):
+        super().__init__()
+        
+        self.assert_symbol(expr, "expression")
+        
+        self.expr = expr
+
+        self.ast_data = expr.ast_data
+
+    def make_code(self, code_store, symbol_state):
+        self.expr.make_code(code_store, symbol_state)
+    
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
     
