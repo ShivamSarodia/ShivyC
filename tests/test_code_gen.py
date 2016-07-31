@@ -22,13 +22,8 @@ class code_gen_tests(unittest.TestCase):
         symbol_state = SymbolState()
         main_node.make_code(code_store, symbol_state)
 
-        expected_code = ["global _start",
+        expected_code = ["global main",
                          "",
-                         "_start:",
-                         "     call main",
-                         "     mov rdi, rax",
-                         "     mov rax, 60",
-                         "     syscall",
                          "main:",
                          "     push rbp",
                          "     mov rbp, rsp",
@@ -49,13 +44,8 @@ class code_gen_tests(unittest.TestCase):
         symbol_state = SymbolState()
         main_node.make_code(code_store, symbol_state)
 
-        expected_code = ["global _start",
+        expected_code = ["global main",
                          "",
-                         "_start:",
-                         "     call main",
-                         "     mov rdi, rax",
-                         "     mov rax, 60",
-                         "     syscall",
                          "main:",
                          "     push rbp",
                          "     mov rbp, rsp",
@@ -85,13 +75,8 @@ class code_gen_tests(unittest.TestCase):
         symbol_state = SymbolState()
         main_node.make_code(code_store, symbol_state)
 
-        expected_code = ["global _start",
+        expected_code = ["global main",
                          "",
-                         "_start:",
-                         "     call main",
-                         "     mov rdi, rax",
-                         "     mov rax, 60",
-                         "     syscall",
                          "main:",
                          "     push rbp",
                          "     mov rbp, rsp",
