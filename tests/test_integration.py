@@ -51,6 +51,9 @@ class IntegrationTests(unittest.TestCase, TestUtil):
     def test_product_integers(self):
         self.expect_return("int main() { return 5 * 2 * 3; }", 30)
 
+    def test_parens_integers(self):
+        self.expect_return("int main() { return (5 + 3) * 2; }", 16)
+
     def test_declaration_integer(self):
         self.expect_return("int main() { int a; return 15; }", 15)
 
@@ -103,6 +106,18 @@ class IntegrationTests(unittest.TestCase, TestUtil):
         code = """int main() { int a; int b; a = 10; b = a + 1;
                                a = a + b; return a; }"""
         self.expect_return(code, 21)
+
+    def test_parens_equals(self):
+        code = """
+        int main() {
+            int a; int b; int c; int d;
+            a = 10; b = 5; c = 15; d = 20;
+            d = (a = (c + b)) + d;
+            a = d + a;
+            return 2 + a;
+        }
+        """
+        self.expect_return(code, 62)
 
 class ErrorTests(unittest.TestCase, TestUtil):
     def test_redeclaration(self):

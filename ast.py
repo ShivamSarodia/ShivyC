@@ -194,8 +194,27 @@ class ExprStatementNode(Node):
         self.ast_data = expr.ast_data
 
     def make_code(self, code_store, symbol_state):
-        self.expr.make_code(code_store, symbol_state)
-    
+        value = self.expr.make_code(code_store, symbol_state)
+        if value.storage_type == ValueInfo.REGISTER:
+            symbol_state.return_reg(str(value))
+
+class ParenExprNode(Node):
+    """ Contains an expression in parentheses """
+
+    symbol = "expression"
+
+    def __init__(self, expr):
+        super().__init__()
+        
+        self.assert_symbol(expr, "expression")
+        
+        self.expr = expr
+
+        self.ast_data = expr.ast_data
+
+    def make_code(self, code_store, symbol_state):
+        return self.expr.make_code(code_store, symbol_state)
+        
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
     
@@ -249,7 +268,7 @@ class BinaryOperatorNode(Node):
               and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
             reg = symbol_state.checkout_reg()
             code_store.add_command(("mov", reg, str(left_value)))
-            left_value = ValueInfo(ctypes.integer, ValueInfo.LITERAL, reg)
+            left_value = ValueInfo(ctypes.integer, ValueInfo.REGISTER, reg)
             return self.add(left_value, right_value, code_store, symbol_state)
         elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
               and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
@@ -316,7 +335,7 @@ class BinaryOperatorNode(Node):
                                             ValueInfo.REGISTER)):
                 code_store.add_command(("mov", str(left_value),
                                         str(right_value)))
-                symbol_state.return_reg(str(right_value))
+                return right_value
             else:
                 raise NotImplementedError
         else:

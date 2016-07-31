@@ -231,7 +231,37 @@ class ExpressionTests(unittest.TestCase):
                                  ast.NumberNode(Token(token_kinds.number, "10"))
                              )
                          ))
-        
+    def test_parens(self):
+        tokens = [Token(token_kinds.number, "5"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.number, "10"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.number, "15"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.number, "20")]
+
+        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        self.assertEqual(ast_root,
+                         ast.BinaryOperatorNode(
+                             ast.BinaryOperatorNode(
+                                 ast.NumberNode(Token(token_kinds.number, "5")),
+                                 Token(token_kinds.plus),
+                                 ast.ParenExprNode(
+                                     ast.BinaryOperatorNode(
+                                         ast.NumberNode(
+                                             Token(token_kinds.number, "10")),
+                                         Token(token_kinds.plus),
+                                         ast.NumberNode(
+                                             Token(token_kinds.number, "15"))
+                                     )
+                                 ),
+                             ),
+                             Token(token_kinds.plus),
+                             ast.NumberNode(Token(token_kinds.number, "20"))
+                         ))
+                                     
 class DeclarationTests(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()

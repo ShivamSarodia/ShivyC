@@ -92,7 +92,7 @@ class SymbolState:
         self.next_free = 8
         self.stack_shift = 0
 
-        self.register_state = OrderedDict([("rax", True), ("rdi", True)])
+        self.register_state = OrderedDict([("eax", True), ("edi", True)])
     
     @contextmanager
     def new_symbol_table(self):
@@ -165,7 +165,7 @@ class SymbolState:
     # register, that value will still be there after any calls to make_code.
     # Note that calls to make_code may temporarily move around the value in the
     # register, as long as it is put back in place before the call returns.
-    def checkout_reg(self, eightbyte = False):
+    def checkout_reg(self):
         """Return the name of a register that is currently unused. See comment
         above for usage details.
 
@@ -174,8 +174,7 @@ class SymbolState:
         for register in self.register_state:
             if self.register_state[register]:
                 self.register_state[register] = False
-                if eightbyte: return register
-                else: return "e" + register[1:]
+                return register
         raise NotImplementedError("Ran out of registers")
             
     def return_reg(self, register):

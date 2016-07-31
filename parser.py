@@ -158,7 +158,21 @@ class Parser:
             elif (stack and isinstance(stack[-1].item, Token)
                 and stack[-1].item.kind == token_kinds.identifier):
                 stack[-1] = StackItem(ast.IdentifierNode(stack[-1].item), 1)
-            
+
+            # If the top of the stack matches ( expr ), reduce it to a
+            # ParenExpr node
+            elif (len(stack) >= 3
+                  and isinstance(stack[-1].item, Token)
+                  and stack[-1].item.kind == token_kinds.close_paren
+                  and isinstance(stack[-2].item, ast.Node)
+                  and isinstance(stack[-3].item, Token)
+                  and stack[-3].item.kind == token_kinds.open_paren):
+                expr = stack[-2]
+                
+                del stack[-3:]
+                stack.append(
+                    StackItem(ast.ParenExprNode(expr.item), expr.length + 2))
+
             # If the top of the stack matches a binary operator, reduce it to an
             # expression node.
             elif (len(stack) >= 3
@@ -198,6 +212,8 @@ class Parser:
                 if i == len(tokens): break
                 elif (tokens[i].kind != token_kinds.number
                       and tokens[i].kind != token_kinds.identifier
+                      and tokens[i].kind != token_kinds.open_paren
+                      and tokens[i].kind != token_kinds.close_paren
                       and tokens[i].kind not in binary_operators.keys()): break
                 
                 stack.append(StackItem(tokens[i], 1))
