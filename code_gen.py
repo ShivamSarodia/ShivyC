@@ -1,6 +1,7 @@
 """Defines the classes necessary for the code generation step of the compiler.
 
 """
+from collections import OrderedDict
 from contextlib import contextmanager
 
 from errors import CompilerError
@@ -72,19 +73,26 @@ class SymbolState:
     most global. Each symbol table is a dictionary mapping identifier names to 
     a ValueInfo object with information on where in memory this object is
     stored.
+
     next_free (int) - The next location on stack, measured in bytes below RBP,
     that currently has no variable occupying that space.
+
     stack_shift (int) - Stores how much the RSP has been moved since the
     beginning of the function call, so we know how much to move the RSP back
     before returning. This is an upper bound on the amount of space required
     on the stack to store all variables declared in the current function and
     should round up to a multiple of 16.
 
+    register_state (OrderedDict) - Stores each register name in order of
+    preference with value True if available or False if checked out
+
     """
     def __init__(self):
         self.symbol_tables = []
         self.next_free = 8
         self.stack_shift = 0
+
+        self.register_state = OrderedDict([("rax", True), ("rdi", True)])
     
     @contextmanager
     def new_symbol_table(self):
@@ -151,6 +159,33 @@ class SymbolState:
             raise errors.token_error("undeclared identifier '{}'",
                                      identifier_token)
 
+    # When a caller calls checkout_reg, it is guaranteed that the register
+    # returned will not be visibly modified by any other call to make_code. That
+    # is, the caller can assume that if a value is saved to a checked-out
+    # register, that value will still be there after any calls to make_code.
+    # Note that calls to make_code may temporarily move around the value in the
+    # register, as long as it is put back in place before the call returns.
+    def checkout_reg(self, eightbyte = False):
+        """Return the name of a register that is currently unused. See comment
+        above for usage details.
+
+        returns (str) - register name"""
+
+        for register in self.register_state:
+            if self.register_state[register]:
+                self.register_state[register] = False
+                if eightbyte: return register
+                else: return "e" + register[1:]
+        raise NotImplementedError("Ran out of registers")
+            
+    def return_reg(self, register):
+        """Indicate that the provided register is now unused. It is VERY
+        IMPORTANT that this be called to free registers once they are done being
+        used, or subtle bugs may arise in long programs.
+
+        """
+        self.register_state[register] = True
+
 class ASTData:
     """Every node in the AST stores an instance of the ASTData class. This class
     is useful for recording information about the tree so the entire tree need
@@ -201,6 +236,8 @@ class ValueInfo:
     # first (lowermost, closest to RBP) position in the stack containing this
     # object.
     STACK = 2
+    # A value stored in a register. storage_info is the name of the register.
+    REGISTER = 3
     
     def __init__(self, value_type, storage_type, storage_info):
         self.value_type = value_type
@@ -210,3 +247,11 @@ class ValueInfo:
     def has_types(self, value_type, storage_type):
         return (value_type == self.value_type
                 and storage_type == self.storage_type)
+
+    def __str__(self):
+        """Converts this ValueInfo storage_info into a form suitable for output
+        asm"""
+        if self.storage_type == self.STACK:
+            return "DWORD [rbp-{}]".format(str(self.storage_info))
+        else:
+            return self.storage_info

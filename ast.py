@@ -123,11 +123,13 @@ class ReturnNode(Node):
 
     def make_code(self, code_store, symbol_state):
         value_info = self.return_value.make_code(code_store, symbol_state)
-        if value_info.has_types(ctypes.integer, ValueInfo.LITERAL):
-            code_store.add_command(("mov", "eax", value_info.storage_info))
-        elif value_info.has_types(ctypes.integer, ValueInfo.STACK):
-            location = "DWORD [rbp - " + str(value_info.storage_info) + "]"
-            code_store.add_command(("mov", "eax", location))
+        if (value_info.has_types(ctypes.integer, ValueInfo.LITERAL) or
+            value_info.has_types(ctypes.integer, ValueInfo.STACK)):
+            code_store.add_command(("mov", "eax", str(value_info)))
+        elif value_info.has_types(ctypes.integer, ValueInfo.REGISTER):
+            if not (str(value_info) == "eax" or str(value_info) == "rax"):
+                code_store.add_command(("mov", "eax", str(value_info)))
+                symbol_state.return_reg(str(value_info))
         else:
             raise NotImplementedError
 
@@ -216,7 +218,7 @@ class BinaryOperatorNode(Node):
 
         self.ast_data = left_expr.ast_data + right_expr.ast_data
 
-    def add(self, left_value, right_value, code_store):
+    def add(self, left_value, right_value, code_store, symbol_state):
         """Generate code for addition of values
 
         left_value (ValueInfo) - the ValueInfo returned by make_code on the
@@ -228,8 +230,44 @@ class BinaryOperatorNode(Node):
             and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
             return ValueInfo(ctypes.integer,
                              ValueInfo.LITERAL,
-                             str(int(left_value.storage_info) +
-                                 int(right_value.storage_info)))
+                             str(int(str(left_value)) + int(str(right_value))))
+        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+              and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
+            reg = symbol_state.checkout_reg()
+            code_store.add_command(("mov", reg, str(left_value)))
+            left_value = ValueInfo(ctypes.integer, ValueInfo.REGISTER, reg)
+            return self.add(left_value, right_value, code_store, symbol_state)
+        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
+              and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
+            code_store.add_command(("add", str(left_value), str(right_value)))
+            return left_value
+        elif (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
+              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
+            # Flip the arguments
+            return self.add(right_value, left_value, code_store, symbol_state)
+        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
+            reg = symbol_state.checkout_reg()
+            code_store.add_command(("mov", reg, str(left_value)))
+            left_value = ValueInfo(ctypes.integer, ValueInfo.LITERAL, reg)
+            return self.add(left_value, right_value, code_store, symbol_state)
+        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
+              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
+            code_store.add_command(("add", str(left_value), str(right_value)))
+            return left_value
+        elif (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
+              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
+            # Flip the arguments
+            return self.add(right_value, left_value, code_store, symbol_state)
+        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
+            # Flip the arguments
+            return self.add(right_value, left_value, code_store, symbol_state)
+        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
+              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
+            code_store.add_command(("add", str(left_value), str(right_value)))
+            symbol_state.return_reg(str(right_value))
+            return left_value
         else:
             raise NotImplementedError
 
@@ -261,26 +299,40 @@ class BinaryOperatorNode(Node):
         if isinstance(left_expr, IdentifierNode):
             left_value = symbol_state.get_symbol_or_error(left_expr.identifier)
 
-            location = "DWORD [rbp - " + str(left_value.storage_info) + "]"
             if (left_value.has_types(ctypes.integer, ValueInfo.STACK)
                 and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-                code_store.add_command(("mov", location,
-                                        right_value.storage_info))
+                code_store.add_command(("mov", str(left_value),
+                                        str(right_value)))
                 return right_value
+            elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+                  and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
+                reg = symbol_state.checkout_reg()
+                code_store.add_command(("mov", reg, str(right_value)))
+                code_store.add_command(("mov", str(left_value), reg))
+                symbol_state.return_reg(reg)
+                return left_value
+            elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
+                  and right_value.has_types(ctypes.integer,
+                                            ValueInfo.REGISTER)):
+                code_store.add_command(("mov", str(left_value),
+                                        str(right_value)))
+                symbol_state.return_reg(str(right_value))
             else:
                 raise NotImplementedError
         else:
             raise NotImplementedError
             
     def make_code(self, code_store, symbol_state):
-        left_value = self.left_expr.make_code(code_store, symbol_state)
-        right_value = self.right_expr.make_code(code_store, symbol_state)
-        
         if self.operator == Token(token_kinds.plus):
-            return self.add(left_value, right_value, code_store)
+            left_value = self.left_expr.make_code(code_store, symbol_state)
+            right_value = self.right_expr.make_code(code_store, symbol_state)
+            return self.add(left_value, right_value, code_store, symbol_state)
         elif self.operator == Token(token_kinds.star):
+            left_value = self.left_expr.make_code(code_store, symbol_state)
+            right_value = self.right_expr.make_code(code_store, symbol_state)
             return self.multiply(left_value, right_value, code_store)
         elif self.operator == Token(token_kinds.equals):
+            right_value = self.right_expr.make_code(code_store, symbol_state)
             return self.equals(self.left_expr, right_value, code_store,
                                symbol_state)
         else:

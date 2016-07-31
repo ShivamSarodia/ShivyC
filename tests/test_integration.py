@@ -57,13 +57,52 @@ class IntegrationTests(unittest.TestCase, TestUtil):
     def test_equals_and_return(self):
         self.expect_return("int main() { int a; a = 10; return a; }", 10)
 
+    def test_equals_value(self):
+        self.expect_return("int main() { int a; a = 10; return a = 20; }", 20)
+
     def test_multiple_declarations_and_return(self):
         self.expect_return(
             """int main() {
                     int a; int b; int c; int d;
                     a = 10; b = 20;
                     return a;
-             }""", 10)    
+             }""", 10)
+
+    def test_add_variable_to_const(self):
+        self.expect_return("int main() { int a; a = 10; return a+1; }", 11)
+
+    def test_add_const_to_variable(self):
+        self.expect_return("int main() { int a; a = 10; return 1+a; }", 11)
+
+    def test_add_two_variables(self):
+        code = "int main() { int a; int b; a = 10; b = 1; return a+b; }"
+        self.expect_return(code, 11)
+
+    def test_add_two_variables(self):
+        code = "int main() { int a; int b; a = 10; b = 1; return a+b; }"
+        self.expect_return(code, 11)
+
+    def test_add_three_variables(self):
+        code = """int main() { int a; int b; int c; a = 10; b = 1; c = 3;
+                               return a+b+c; }"""
+        self.expect_return(code, 14)
+
+    def test_add_two_variables_and_const(self):
+        code = "int main() { int a; int b; a = 10; b = 1; return a+b+3; }"
+        self.expect_return(code, 14)
+
+    def test_equals_stack(self):
+        code = "int main() { int a; int b; a = 10; b = a; return b; }"
+        self.expect_return(code, 10)
+
+    def test_equals_register(self):
+        code = "int main() { int a; int b; a = 10; b = a + 1; return b; }"
+        self.expect_return(code, 11)
+
+    def test_equals_sum_of_self(self):
+        code = """int main() { int a; int b; a = 10; b = a + 1;
+                               a = a + b; return a; }"""
+        self.expect_return(code, 21)
 
 class ErrorTests(unittest.TestCase, TestUtil):
     def test_redeclaration(self):
