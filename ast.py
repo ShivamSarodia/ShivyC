@@ -29,6 +29,13 @@ class Node:
     children ast_data objects.    
 
     """
+    
+    # Enum for symbols produced by a node
+    MAIN_FUNCTION = 1
+    STATEMENT = 2
+    DECLARATION = 3
+    EXPRESSION = 4
+    
     def __eq__(self, other):
         if type(other) is type(self):
             return self.__dict__ == other.__dict__
@@ -65,13 +72,13 @@ class MainNode(Node):
     statements (List[statement]) - a list of the statement in main function
 
     """
-    symbol = "main_function"
+    symbol = Node.MAIN_FUNCTION
     
     def __init__(self, block_items):
         super().__init__()
 
         for item in block_items:
-            self.assert_symbols(item, ["statement", "declaration"])
+            self.assert_symbols(item, [self.STATEMENT, self.DECLARATION])
         self.block_items = block_items
 
         self.ast_data = sum((item.ast_data for item in block_items), ASTData())
@@ -110,12 +117,12 @@ class ReturnNode(Node):
     return_value (expression) - value to return
 
     """
-    symbol = "statement"
+    symbol = Node.STATEMENT
 
     def __init__(self, return_value):
         super().__init__()
 
-        self.assert_symbol(return_value, "expression")
+        self.assert_symbol(return_value, self.EXPRESSION)
                 
         self.return_value = return_value
 
@@ -146,7 +153,7 @@ class NumberNode(Node):
     number (Token(Number)) - number this expression represents
 
     """
-    symbol = "expression"
+    symbol = Node.EXPRESSION
     
     def __init__(self, number):
         super().__init__()
@@ -165,7 +172,7 @@ class IdentifierNode(Node):
     
     identifier (Token(Identifier)) - identifier this expression represents
     """
-    symbol = "expression"
+    symbol = Node.EXPRESSION
 
     def __init__(self, identifier):
         super().__init__()
@@ -182,12 +189,12 @@ class IdentifierNode(Node):
 class ExprStatementNode(Node):
     """ Contains an expression, because an expression can be a statement. """
     
-    symbol = "statement"
+    symbol = Node.STATEMENT
 
     def __init__(self, expr):
         super().__init__()
         
-        self.assert_symbol(expr, "expression")
+        self.assert_symbol(expr, self.EXPRESSION)
         
         self.expr = expr
 
@@ -201,12 +208,12 @@ class ExprStatementNode(Node):
 class ParenExprNode(Node):
     """ Contains an expression in parentheses """
 
-    symbol = "expression"
+    symbol = Node.EXPRESSION
 
     def __init__(self, expr):
         super().__init__()
         
-        self.assert_symbol(expr, "expression")
+        self.assert_symbol(expr, self.EXPRESSION)
         
         self.expr = expr
 
@@ -223,13 +230,13 @@ class BinaryOperatorNode(Node):
     right_expr (expression) - expression on the right side
 
     """
-    symbol = "expression"
+    symbol = Node.EXPRESSION
 
     def __init__(self, left_expr, operator, right_expr):
         super().__init__()
 
-        self.assert_symbol(left_expr, "expression")
-        self.assert_symbol(right_expr, "expression")
+        self.assert_symbol(left_expr, self.EXPRESSION)
+        self.assert_symbol(right_expr, self.EXPRESSION)
         
         self.left_expr = left_expr
         self.operator = operator
@@ -370,7 +377,7 @@ class DeclarationNode(Node):
     variable name.
 
     """
-    symbol = "declaration"
+    symbol = Node.DECLARATION
     
     def __init__(self, variable_name):
         super().__init__()
