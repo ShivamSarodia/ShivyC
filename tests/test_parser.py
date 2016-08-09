@@ -132,7 +132,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
                   Token(token_kinds.number, "3")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -150,7 +150,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
                   Token(token_kinds.number, "3")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -168,7 +168,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "5"), Token(token_kinds.star),
                   Token(token_kinds.number, "0")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -193,7 +193,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.identifier, "b"), Token(token_kinds.equals),
                   Token(token_kinds.number, "10")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.IdentifierNode(
@@ -212,7 +212,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.identifier, "b"), Token(token_kinds.plus),
                   Token(token_kinds.number, "10")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.IdentifierNode(
@@ -236,7 +236,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.plus),
                   Token(token_kinds.number, "20")]
 
-        ast_root = Parser(tokens).expect_expression(0)[0]
+        ast_root = Parser(tokens).parse_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -261,7 +261,7 @@ class DeclarationTests(unittest.TestCase):
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
-        ast_root = Parser(tokens).expect_declaration(0)[0]
+        ast_root = Parser(tokens).parse_declaration(0)[0]
         self.assertEqual(ast_root,
                          ast.DeclarationNode(
                              Token(token_kinds.identifier, "var")))
