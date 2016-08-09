@@ -23,15 +23,14 @@ class Parser:
     error to the errors variable.
 
     tokens (List(Token)) - The list of tokens to be parsed
-    errors (List[Tuple[CompilerError, int]]) - A list of compiler errors for
-    each time a potential parsing path failed, and the index at which that error
-    occurred. If the parse is unsuccessful, we will raise the CompilerError that
-    successfully parsed the most tokens.
-
+    best_error (ParserError) - The "best error" encountered thusfar. That is,
+    out of all the errors encountered thusfar, the one that occurred after
+    succesfully parsing the most tokens.
     """
+    
     def __init__(self, tokens):
         self.tokens = tokens
-        self.errors = []
+        self.best_error = None
 
     def parse(self):
         """Parse the provided list of tokens into an abstract syntax tree (AST)
@@ -42,11 +41,8 @@ class Parser:
         try:
             node, index = self.expect_main(0)
         except ParserError as e:
-            # Parsing failed, so we return the error that was most successsful
-            # at parsing. If multiple errors parsed the same number of tokens,
-            # return the one added later.
             self.log_error(e)
-            raise sorted(self.errors, key=lambda error: error[1])[-1][0]
+            raise self.best_error
 
         # Ensure there's no tokens left at after the main function
         if self.tokens[index:]:
@@ -274,9 +270,12 @@ class Parser:
         else: return 0
 
     def log_error(self, error):
-        """Adds the provided ParserError to the list of errors encountered.
+        """Log the error in the parser to be used for error reporting. If the
+        provided error occurred after parsing no fewer tokens than
+        best_error.amount_parsed, replace best_error with the provided error.
         
         error (ParserError) - The error encountered.
-
         """
-        self.errors.append((error, error.amount_parsed))
+        if (not self.best_error or
+            error.amount_parsed >= self.best_error.amount_parsed):
+            self.best_error = error
