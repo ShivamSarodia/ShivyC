@@ -75,8 +75,7 @@ def compile_code(source):
     lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
     token_list = lexer.tokenize(source)
 
-    parser = Parser()
-    ast_root = parser.parse(token_list)
+    ast_root = Parser(token_list).parse()
 
     code_store = CodeStore()
     symbol_state = SymbolState()

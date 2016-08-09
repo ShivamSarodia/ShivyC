@@ -10,9 +10,6 @@ import token_kinds
 from tokens import Token
 
 class GeneralTests(unittest.TestCase):
-    def setUp(self):
-        self.parser = Parser()
-
     def test_main_function(self):
         """ int main() { return 15; } """
         tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
@@ -21,7 +18,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack)]
 
-        ast_root = self.parser.parse(tokens)
+        ast_root = Parser(tokens).parse()
         self.assertEqual(ast_root,
                          ast.MainNode(
                              [ast.ReturnNode(
@@ -40,7 +37,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack)]
 
-        ast_root = self.parser.parse(tokens)
+        ast_root = Parser(tokens).parse()
         self.assertEqual(ast_root,
                          ast.MainNode(
                              [ast.ReturnNode(
@@ -58,7 +55,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
                   Token(token_kinds.close_brack), Token(token_kinds.int_kw)]
         with self.assertRaisesRegex(CompilerError, "unexpected token at 'int'"):
-            ast_root = self.parser.parse(tokens)
+            ast_root = Parser(tokens).parse()
 
     def test_missing_end_of_main_function_after_number(self):
         """ int main() { return 15 """
@@ -68,7 +65,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.number, "15")]
         with self.assertRaisesRegex(CompilerError,
                                     "expected semicolon after '15'"):
-            ast_root = self.parser.parse(tokens)
+            ast_root = Parser(tokens).parse()
 
     def test_missing_semicolon_after_number(self):
         """ int main() { return 15 } """
@@ -79,7 +76,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.close_brack)]
         with self.assertRaisesRegex(CompilerError,
                                     "expected semicolon after '15'"):
-            ast_root = self.parser.parse(tokens)
+            ast_root = Parser(tokens).parse()
             
     def test_missing_final_brace_main(self):
         """ int main() { return 15; """
@@ -90,7 +87,7 @@ class GeneralTests(unittest.TestCase):
         with self.assertRaisesRegex(
                 CompilerError,
                 "expected closing brace after ';'"):
-            ast_root = self.parser.parse(tokens)
+            ast_root = Parser(tokens).parse()
 
     def test_declaration_in_main(self):
         """ int main() { int var; }"""
@@ -100,7 +97,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
 
-        ast_root = self.parser.parse(tokens)
+        ast_root = Parser(tokens).parse()
         self.assertEqual(ast_root,
                          ast.MainNode(
                              [ast.DeclarationNode(
@@ -116,7 +113,7 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.number, "10"),
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
 
-        ast_root = self.parser.parse(tokens)
+        ast_root = Parser(tokens).parse()
         self.assertEqual(ast_root,
                          ast.MainNode(
                              [ast.ExprStatementNode(
@@ -129,16 +126,13 @@ class GeneralTests(unittest.TestCase):
                              ]))
 
 class ExpressionTests(unittest.TestCase):
-    def setUp(self):
-        self.parser = Parser()
-
     def test_sum_associative(self):
         """ 15 + 10 + 5 """
         tokens = [Token(token_kinds.number, "1"), Token(token_kinds.plus),
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
                   Token(token_kinds.number, "3")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -156,7 +150,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "2"), Token(token_kinds.plus),
                   Token(token_kinds.number, "3")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -174,7 +168,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "5"), Token(token_kinds.star),
                   Token(token_kinds.number, "0")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -199,7 +193,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.identifier, "b"), Token(token_kinds.equals),
                   Token(token_kinds.number, "10")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.IdentifierNode(
@@ -218,7 +212,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.identifier, "b"), Token(token_kinds.plus),
                   Token(token_kinds.number, "10")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.IdentifierNode(
@@ -242,7 +236,7 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.plus),
                   Token(token_kinds.number, "20")]
 
-        ast_root = self.parser.expect_expression(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_expression(0)[0]
         self.assertEqual(ast_root,
                          ast.BinaryOperatorNode(
                              ast.BinaryOperatorNode(
@@ -263,14 +257,11 @@ class ExpressionTests(unittest.TestCase):
                          ))
                                      
 class DeclarationTests(unittest.TestCase):
-    def setUp(self):
-        self.parser = Parser()
-        
     def test_basic_declaration(self):
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
-        ast_root = self.parser.expect_declaration(tokens, 0)[0]
+        ast_root = Parser(tokens).expect_declaration(0)[0]
         self.assertEqual(ast_root,
                          ast.DeclarationNode(
                              Token(token_kinds.identifier, "var")))
