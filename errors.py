@@ -35,6 +35,10 @@ def token_error(descrip, token):
 class ParserError(CompilerError):
     """Used to report parser errors. These are caught and pretty-printed
     for the user in the main module.
+
+    amount_parsed (int) - The number of tokens successfully parsed before this
+    error was encountered. Used by the Parser to determine which error occurred
+    after the most successful parse.
     """
     # AT generates a message like "expected semicolon at '}'", GOT generates a
     # message like "expected semicolon, got '}'", and AFTER generates a message
@@ -55,6 +59,8 @@ class ParserError(CompilerError):
         index (int) - the index of the offending token
         message_type (int) - either self.AT, self.GOT, or self.AFTER. 
         """
+        self.amount_parsed = index
+        
         if len(tokens) == 0:
             super().__init__("{} at beginning of source".format(message))
 
