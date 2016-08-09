@@ -5,7 +5,7 @@ generators are no fun.
 from collections import namedtuple
 
 import ast
-from errors import CompilerError
+from errors import ParserError
 import errors
 from tokens import Token
 import token_kinds
@@ -263,16 +263,11 @@ class Parser:
             return len(kinds_expected)
         else: return 0
 
-    # AT generates a message like "expected semicolon at '}'", GOT generates a
-    # message like "expected semicolon, got '}'", and AFTER generates a message
-    # like "expected semicolon after '15'" (if possible).
-    #
-    # As a very general guide, use AT when a token should be removed, use AFTER
-    # when a token should be to be inserted (esp. because of what came before),
-    # and GOT when a token should be changed.
+    # TODO: Remove these after migration to ParserError
     AT = 1
     GOT = 2
     AFTER = 3 
+
     def add_error(self, message, index, tokens, message_type):
         """Generates a CompilerError and adds it to the list of errors at the
         given index. For convenience, also returns (None, 0)
@@ -298,26 +293,4 @@ class Parser:
         message_type (enum) - either self.AT, self.GOT, or self.AFTER.
 
         """
-        if len(tokens) == 0:
-            return CompilerError("{} at beginning of source".format(message))
-
-        # If the index is too big, we're always using the AFTER form
-        if index >= len(tokens):
-            index = len(tokens)
-            message_type = self.AFTER
-        # If the index is too small, we should not use the AFTER form
-        elif index <= 0:
-            index = 0
-            if message_type == self.AFTER: message_type = self.GOT
-
-        if message_type == self.AT:
-            return errors.token_error("{} at '{{}}'".format(message),
-                                      tokens[index])
-        elif message_type == self.GOT:
-            return errors.token_error("{}, got '{{}}'".format(message),
-                                      tokens[index])
-        elif message_type == self.AFTER:
-            return errors.token_error("{} after '{{}}'".format(message),
-                                      tokens[index-1])
-        else:
-            raise ValueError("Unknown error message type")
+        return ParserError(message, index, tokens, message_type)
