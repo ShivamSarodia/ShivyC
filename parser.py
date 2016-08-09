@@ -46,7 +46,8 @@ class Parser:
 
         # Ensure there's no tokens left at after the main function
         if tokens[index:]:
-            raise self.make_error("unexpected token", index, tokens, self.AT)
+            raise self.make_error("unexpected token", index, tokens,
+                                  ParserError.AT)
         return node
 
     def expect_main(self, tokens, index):
@@ -60,7 +61,7 @@ class Parser:
             index += match_start
         else:
             err = "expected main function starting"
-            return self.add_error(err, index, tokens, self.AT)
+            return self.add_error(err, index, tokens, ParserError.AT)
 
         nodes = []
         while True:
@@ -77,7 +78,7 @@ class Parser:
             index += 1
         else:
             err = "expected closing brace"
-            return self.add_error(err, index, tokens, self.GOT)
+            return self.add_error(err, index, tokens, ParserError.GOT)
         return (ast.MainNode(nodes), index)
 
     def expect_statement(self, tokens, index):
@@ -97,14 +98,14 @@ class Parser:
             return (node, index + 1)
         else:
             err = "expected semicolon"
-            return self.add_error(err, index, tokens, self.AFTER)
+            return self.add_error(err, index, tokens, ParserError.AFTER)
         
     def expect_return(self, tokens, index):
         if self.match_token(tokens[index:], token_kinds.return_kw):
             index += 1
         else:
             err = "expected return keyword"
-            return self.add_error(err, index, tokens, self.GOT)
+            return self.add_error(err, index, tokens, ParserError.GOT)
 
         node, index = self.expect_expression(tokens, index)
         if not node: return (None, 0)
@@ -223,21 +224,21 @@ class Parser:
             return (stack[0].item, index + stack[0].length)
         else:
             return self.add_error("expected expression", index, tokens,
-                                  self.GOT)
+                                  ParserError.GOT)
         
     def expect_declaration(self, tokens, index):
         if self.match_token(tokens[index:], token_kinds.int_kw):
             index += 1
         else:
             err = "expected type name"
-            return self.add_error(err, index, tokens, self.GOT)
+            return self.add_error(err, index, tokens, ParserError.GOT)
 
         if self.match_token(tokens[index:], token_kinds.identifier):
             variable_name = tokens[index]
             index += 1
         else:
             err = "expected identifier"
-            return self.add_error(err, index, tokens, self.AFTER)
+            return self.add_error(err, index, tokens, ParserError.AFTER)
 
         return self.expect_semicolon(ast.DeclarationNode(variable_name), tokens,
                                      index)
@@ -263,11 +264,6 @@ class Parser:
             return len(kinds_expected)
         else: return 0
 
-    # TODO: Remove these after migration to ParserError
-    AT = 1
-    GOT = 2
-    AFTER = 3 
-
     def add_error(self, message, index, tokens, message_type):
         """Generates a CompilerError and adds it to the list of errors at the
         given index. For convenience, also returns (None, 0)
@@ -275,7 +271,8 @@ class Parser:
         message (str) - the base message to put in the error
         tokens (List[Token]) - a list of tokens
         index (int) - the index of the offending token
-        message_type (int) - either self.AT, self.GOT, or self.AFTER. 
+        message_type (int) - either ParserError.AT, ParserError.GOT, or
+        ParserError.AFTER. 
         returns - (None, 0)
 
         """
@@ -290,7 +287,8 @@ class Parser:
         message (str) - the base message to put in the error
         tokens (List[Token]) - a list of tokens
         index (int) - the index of the offending token
-        message_type (enum) - either self.AT, self.GOT, or self.AFTER.
+        message_type (enum) - either ParserError.AT, ParserError.GOT, or
+        ParserError.AFTER.
 
         """
         return ParserError(message, index, tokens, message_type)
