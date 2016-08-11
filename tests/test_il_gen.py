@@ -84,6 +84,23 @@ class ILGenTests(unittest.TestCase):
 
         self.assertEqual(il_code, expected_code)
 
+    def test_equal_return_value(self):
+        source = """
+                 int main() {
+                     int a; int b; int c;
+                     c = a = b;
+                     return c; 
+                 }"""
+        il_code = self.make_il_code(source)
+        
+        expected_code = ILCode()
+        expected_code.add_command(ILCode.SET, "b", None, "a")
+        expected_code.add_command(ILCode.SET, "a", None, "c")
+        expected_code.add_command(ILCode.RETURN, "c")
+        expected_code.add_command(ILCode.RETURN, 0)
+
+        self.assertEqual(il_code, expected_code)
+        
     def test_complex_expression(self):
         source = """
                  int main() {

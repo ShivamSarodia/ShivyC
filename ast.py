@@ -225,6 +225,7 @@ class BinaryOperatorNode(Node):
                 right = self.right_expr.make_code(il_code, symbol_table)
                 left = symbol_table.lookup(self.left_expr.identifier.content)
                 il_code.add_command(ILCode.SET, right, output=left)
+                return left
             else:
                 raise NotImplementedError("expected identifier on left side")
         else:
