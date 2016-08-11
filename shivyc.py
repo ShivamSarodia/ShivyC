@@ -9,12 +9,12 @@ For usage, run "./shivyc.py --help".
 import argparse
 import subprocess
 
-from code_gen import CodeStore
-from code_gen import SymbolState
+import token_kinds
 from errors import CompilerError
 from lexer import Lexer
 from parser import Parser
-import token_kinds
+from il_gen import ILCode
+from il_gen import SymbolTable
 
 def main():
     """Load the input files and dispatch to the compile function for the main
@@ -36,7 +36,16 @@ def main():
                             .format(arguments.file_name))
 
     # Compile the code
-    s_source = compile_code(code_lines)
+    lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
+    token_list = lexer.tokenize(code_lines)
+
+    ast_root = Parser(token_list).parse()
+
+    il_code = ILCode()
+    symbol_table = SymbolTable()
+    ast_root.make_code(il_code, symbol_table)
+    print(il_code)
+    raise NotImplementedError("IL->ASM phase still in construction")
 
     try:
         with open("out.s", "w") as s_file:
@@ -64,25 +73,6 @@ def get_arguments():
     parser.add_argument("file_name", metavar="filename")
     return parser.parse_args()
 
-def compile_code(source):
-    """Compile the provided source code lines into assembly.
-
-    source_lines (List(tuple)) - Annotated lines of source code. See
-    lexer.tokenize docstring for details.
-    return (str) - The asm output
-
-    """
-    lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
-    token_list = lexer.tokenize(source)
-
-    ast_root = Parser(token_list).parse()
-
-    code_store = CodeStore()
-    symbol_state = SymbolState()
-    ast_root.make_code(code_store, symbol_state)
-
-    return code_store.full_code()
-
 def assemble_and_link(binary_name, asm_name, obj_name):
     """Assmble and link the assembly file into an object file and
     binary. If the assembly/linking fails, raise an exception.
@@ -104,4 +94,4 @@ if __name__ == "__main__":
     try:
         main()
     except CompilerError as e:
-        print(e.__str__())
+        print(e)

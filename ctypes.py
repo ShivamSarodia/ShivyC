@@ -1,5 +1,5 @@
 """Stores all of the C types recognized by the compiler"""
 
-from code_gen import Type
+from il_gen import CType
 
-integer = Type(4)
+integer = CType(4)

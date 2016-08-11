@@ -1,32 +1,28 @@
 """Classes for the nodes that form our abstract syntax tree (AST). Each node
-corresponds to a rule in the C grammar.
+corresponds to a rule in the C grammar and has a make_code funtion that
+generates code in our three-address IL.
 
 """
 
-from code_gen import ValueInfo
-from code_gen import ASTData
-from errors import CompilerError
 import errors
-from tokens import Token
 import ctypes
 import token_kinds
+
+from errors import CompilerError
+from il_gen import ILCode
+from il_gen import ILValue
+from il_gen import LiteralILValue
+from il_gen import VariableILValue
+from tokens import Token
 
 class Node:
     """A general class for representing a single node in the AST. Inherit all
     AST nodes from this class. Every AST node also has a make_code function that
-    accepts a code_store (CodeStore) to which the generated code should be saved
-    and a symbol_state (SymbolState) that represents the compiler-internal state
-    of symbols (e.g. the symbol table). Nodes representing expressions also
-    return a ValueInfo object describing the generated value.
+    accepts a il_code (ILCode) to which the generated IL code should be saved.
 
     symbol (str) - Each node must set the value of this class attribute to the
     non-terminal symbol the corresponding rule produces. This helps enforce tree
     structure so bugs in the parser do not accidentally slip into output code.
-
-    ast_data (ASTData) - Each node must set ast_data appropriately. Generally,
-    leaf nodes can construct a new ASTData object and set any required values
-    as needed. Non-leaf nodes generally set ast_data as the sum of their
-    children ast_data objects.    
 
     """
     
@@ -47,15 +43,16 @@ class Node:
 
         """
         if node.symbol != symbol_name:
-            raise ValueError("malformed tree: expected symbol '" + symbol_name +
-                             "' but got '" + node.symbol + "'")
+            raise ValueError("malformed tree: expected symbol '" +
+                             str(symbol_name) + "' but got '" + str(node.symbol)
+                             + "'")
 
     def assert_symbols(self, node, symbol_names):
         """Useful for enforcing tree structure. Raises an exception if the node
         represents a rule that produces none of the symbols in symbol_names."""
         if node.symbol not in symbol_names:
             raise ValueError("malformed tree: unexpected symbol '"
-                             + node.symbol + "'")
+                             + str(node.symbol) + "'")
 
     def assert_kind(self, token, kind):
         """Useful for enforcing tree structure. Raises an exception if the token
@@ -63,14 +60,15 @@ class Node:
         """
         if token.kind != kind:
             raise ValueError("malformed tree: expected token_kind '"
-                             + kind + "' but got '" + token.kind + "'")
+                             + str(kind) + "' but got '" + str(token.kind)
+                             + "'")
 
 class MainNode(Node):
-    """ General rule for the main function. Will be removed once function
+    """General rule for the main function. Will be removed once function
     definition is supported.
     
-    statements (List[statement]) - a list of the statement in main function
-
+    block_items (List[statement, declaration]) - a list of the statements and
+    declarations in the main function
     """
     symbol = Node.MAIN_FUNCTION
     
@@ -80,42 +78,18 @@ class MainNode(Node):
         for item in block_items:
             self.assert_symbols(item, [self.STATEMENT, self.DECLARATION])
         self.block_items = block_items
-
-        self.ast_data = sum((item.ast_data for item in block_items), ASTData())
         
-    def make_code(self, code_store, symbol_state):
-        # We pre-allocate some space on the stack by moving the RSP, and restore
-        # the RSP before returning from the function. We align the stack shift
-        # to be a multiple of 16 so the stack frame is always aligned to a
-        # multiple of 16
-        symbol_state.stack_shift = self.ast_data.stack_space_required
-        if symbol_state.stack_shift % 16 != 0:
-            symbol_state.stack_shift += 16 - (symbol_state.stack_shift % 16)
+    def make_code(self, il_code, symbol_table):
+        for block_item in self.block_items:
+            block_item.make_code(il_code, symbol_table)
 
-        code_store.add_label("main")
-        code_store.add_command(("push", "rbp"))
-        code_store.add_command(("mov", "rbp", "rsp"))
-                    
-        # Reserve the required amount of space on the stack
-        if symbol_state.stack_shift:
-            code_store.add_command(("sub", "rsp",
-                                    str(symbol_state.stack_shift)))
-        
-        with symbol_state.new_symbol_table():
-            for block_item in self.block_items:
-                block_item.make_code(code_store, symbol_state)
-
-        # TODO: This is kind of hacky. Fix.
-        # Return 0 at the end of the main function if nothing has been
-        # returned yet.
-        ReturnNode(NumberNode(Token(token_kinds.number, "0"))).make_code(
-            code_store, symbol_state)
+        return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")))
+        return_node.make_code(il_code, symbol_table)
 
 class ReturnNode(Node):
     """ Return statement
 
     return_value (expression) - value to return
-
     """
     symbol = Node.STATEMENT
 
@@ -126,26 +100,13 @@ class ReturnNode(Node):
                 
         self.return_value = return_value
 
-        self.ast_data = return_value.ast_data
-
-    def make_code(self, code_store, symbol_state):
-        value_info = self.return_value.make_code(code_store, symbol_state)
-        if (value_info.has_types(ctypes.integer, ValueInfo.LITERAL) or
-            value_info.has_types(ctypes.integer, ValueInfo.STACK)):
-            code_store.add_command(("mov", "eax", str(value_info)))
-        elif value_info.has_types(ctypes.integer, ValueInfo.REGISTER):
-            if not (str(value_info) == "eax" or str(value_info) == "rax"):
-                code_store.add_command(("mov", "eax", str(value_info)))
-                symbol_state.return_reg(str(value_info))
+    def make_code(self, il_code, symbol_table):
+        il_value = self.return_value.make_code(il_code, symbol_table)
+        if il_value.ctype != ctypes.integer:
+            # TODO: raise a type error
+            raise NotImplementedError("type error")
         else:
-            raise NotImplementedError
-
-        # Move RSP back to where it was before the function executed
-        if symbol_state.stack_shift:
-            code_store.add_command(("add", "rsp",
-                                    str(symbol_state.stack_shift)))
-        code_store.add_command(("pop", "rbp"))
-        code_store.add_command(("ret",))
+            il_code.add_command(ILCode.RETURN, il_value)
 
 class NumberNode(Node):
     """Expression that is just a single number. 
@@ -162,13 +123,11 @@ class NumberNode(Node):
         
         self.number = number
 
-        self.ast_data = ASTData()
-
-    def make_code(self, code_store, symbol_state):
-        return ValueInfo(ctypes.integer, ValueInfo.LITERAL, self.number.content)
+    def make_code(self, il_code, symbol_table):
+        return LiteralILValue(ctypes.integer, str(self.number))
 
 class IdentifierNode(Node):
-    """ Expression that is a single identifier.
+    """Expression that is a single identifier.
     
     identifier (Token(Identifier)) - identifier this expression represents
     """
@@ -181,10 +140,8 @@ class IdentifierNode(Node):
 
         self.identifier = identifier
 
-        self.ast_data = ASTData()
-
-    def make_code(self, code_store, symbol_state):
-        return symbol_state.get_symbol_or_error(self.identifier)
+    def make_code(self, il_code, symbol_table):
+        return symbol_table.lookup(self.identifier.content)
 
 class ExprStatementNode(Node):
     """ Contains an expression, because an expression can be a statement. """
@@ -198,12 +155,10 @@ class ExprStatementNode(Node):
         
         self.expr = expr
 
-        self.ast_data = expr.ast_data
-
-    def make_code(self, code_store, symbol_state):
-        value = self.expr.make_code(code_store, symbol_state)
-        if value.storage_type == ValueInfo.REGISTER:
-            symbol_state.return_reg(str(value))
+    def make_code(self, il_code, symbol_table):
+        # TODO: consider sending some kind of message to the IL -> ASM stage
+        # that the returned ILValue is not going to be used.
+        self.expr.make_code(il_code, symbol_table)
 
 class ParenExprNode(Node):
     """ Contains an expression in parentheses """
@@ -217,10 +172,8 @@ class ParenExprNode(Node):
         
         self.expr = expr
 
-        self.ast_data = expr.ast_data
-
-    def make_code(self, code_store, symbol_state):
-        return self.expr.make_code(code_store, symbol_state)
+    def make_code(self, il_code, symbol_table):
+        return self.expr.make_code(il_code, symbol_table)
         
 class BinaryOperatorNode(Node):
     """ Expression that is a sum/difference/xor/etc of two expressions. 
@@ -241,126 +194,39 @@ class BinaryOperatorNode(Node):
         self.left_expr = left_expr
         self.operator = operator
         self.right_expr = right_expr
-
-        self.ast_data = left_expr.ast_data + right_expr.ast_data
-
-    def add(self, left_value, right_value, code_store, symbol_state):
-        """Generate code for addition of values
-
-        left_value (ValueInfo) - the ValueInfo returned by make_code on the
-        left argument
-        right_value (ValueInfo) - the ValueInfo returned by make_code on the
-        right argument
-        """
-        if (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
-            and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-            return ValueInfo(ctypes.integer,
-                             ValueInfo.LITERAL,
-                             str(int(str(left_value)) + int(str(right_value))))
-        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-              and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-            reg = symbol_state.checkout_reg()
-            code_store.add_command(("mov", reg, str(left_value)))
-            left_value = ValueInfo(ctypes.integer, ValueInfo.REGISTER, reg)
-            return self.add(left_value, right_value, code_store, symbol_state)
-        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
-              and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-            code_store.add_command(("add", str(left_value), str(right_value)))
-            return left_value
-        elif (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
-              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
-            # Flip the arguments
-            return self.add(right_value, left_value, code_store, symbol_state)
-        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
-            reg = symbol_state.checkout_reg()
-            code_store.add_command(("mov", reg, str(left_value)))
-            left_value = ValueInfo(ctypes.integer, ValueInfo.REGISTER, reg)
-            return self.add(left_value, right_value, code_store, symbol_state)
-        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
-              and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
-            code_store.add_command(("add", str(left_value), str(right_value)))
-            return left_value
-        elif (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
-              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
-            # Flip the arguments
-            return self.add(right_value, left_value, code_store, symbol_state)
-        elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
-            # Flip the arguments
-            return self.add(right_value, left_value, code_store, symbol_state)
-        elif (left_value.has_types(ctypes.integer, ValueInfo.REGISTER)
-              and right_value.has_types(ctypes.integer, ValueInfo.REGISTER)):
-            code_store.add_command(("add", str(left_value), str(right_value)))
-            symbol_state.return_reg(str(right_value))
-            return left_value
-        else:
-            raise NotImplementedError
-
-    def multiply(self, left_value, right_value, code_store):
-        """Generate code for multiplication of values
-
-        left_value (ValueInfo) - the ValueInfo returned by make_code on the
-        left argument
-        right_value (ValueInfo) - the ValueInfo returned by make_code on the
-        right argument
-        """
-        if (left_value.has_types(ctypes.integer, ValueInfo.LITERAL)
-            and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-            return ValueInfo(ctypes.integer,
-                             ValueInfo.LITERAL,
-                             str(int(left_value.storage_info) *
-                                 int(right_value.storage_info)))
-        else:
-            return NotImplementedError
-
-    def equals(self, left_expr, right_value, code_store, symbol_state):
-        """Generate code for setting left_expr equal to right_value
-
-        left_expr (Node(expression)) - Node representing the left side of equals
-        sign
-        right_value (ValueInfo) - ValueInfo returned by make_code on the right
-        argument
-        """
-        if isinstance(left_expr, IdentifierNode):
-            left_value = symbol_state.get_symbol_or_error(left_expr.identifier)
-
-            if (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-                and right_value.has_types(ctypes.integer, ValueInfo.LITERAL)):
-                code_store.add_command(("mov", str(left_value),
-                                        str(right_value)))
-                return right_value
-            elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-                  and right_value.has_types(ctypes.integer, ValueInfo.STACK)):
-                reg = symbol_state.checkout_reg()
-                code_store.add_command(("mov", reg, str(right_value)))
-                code_store.add_command(("mov", str(left_value), reg))
-                symbol_state.return_reg(reg)
-                return left_value
-            elif (left_value.has_types(ctypes.integer, ValueInfo.STACK)
-                  and right_value.has_types(ctypes.integer,
-                                            ValueInfo.REGISTER)):
-                code_store.add_command(("mov", str(left_value),
-                                        str(right_value)))
-                return right_value
-            else:
-                raise NotImplementedError
-        else:
-            raise NotImplementedError
             
-    def make_code(self, code_store, symbol_state):
+    def make_code(self, il_code, symbol_table):
         if self.operator == Token(token_kinds.plus):
-            left_value = self.left_expr.make_code(code_store, symbol_state)
-            right_value = self.right_expr.make_code(code_store, symbol_state)
-            return self.add(left_value, right_value, code_store, symbol_state)
+            # TODO: Consider chosing intelligently which side to make code for
+            # first.
+            left = self.left_expr.make_code(il_code, symbol_table)
+            right = self.right_expr.make_code(il_code, symbol_table)
+
+            if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
+                raise NotImplementedError("type error")
+            output = ILValue(ctypes.integer)
+            il_code.add_command(ILCode.ADD, left, right, output)
+            return output
         elif self.operator == Token(token_kinds.star):
-            left_value = self.left_expr.make_code(code_store, symbol_state)
-            right_value = self.right_expr.make_code(code_store, symbol_state)
-            return self.multiply(left_value, right_value, code_store)
+            # TODO: Consider chosing intelligently which side to make code for
+            # first.
+            left = self.left_expr.make_code(il_code, symbol_table)
+            right = self.right_expr.make_code(il_code, symbol_table)
+
+            if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
+                raise NotImplementedError("type error")
+            output = ILValue(ctypes.integer)
+            il_code.add_command(ILCode.MULT, left, right, output)
+            return output
+        elif self.operator == Token(token_kinds.star):
+            raise NotImplementedError("multiplication not supported")
         elif self.operator == Token(token_kinds.equals):
-            right_value = self.right_expr.make_code(code_store, symbol_state)
-            return self.equals(self.left_expr, right_value, code_store,
-                               symbol_state)
+            if isinstance(self.left_expr, IdentifierNode):
+                right = self.right_expr.make_code(il_code, symbol_table)
+                left = symbol_table.lookup(self.left_expr.identifier.content)
+                il_code.add_command(ILCode.SET, right, output=left)
+            else:
+                raise NotImplementedError("expected identifier on left side")
         else:
             raise errors.token_error("unsupported binary operator: '{}'",
                                      self.operator)
@@ -386,11 +252,5 @@ class DeclarationNode(Node):
         
         self.variable_name = variable_name
 
-        self.ast_data = ASTData(stack_space_required=4)
-            
-    def make_code(self, code_store, symbol_state):
-        status = symbol_state.add_symbol(self.variable_name.content,
-                                         ctypes.integer)
-        if not status:
-            raise errors.token_error("redeclaration of '{}'",
-                                     self.variable_name)
+    def make_code(self, il_code, symbol_table):
+        symbol_table.add(self.variable_name.content, ctypes.integer)
