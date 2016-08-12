@@ -156,8 +156,6 @@ class ExprStatementNode(Node):
         self.expr = expr
 
     def make_code(self, il_code, symbol_table):
-        # TODO: consider sending some kind of message to the IL -> ASM stage
-        # that the returned ILValue is not going to be used.
         self.expr.make_code(il_code, symbol_table)
 
 class ParenExprNode(Node):
