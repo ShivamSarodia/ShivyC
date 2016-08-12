@@ -1,6 +1,8 @@
 """Utilities for the AST -> IL phase of the compiler. 
 """
 
+from collections import namedtuple
+
 class CType:
     """Represents a C type, like int or double or a struct.
     
@@ -8,7 +10,10 @@ class CType:
     """
     def __init__(self, size):
         self.size = size
-    
+
+# Stores a single line of command in the ILCode
+ILCommand = namedtuple("ILCommand", ["command", "arg1", "arg2", "output"])
+
 class ILCode:
     """Stores the IL code generated from the AST.
     
@@ -38,8 +43,16 @@ class ILCode:
         arg1, arg2, output (ILValue) - ILValue objects representing storage
         locations
         """
-        self.lines.append((command, arg1, arg2, output))
+        self.lines.append(ILCommand(command, arg1, arg2, output))
 
+    def __iter__(self):
+        """When iterating through ILCode, returns the lines of code in order.
+        The returned lines will have command, arg1, arg2, and output as
+        attributes, some of which may be NONE if not applicable for that
+        command.
+        """
+        return self.lines
+        
     def __str__(self):
         def command_name(command):
             """Return the name of a command as a string:
@@ -53,8 +66,8 @@ class ILCode:
 
         strlines = []
         for line in self.lines:
-           strlines.append(str(line[3]) + " - " + command_name(line[0]) + " " +
-                           str(line[1]) + ", " + str(line[2]))
+           strlines.append(str(line.output) + " - " + command_name(line.command)
+                           + " " + str(line.arg1) + ", " + str(line.arg2))
         return '\n'.join(strlines)
 
     def __eq__(self, other):
@@ -82,11 +95,10 @@ class ILCode:
         # Check if number of lines match
         if len(other.lines) != len(self.lines): return False
         for line1, line2 in zip(self.lines, other.lines):
-            # Check if commands match
-            if line1[0] != line2[0]: return False
-            # Check if arguments match
-            for i in range(1,4):
-                if not is_equivalent(line1[i], line2[i]): return False
+            if line1.command != line2.command: return False
+            if not is_equivalent(line1.arg1, line2.arg1): return False
+            if not is_equivalent(line1.arg2, line2.arg2): return False
+            if not is_equivalent(line1.output, line2.output): return False
         return True
 
 class ILValue:
