@@ -1,4 +1,4 @@
-"""Defines functions for the lexing phase of the compiler
+"""Objects for the lexing phase of the compiler.
 
 The lexing phase takes a raw text string as input from the preprocessor and
 generates a flat list of tokens present in that text string. Because there's
@@ -8,39 +8,42 @@ contents.
 """
 import re
 
-from errors import CompilerError
-from tokens import TokenKind
-from tokens import Token
 import token_kinds
+from errors import CompilerError
+from tokens import Token
+
 
 class Lexer:
-    """The environment for running tokenize() and associated functions.
+    """Environment for running tokenize() and associated functions.
+
     Effectively, creates a closure for tokenize().
 
-    symbol_kinds (List[TokenKind]) - A list of all the concrete token kinds that
-    are not keywords. These should split into a new token even when they are not
-    surrounded by whitespace, like the plus in `a+b`. Sorted from longest to
-    shortest.
+    symbol_kinds (List[TokenKind]) - A list of all the concrete token kinds
+    that are not keywords. These should split into a new token even when they
+    are not surrounded by whitespace, like the plus in `a+b`. Stored in the
+    object sorted from longest to shortest.
 
-    keyword_kinds (List[TokenKind]) - A list of all the concrete tokens that are
-    not splitting. These are just the keywords, afaik. Sorted from longest to
-    shortest.
+    keyword_kinds (List[TokenKind]) - A list of all the concrete tokens that
+    are not splitting. These are just the keywords, afaik. Stored in the object
+    sorted from longest to shortest.
 
     """
+
     def __init__(self, symbol_kinds, keyword_kinds):
-        self.symbol_kinds = sorted(symbol_kinds,
-                                   key=lambda kind: -len(kind.text_repr))
-        self.keyword_kinds = sorted(keyword_kinds,
-                                    key=lambda kind: -len(kind.text_repr))
-        
+        """Sort the provided token kind lists and initialize lexer."""
+        self.symbol_kinds = sorted(
+            symbol_kinds, key=lambda kind: -len(kind.text_repr))
+        self.keyword_kinds = sorted(
+            keyword_kinds, key=lambda kind: -len(kind.text_repr))
+
     def tokenize(self, code_lines):
         """Convert the given lines of code into a list of tokens.
-        
-        The tokenizing algorithm proceeds through the content linearly in one
-        pass, producing the list of tokens as we go. Has direct external
-        reference to token_kinds.number.
 
-        content (List(tuple)) - The lines of code to tokenize, provided in the
+        The tokenizing algorithm proceeds through the content linearly in one
+        pass, producing the list of tokens as we go. This function has a direct
+        external reference to token_kinds.number.
+
+        content (List(tuple)) - Lines of code to tokenize, provided in the
         following form:
 
            [("int main()", "main.c", 1),
@@ -50,12 +53,11 @@ class Lexer:
 
         where the first element is the contents of the line, the second is the
         file name, and the third is the line number.
-        
-        returns (List[Token]) - A list of the tokens parsed from the input
-        string
+
+        returns (List[Token]) - List of the tokens parsed from the input
+        string.
 
         """
-
         all_tokens = []
         for line_with_info in code_lines:
             # This strange logic allows the tokenize_line function to be
@@ -66,7 +68,7 @@ class Lexer:
                 e.file_name = line_with_info[1]
                 e.line_num = line_with_info[2]
                 raise e
-                
+
             for token in tokens:
                 token.file_name = line_with_info[1]
                 token.line_num = line_with_info[2]
@@ -74,14 +76,15 @@ class Lexer:
         return all_tokens
 
     def tokenize_line(self, line):
-        """Convert the given line of code into a list of tokens that have no
-        file-context dependent attributes (like line number) set.
+        """Convert the given line of code into a list of tokens.
 
-        line (str) - a line of code
-        returns (Token) - a token without file-context dependent attributes
+        The tokens returned have no file-context dependent attributes (like
+        line number). These must be set by the caller.
+
+        line (str) - Line of code.
+        returns (List(Token)) - List of tokens.
 
         """
-        
         # line[chunk_start:chunk_end] is the section of the line currently
         # being considered for conversion into a token; this string will be
         # called the 'chunk'. Everything before the chunk has already been
@@ -104,7 +107,7 @@ class Lexer:
 
                 chunk_start = chunk_end + len(symbol_kind.text_repr)
                 chunk_end = chunk_start
-        
+
             elif line[chunk_end].isspace():
                 self.add_chunk(line[chunk_start:chunk_end], tokens)
                 chunk_start = chunk_end + 1
@@ -117,16 +120,15 @@ class Lexer:
         self.add_chunk(line[chunk_start:chunk_end], tokens)
 
         return tokens
-            
+
     def match_symbol_kind_at(self, content, start):
-        """Return the longest symbol token kind that matches the content string
-        starting at the indicated index, or None if no symbol token matches.
-        
-        content (str) - The input string to tokenize
-        start (int) - The index, inclusive, at which to start searching for a
-        token match
-        returns (TokenType, None) - The symbol token found, or None if no token
-        is found
+        """Return the longest matching symbol token kind.
+
+        content (str) - Input string in which to search for a match.
+        start (int) - Index, inclusive, at which to start searching for a
+        match.
+        returns (TokenType or None) - Symbol token found, or None if no token
+        is found.
 
         """
         for symbol_kind in self.symbol_kinds:
@@ -135,13 +137,14 @@ class Lexer:
         return None
 
     def add_chunk(self, chunk, tokens):
-        """Convert the provided chunk into a token and add to the provided
-        tokens variable. If chunk is non-empty but cannot be made into a token,
-        raise a compiler error. We don't need to check for symbol kind tokens
+        """Convert the provided chunk into a token if possible and add it to tokens.
+
+        If chunk is non-empty but cannot be made into a token, this function
+        raises a compiler error. We don't need to check for symbol kind tokens
         here because they are converted before they are shifted into the chunk.
 
-        chunk (str) - The chunk to convert into a token
-        tokens (List[Token]) - A list of the tokens thusfar parsed
+        chunk (str) - Chunk to convert into a token.
+        tokens (List[Token]) - List of the tokens thusfar parsed.
 
         """
         if chunk:
@@ -152,14 +155,12 @@ class Lexer:
 
             number_string = self.match_number_string(chunk)
             if number_string:
-                tokens.append(Token(token_kinds.number,
-                                     number_string))
+                tokens.append(Token(token_kinds.number, number_string))
                 return
 
             identifier_name = self.match_identifier_name(chunk)
             if identifier_name:
-                tokens.append(Token(token_kinds.identifier,
-                                    identifier_name))
+                tokens.append(Token(token_kinds.identifier, identifier_name))
                 return
 
             raise CompilerError("unrecognized token at '{}'".format(chunk))
@@ -168,11 +169,10 @@ class Lexer:
     # non-empty.
 
     def match_keyword_kind(self, token_repr):
-        """Return the longest keyword token kind with representation exactly
-        equal to the given token_repr, or None if not found.
+        """Find the longest keyword token kind with representation token_repr.
 
-        token_repr (str) - The token representation to match
-        returns (TokenKind, or None) - The keyword token kind that matched
+        token_repr (str) - Token representation to match exactly.
+        returns (TokenKind, or None) - Keyword token kind that matched.
 
         """
         for keyword_kind in self.keyword_kinds:
@@ -181,25 +181,22 @@ class Lexer:
         return None
 
     def match_number_string(self, token_repr):
-        """Return a string that represents the given constant number, or None if
-        not possible
+        """Return a string that represents the given constant number.
 
-        token_repr (str) - The string to make into a token
-        returns (str, or None) - The string representation of the number
+        token_repr (str) - String to make into a token.
+        returns (str, or None) - String representation of the number.
 
         """
         return token_repr if token_repr.isdigit() else None
 
     def match_identifier_name(self, token_repr):
-        """Retunr a string that represents the name of an identifier, or None if
-        not possible
+        """Return a string that represents the name of an identifier.
 
-        token_repr (str) - The string to make into a token
-        returns (str, or None) - The string name of the identifier
+        token_repr (str) - String to make into a token.
+        returns (str, or None) - String name of the identifier.
 
         """
         if re.match(r"[_a-zA-Z][_a-zA-Z0-9]*$", token_repr):
             return token_repr
-        else: return None
-        
-        
+        else:
+            return None

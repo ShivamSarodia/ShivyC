@@ -1,59 +1,65 @@
-"""Defines a TokenKind class and Token class
+"""Classes for representing tokens.
 
-A TokenKind instance represents one of the various kinds of tokens recognized. A
-Token instance represents a token as produced by the lexer.
+A TokenKind instance represents one of the kinds of tokens recognized (see
+token_kinds.py). A Token instance represents a token as produced by the lexer.
 
 """
 
-class TokenKind:
-    """A general class for defining the various known kinds of tokens, such as:
-           +, -, ), return, int
-    We define a bunch of TokenKind objects in token_kinds.py, and treat these as
-    const objects.
 
-    kind_id (int) - A unique ID assigned to each token
-    text_repr (str) - The way this token looks in text. Used only by the lexer
-    to tokenize the input.
+class TokenKind:
+    """Class representing the various known kinds of tokens.
+
+    Ex: +, -, ), return, int
+
+    There are also token kind instances for each of 'identifier' and
+    'number'. See token_kinds.py for a list of token_kinds defined.
+
+    text_repr (str) - The token's representation in text, if it has a fixed
+    representation.
 
     """
-            
-    def __init__(self, text_repr = "", kinds = []):
-        """Initializes a new TokenKind and adds it to the list of kinds
-        passed in.
 
-        text_repr (str) - See class docstring
-        kinds (List[TokenKind]) - A list of kinds to which this TokenKind is
-        automatically added
+    def __init__(self, text_repr="", kinds=[]):
+        """Initialize a new TokenKind and add it to `kinds`.
+
+        kinds (List[TokenKind]) - List of kinds to which this TokenKind is
+        added. This is convenient when defining token kinds in token_kind.py.
 
         """
         self.text_repr = text_repr
         kinds.append(self)
 
     def __str__(self):
+        """Return the representation of this token kind."""
         return self.text_repr
-    
+
+
 class Token:
-    """A single unit element of the input. Produced by the tokenizing phase of
-    the lexer.
-    
-    kind (TokenKind) - The kind of this token
-    content (str) - Stores additional content for some tokens:
-        1) For number tokens, stores the number itself
-        2) For identifiers, stores the identifier name
-    file_name (str) - The name of the file from which this token came. Used for
-    error reporting.
-    line_num (int) - The line number from which this token came. Used for error
-    reporting.
+    """Single unit element of the input as produced by the tokenizer.
+
+    kind (TokenKind) - Kind of this token.
+
+    content (str) - Additional content about some tokens. For number tokens,
+    this stores the number itself. For identifiers, this stores the identifier
+    name.
+    file_name (str) - Name of the file from which this token came. This is used
+    for error reporting.
+    line_num (int) - The line number from which this token came. This is used
+    for error reporting.
 
     """
-    def __init__(self, kind, content = ""):
+
+    def __init__(self, kind, content=""):
+        """Initialize this token."""
         self.kind = kind
         self.content = content if content else str(self.kind)
         self.file_name = None
         self.line_num = None
-        
+
     def __eq__(self, other):
+        """Require equality of both token kind and content."""
         return self.kind == other.kind and self.content == other.content
 
     def __str__(self):
+        """Return the token content."""
         return self.content

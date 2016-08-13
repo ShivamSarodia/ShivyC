@@ -1,28 +1,35 @@
-"""Utilities for the AST -> IL phase of the compiler. 
-"""
+"""Objects used for the AST -> IL phase of the compiler."""
 
 from collections import namedtuple
 
+
 class CType:
-    """Represents a C type, like int or double or a struct.
-    
-    size (int) - the result of sizeof of this type
+    """Represents a C type, like `int` or `double` or a struct.
+
+    size (int) - The result of sizeof on this type.
+
     """
+
     def __init__(self, size):
+        """Initialize type."""
         self.size = size
 
 # Stores a single line of command in the ILCode
 ILCommand = namedtuple("ILCommand", ["command", "arg1", "arg2", "output"])
 
+
 class ILCode:
     """Stores the IL code generated from the AST.
-    
-    lines (List) - the lines of code recorded
+
+    lines (List) - The lines of code recorded.
     """
+
     def __init__(self):
+        """Initialize IL code."""
         self.lines = []
 
-    # Supported commands:
+    # Supported commands, as used in the command argument of add_command.
+    #
     # Accepts one output argument and one input argument. Sets the output
     # argument to the input argument.
     SET = 1
@@ -36,54 +43,83 @@ class ILCode:
     # argument to the product of the input arguments.
     MULT = 4
 
-    def add_command(self, command, arg1 = None, arg2 = None, output = None):
-        """Add a new command to the IL code
+    def add_command(self, command, arg1=None, arg2=None, output=None):
+        """Add a new command to the IL code.
 
-        command (int) - One of the options above
-        arg1, arg2, output (ILValue) - ILValue objects representing storage
-        locations
+        command (int) - One of the supported commands, as described above.
+        arg1, arg2, output (ILValue) - ILValue objects representing the command
+        arguments.
+
         """
         self.lines.append(ILCommand(command, arg1, arg2, output))
 
     def __iter__(self):
-        """When iterating through ILCode, returns the lines of code in order.
+        """Return the lines of code in order when iterating through ILCode.
+
         The returned lines will have command, arg1, arg2, and output as
         attributes, some of which may be NONE if not applicable for that
         command.
+
         """
         return self.lines
-        
-    def __str__(self):
+
+    def __str__(self):  # noqa: D202
+        """Return a pretty-printed version of the IL code.
+
+        Useful for debugging, but not to be used for testing. See
+        __eq__ below instead.
+
+        """
+
         def command_name(command):
-            """Return the name of a command as a string:
-            command_name(self.RETURN) -> "RETURN"
+            """Return the name of a command as a string.
+
+            Example:
+                command_name(self.RETURN) -> "RETURN"
 
             This is a /terrible/ hack, but works for debugging purposes.
             """
             for name in ILCode.__dict__:
-                if ILCode.__dict__[name] == command: return name.ljust(7)
+                if ILCode.__dict__[name] == command:
+                    return name.ljust(7)
             return None
 
         strlines = []
         for line in self.lines:
-           strlines.append(str(line.output) + " - " + command_name(line.command)
-                           + " " + str(line.arg1) + ", " + str(line.arg2))
+            strlines.append(
+                str(line.output) + " - " + command_name(line.command) + " " +
+                str(line.arg1) + ", " + str(line.arg2))
         return '\n'.join(strlines)
 
     def __eq__(self, other):
-        """Note that `other` need not use real ILValue objects as the command
-        arguments. For testing, it can be easier to use integers or strings."""
-        
+        """Check for equality between this IL code object and another.
+
+        Equality is only checked by verifying the IL values are correct
+        relative to each other. That is,
+
+        0492 - SET 5823
+        5823 - ADD 0492, 1043
+
+        and
+
+        5943 - SET 1342
+        1342 - ADD 5943, 8742
+
+        evaluate equal. It the provided ILCode objects need not use real
+        ILValue objects as the command arguments. For testing, it can be easier
+        to use integers or strings.
+
+        """
         # keys are ILValue ids from self, and values are ILValue ids from other
         value_map = dict()
 
         def is_equivalent(value1, value2):
-            """Check if ILValue value1 in self is equivalent to ILValue
-            value2 in other based on the context so far
-            """
-            if value1 is None and value2 is None: return True
-            elif value1 is None or value2 is None: return False
-            
+            """Check if the given IL values are equivalent based on context."""
+            if value1 is None and value2 is None:
+                return True
+            elif value1 is None or value2 is None:
+                return False
+
             if value1 in value_map:
                 return value2 is value_map[value1]
             elif value2 in value_map.values():
@@ -91,58 +127,83 @@ class ILCode:
             else:
                 value_map[value1] = value2
                 return True
-        
+
         # Check if number of lines match
-        if len(other.lines) != len(self.lines): return False
+        if len(other.lines) != len(self.lines):
+            return False
         for line1, line2 in zip(self.lines, other.lines):
-            if line1.command != line2.command: return False
-            if not is_equivalent(line1.arg1, line2.arg1): return False
-            if not is_equivalent(line1.arg2, line2.arg2): return False
-            if not is_equivalent(line1.output, line2.output): return False
+            if line1.command != line2.command:
+                return False
+            if not is_equivalent(line1.arg1, line2.arg1):
+                return False
+            if not is_equivalent(line1.arg2, line2.arg2):
+                return False
+            if not is_equivalent(line1.output, line2.output):
+                return False
         return True
 
+
 class ILValue:
-    """Stores a value that appears as an element in generated IL code.
+    """Value that appears as an element in generated IL code.
 
     ctype (Type) - the C type of this value
+
     """
+
     def __init__(self, ctype):
+        """Initialize IL value."""
         self.ctype = ctype
+
     def __str__(self):
-        """Pretty-print the last 4 digits of the ID for display.
-        """
+        """Pretty-print the last 4 digits of the ID for display."""
         return str(id(self) % 10000)
 
+
 class LiteralILValue(ILValue):
-    """Stores an ILValue that represents a literal value.
-    
+    """ILValue that represents a literal value.
+
     value (str) - the value in an representation that is convenient for asm
+
     """
+
     def __init__(self, ctype, value):
+        """Initialize literal IL value."""
         super().__init__(ctype)
         self.value = value
 
+
 class VariableILValue(ILValue):
-    """Stores an ILValue that represents a variable.
+    """ILValue that represents a variable.
 
     offset (int) - the memory offset of this variable
+
     """
+
     def __init__(self, ctype, offset):
+        """Initialize variable IL value."""
         super().__init__(ctype)
         self.offset = offset
 
+
 class SymbolTable:
-    """The symbol table for the AST -> IL phase. Stores variable name and types.
-    Mostly used for type checking.
+    """Symbol table for the IL -> AST phase.
+
+    This object stores variable name and types, and is mostly used for type
+    checking.
+
     """
+
     def __init__(self):
+        """Initialize symbol table."""
         self.table = dict()
 
     def lookup(self, name):
-        """Look up the identifier with the given name and return its
-        corresponding variable.
+        """Look up the identifier with the given name.
 
-        name (str) - the identifier name to search for
+        This function returns the ILValue object for the identifier.
+
+        name (str) - The identifier name to search for.
+
         """
         if name in self.table:
             return self.table[name]
@@ -153,8 +214,9 @@ class SymbolTable:
     def add(self, name, ctype):
         """Add an identifier with the given name and type to the symbol table.
 
-        name (str) - the identifier name to add
-        ctype (CType) - the C type of the identifier we're adding
+        name (str) - The identifier name to add.
+        ctype (CType) - The C type of the identifier we're adding.
+
         """
         if name not in self.table:
             # TODO: use real offsets
