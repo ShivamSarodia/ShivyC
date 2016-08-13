@@ -9,7 +9,8 @@ import token_kinds
 from tokens import Token
 from tokens import TokenKind
 
-class lexer_pure_unit_tests(unittest.TestCase):
+class LexerArtificialTests(unittest.TestCase):
+    """Tests the lexer on artificial token kinds."""
     def setUp(self):
         self.keyword_kinds = []
         self.symbol_kinds = []
@@ -75,9 +76,8 @@ class lexer_pure_unit_tests(unittest.TestCase):
                   Token(self.apple), Token(self.app)]
         self.assertEqual(self.lexer.tokenize_line(content), tokens)
 
-class lexer_integration_tests(unittest.TestCase):
+class LexerConcreteTests(unittest.TestCase):
     """Tests the lexer on the actual token_kinds, as defined in token_kinds.py
-
     """
     def setUp(self):
         self.lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
