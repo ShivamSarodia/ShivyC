@@ -101,6 +101,15 @@ class ValueMap:
         for spot in new_spots:
             self._add_value_spot_pair(il_value, spot)
 
+    def forget(self, il_value):
+        """Remove all traces of the IL value from the value map.
+
+        Should be called after the last use of an IL value to free up any
+        regsters it may have been holding.
+
+        """
+        self.set_spots(il_value, set())
+
     def _add_value_spot_pair(self, il_value, spot):
         """Add a value-spot pair without considering value/spot types.
 
@@ -146,7 +155,10 @@ class ASMGen:
 
     il_code (ILCode) - IL code to convert to ASM.
     asm_code (ASMCode) - ASMCode object to populate with ASM.
+
     value_map (ValueMap) - Internal object storing the current value map.
+    value_refs (dict(ILValue->List(int))) - Internal object storing the
+    references by line number of each IL value.
 
     """
 
@@ -156,12 +168,14 @@ class ASMGen:
         self.asm_code = asm_code
         self.value_map = ValueMap()
 
+        self.value_refs = self.value_references()
+
     def value_references(self):
         """Get IL value references by line number.
 
         This functon returns a dictionary mapping every IL value present in the
-        provided IL code to a list of line numbers (relative to the IL code)
-        where that IL value is referenced. That is, if:
+        provided IL code to an increasing list of line numbers (relative to the
+        IL code) where that IL value is referenced. That is, if:
 
         n in self.value_references(self)[il_value]
 
@@ -169,7 +183,29 @@ class ASMGen:
         self.il_code[n].output is il_value.
 
         """
-        raise NotImplementedError
+        refs = dict()
+
+        def add_to_refs(il_value, line_num):
+            if il_value not in refs:
+                refs[il_value] = [line_num]
+            else:
+                refs[il_value].append(line_num)
+
+        for line_num, line in enumerate(self.il_code):
+            add_to_refs(line.output, line_num)
+            add_to_refs(line.arg1, line_num)
+            add_to_refs(line.arg2, line_num)
+
+        return refs
+
+    def is_last_use(self, il_value, line_num):
+        """Check if il_value is used after line_num.
+
+        When we support multiple blocks, this function will become more
+        complex.
+
+        """
+        return max(self.value_refs[il_value]) <= line_num
 
     def make_asm(self):
         """Generate ASM code.
@@ -177,10 +213,19 @@ class ASMGen:
         Uses the ASMCode and ILCode objects passed to the constructor.
 
         """
-        for line in self.il_code:
+        for line_num, line in enumerate(self.il_code):
+            # If we're producing a temporary output and this is would be the
+            # only use, then skip this line.
+            if (line.output and line.output.value_type == ILValue.TEMP and
+                    self.is_last_use(line.output)):
+                continue
+
             if line.command == ILCode.SET:
                 arg_spots = self.value_map.spots(line.arg1)
                 self.value_map.set_spots(line.output, arg_spots)
+
+                if self.is_last_use(line.arg1, line_num):
+                    self.value_map.forget(line.arg1)
             elif line.command == ILCode.RETURN:
                 self.move_to_spot(line.arg1, spots.RAX)
                 self.asm_code.add_command("ret")
