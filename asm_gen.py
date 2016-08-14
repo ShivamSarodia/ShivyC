@@ -198,7 +198,7 @@ class ASMGen:
 
         return refs
 
-    def is_last_use(self, il_value, line_num):
+    def is_forgettable(self, il_value, line_num):
         """Check if il_value is used after line_num.
 
         When we support multiple blocks, this function will become more
@@ -217,26 +217,79 @@ class ASMGen:
             # If we're producing a temporary output and this is would be the
             # only use, then skip this line.
             if (line.output and line.output.value_type == ILValue.TEMP and
-                    self.is_last_use(line.output)):
+                    self.is_forgettable(line.output, line_num)):
                 continue
 
             if line.command == ILCode.SET:
                 arg_spots = self.value_map.spots(line.arg1)
                 self.value_map.set_spots(line.output, arg_spots)
 
-                if self.is_last_use(line.arg1, line_num):
+                if self.is_forgettable(line.arg1, line_num):
                     self.value_map.forget(line.arg1)
             elif line.command == ILCode.RETURN:
-                self.move_to_spot(line.arg1, spots.RAX)
+                self.move_to_spot(
+                    self.value_map.spots(line.arg1), spots.RAX,
+                    line.arg1.ctype.size)
                 self.asm_code.add_command("ret")
             elif line.command == ILCode.ADD:
-                raise NotImplementedError
+                arg1_spots = set(self.value_map.spots(line.arg1))
+                arg2_spots = set(self.value_map.spots(line.arg2))
+
+                # Forget the arguments if possible, so we can reuse those
+                # registers.
+                if self.is_forgettable(line.arg1, line_num):
+                    self.value_map.forget(line.arg1)
+                if self.is_forgettable(line.arg2, line_num):
+                    self.value_map.forget(line.arg2)
+
+                # If they're both literal ints, add them at compile time.
+                if (line.arg1.ctype == ctypes.integer and
+                        line.arg2.ctype == ctypes.integer and
+                        self.get_literal_spot(arg1_spots) and
+                        self.get_literal_spot(arg2_spots)):
+                    arg1_literal = self.get_literal_spot(arg1_spots)
+                    arg2_literal = self.get_literal_spot(arg2_spots)
+                    result_detail = str(
+                        int(arg1_literal.detail) + int(arg2_literal.detail))
+                    self.value_map.set_spots(
+                        line.output, {Spot(Spot.LITERAL, result_detail)})
+                else:
+                    raise NotImplementedError
             elif line.command == ILCode.MULT:
                 raise NotImplementedError
             else:
                 raise NotImplementedError
 
-    def move_to_spot(self, il_value, to_spot):
+    def get_literal_spot(self, spots):
+        """Find a literal spot from the given spots, if possible.
+
+        If any of spots is a literal spot, return it. If not, return None.
+
+        """
+        for spot in spots:
+            if spot.spot_type == Spot.LITERAL:
+                return spot
+
+    def best_spot(self, spots):
+        """Pick the best spot from the given list of spots.
+
+        Best is a register spot, next best is a literal spot, worst-case is a
+        stack spot. Returns the best spot it finds, or None if spots is empty.
+
+        """
+        best_spot = None
+        for spot in spots:
+            # TODO: Pick the best register, not just the first one
+            # encountered.
+            if spot.spot_type == Spot.REGISTER:
+                return spot
+            elif spot.spot_type == Spot.LITERAL:
+                best_spot = spot
+            elif spot.spot_type == Spot.STACK and not best_spot:
+                best_spot = spot
+        return best_spot
+
+    def move_to_spot(self, from_spots, to_spot, size):
         """Make asm code to move the given IL value to the given spot.
 
         This function is currently very dangerous--it overwrites the value of
@@ -251,32 +304,10 @@ class ASMGen:
                 "Only register spots currently supported")
 
         # Check if the value is already in the desired spot
-        if any(spot == to_spot for spot in self.value_map.spots(il_value)):
+        if any(spot == to_spot for spot in from_spots):
             return
 
-        def best_spot(spots):
-            """Pick the best spot from the given list of spots.
+        from_spot = self.best_spot(from_spots)
 
-            Best is to pick a register, next best is literal, worst-case is
-            stack. TODO: Consider making this an instance method.
-
-            """
-            best_spot = None
-            for spot in spots:
-                # TODO: Pick the best register, not just the first one
-                # encountered.
-                if spot.spot_type == Spot.REGISTER:
-                    return spot
-                elif spot.spot_type == Spot.LITERAL:
-                    best_spot = spot
-                elif spot.spot_type == Spot.STACK and not best_spot:
-                    best_spot = spot
-            return best_spot
-
-        from_spot = best_spot(self.value_map.spots(il_value))
-
-        if il_value.ctype != ctypes.integer:
-            raise NotImplementedError("Only integer types supported")
-
-        self.asm_code.add_command("mov", to_spot.asm_str(il_value.ctype.size),
-                                  from_spot.asm_str(il_value.ctype.size))
+        self.asm_code.add_command("mov", to_spot.asm_str(size),
+                                  from_spot.asm_str(size))
