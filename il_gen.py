@@ -200,6 +200,8 @@ class LiteralILValue(ILValue):
     # locations as one unit.
     def __eq__(self, other):
         """Test equality by comparing type and value."""
+        if not isinstance(other, LiteralILValue):
+            return False
         return self.ctype == other.ctype and self.value == other.value
 
     def __hash__(self):
