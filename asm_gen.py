@@ -212,7 +212,7 @@ class ASMGen:
 
         return refs
 
-    def is_forgettable(self, il_value, line_num):
+    def is_unused_after(self, il_value, line_num):
         """Check if il_value is used after line_num.
 
         When we support multiple blocks, this function will become more
@@ -233,14 +233,14 @@ class ASMGen:
             # liveliness anaysis, we can also forget variables if we're sure
             # their values will not be used.
             if (line.output and line.output.value_type == ILValue.TEMP and
-                    self.is_forgettable(line.output, line_num)):
+                    self.is_unused_after(line.output, line_num)):
                 continue
 
             if line.command == ILCode.SET:
                 arg_spots = self.value_map.spots(line.arg1)
                 self.value_map.set_spots(line.output, arg_spots)
 
-                if self.is_forgettable(line.arg1, line_num):
+                if self.is_unused_after(line.arg1, line_num):
                     self.value_map.forget(line.arg1)
             elif line.command == ILCode.RETURN:
                 self.move_to_spot(
@@ -255,9 +255,9 @@ class ASMGen:
 
                 # Forget the arguments if possible, so we can reuse those
                 # registers.
-                if self.is_forgettable(line.arg1, line_num):
+                if self.is_unused_after(line.arg1, line_num):
                     self.value_map.forget(line.arg1)
-                if self.is_forgettable(line.arg2, line_num):
+                if self.is_unused_after(line.arg2, line_num):
                     self.value_map.forget(line.arg2)
 
                 # If they're both literal ints, add them at compile time.
