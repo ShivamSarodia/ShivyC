@@ -6,7 +6,7 @@ no fun.
 """
 from collections import namedtuple
 
-import ast
+import tree
 import token_kinds
 from errors import ParserError
 from tokens import Token
@@ -109,7 +109,7 @@ class Parser:
             err = "expected closing brace"
             raise ParserError(err, index, self.tokens, ParserError.GOT)
 
-        return (ast.MainNode(nodes), index)
+        return (tree.MainNode(nodes), index)
 
     def parse_statement(self, index):
         """Parse a statement.
@@ -139,7 +139,7 @@ class Parser:
 
         node, index = self.parse_expression(index)
         index = self.expect_semicolon(index)
-        return (ast.ReturnNode(node), index)
+        return (tree.ReturnNode(node), index)
 
     def parse_expr_statement(self, index):
         """Parse a statement that is an expression.
@@ -149,7 +149,7 @@ class Parser:
         """
         node, index = self.parse_expression(index)
         index = self.expect_semicolon(index)
-        return (ast.ExprStatementNode(node), index)
+        return (tree.ExprStatementNode(node), index)
 
     def parse_expression(self, index):
         """Parse an expression.
@@ -183,33 +183,33 @@ class Parser:
             # node
             if (stack and isinstance(stack[-1].item, Token) and
                     stack[-1].item.kind == token_kinds.number):
-                stack[-1] = StackItem(ast.NumberNode(stack[-1].item), 1)
+                stack[-1] = StackItem(tree.NumberNode(stack[-1].item), 1)
 
             # If the top of the stack is an identifier, reduce it to
             # an identifier node
             elif (stack and isinstance(stack[-1].item, Token) and
                   stack[-1].item.kind == token_kinds.identifier):
-                stack[-1] = StackItem(ast.IdentifierNode(stack[-1].item), 1)
+                stack[-1] = StackItem(tree.IdentifierNode(stack[-1].item), 1)
 
             # If the top of the stack matches ( expr ), reduce it to a
             # ParenExpr node
             elif (len(stack) >= 3 and isinstance(stack[-1].item, Token) and
                   stack[-1].item.kind == token_kinds.close_paren and
-                  isinstance(stack[-2].item, ast.Node) and
+                  isinstance(stack[-2].item, tree.Node) and
                   isinstance(stack[-3].item, Token) and
                   stack[-3].item.kind == token_kinds.open_paren):
                 expr = stack[-2]
 
                 del stack[-3:]
                 stack.append(
-                    StackItem(ast.ParenExprNode(expr.item), expr.length + 2))
+                    StackItem(tree.ParenExprNode(expr.item), expr.length + 2))
 
             # If the top of the stack matches a binary operator, reduce it to
             # an expression node.
-            elif (len(stack) >= 3 and isinstance(stack[-1].item, ast.Node) and
+            elif (len(stack) >= 3 and isinstance(stack[-1].item, tree.Node) and
                   isinstance(stack[-2].item, Token) and
                   stack[-2].item.kind in binary_operators.keys() and
-                  isinstance(stack[-3].item, ast.Node)
+                  isinstance(stack[-3].item, tree.Node)
 
                   # Make sure next token is not higher precedence
                   and not (i < len(self.tokens) and
@@ -230,8 +230,8 @@ class Parser:
                 del stack[-3:]
                 stack.append(
                     StackItem(
-                        ast.BinaryOperatorNode(left_expr.item, operator.item,
-                                               right_expr.item), left_expr.
+                        tree.BinaryOperatorNode(left_expr.item, operator.item,
+                                                right_expr.item), left_expr.
                         length + operator.length + right_expr.length))
             else:
                 # If we're at the end of the token list, or we've reached a
@@ -250,7 +250,7 @@ class Parser:
                 stack.append(StackItem(self.tokens[i], 1))
                 i += 1
 
-        if stack and isinstance(stack[0].item, ast.Node):
+        if stack and isinstance(stack[0].item, tree.Node):
             return (stack[0].item, index + stack[0].length)
         else:
             err = "expected expression"
@@ -281,7 +281,7 @@ class Parser:
 
         index = self.expect_semicolon(index)
 
-        return (ast.DeclarationNode(variable_name), index)
+        return (tree.DeclarationNode(variable_name), index)
 
     def expect_semicolon(self, index):
         """Expect a semicolon at self.tokens[index].

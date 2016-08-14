@@ -2,7 +2,7 @@
 
 import unittest
 
-import ast
+import tree
 import token_kinds
 from errors import CompilerError
 from parser import Parser
@@ -22,8 +22,9 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
 
         ast_root = Parser(tokens).parse()
-        self.assertEqual(ast_root, ast.MainNode(
-            [ast.ReturnNode(ast.NumberNode(Token(token_kinds.number, "15")))]))
+        self.assertEqual(ast_root, tree.MainNode([
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15")))
+        ]))
 
     def test_multiple_returns_in_main_function(self):  # noqa: D400, D403
         """int main() { return 15; return 10; }"""
@@ -37,9 +38,10 @@ class GeneralTests(unittest.TestCase):
         ]
 
         ast_root = Parser(tokens).parse()
-        self.assertEqual(ast_root, ast.MainNode(
-            [ast.ReturnNode(ast.NumberNode(Token(token_kinds.number, "15"))),
-             ast.ReturnNode(ast.NumberNode(Token(token_kinds.number, "10")))]))
+        self.assertEqual(ast_root, tree.MainNode([
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15"))),
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "10")))
+        ]))
 
     def test_extra_tokens_at_end_after_main_function(self):  # noqa: D400, D403
         """int main() { return 15; } int"""
@@ -99,8 +101,8 @@ class GeneralTests(unittest.TestCase):
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
 
         ast_root = Parser(tokens).parse()
-        self.assertEqual(ast_root, ast.MainNode(
-            [ast.DeclarationNode(Token(token_kinds.identifier, "var"))]))
+        self.assertEqual(ast_root, tree.MainNode(
+            [tree.DeclarationNode(Token(token_kinds.identifier, "var"))]))
 
     def test_equals_in_main(self):  # noqa: D400, D403
         """int main() { a = 10; }"""
@@ -114,11 +116,11 @@ class GeneralTests(unittest.TestCase):
         ]
 
         ast_root = Parser(tokens).parse()
-        self.assertEqual(ast_root, ast.MainNode([ast.ExprStatementNode(
-            ast.BinaryOperatorNode(
-                ast.IdentifierNode(Token(token_kinds.identifier, "a")),
+        self.assertEqual(ast_root, tree.MainNode([tree.ExprStatementNode(
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
                 Token(token_kinds.equals),
-                ast.NumberNode(Token(token_kinds.number, "10"))
+                tree.NumberNode(Token(token_kinds.number, "10"))
             ))]))  # yapf: disable
 
 
@@ -136,13 +138,13 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "3")]
 
         ast_root = Parser(tokens).parse_expression(0)[0]
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.BinaryOperatorNode(
-                ast.NumberNode(Token(token_kinds.number, "1")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "1")),
                 Token(token_kinds.plus),
-                ast.NumberNode(Token(token_kinds.number, "2")), ),
+                tree.NumberNode(Token(token_kinds.number, "2")), ),
             Token(token_kinds.plus),
-            ast.NumberNode(Token(token_kinds.number, "3"))))  # yapf: disable
+            tree.NumberNode(Token(token_kinds.number, "3"))))  # yapf: disable
 
     def test_product_associative(self):  # noqa: D400, D403
         """1 * 2 * 3"""
@@ -151,13 +153,13 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "3")]
 
         ast_root = Parser(tokens).parse_expression(0)[0]
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.BinaryOperatorNode(
-                ast.NumberNode(Token(token_kinds.number, "1")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "1")),
                 Token(token_kinds.plus),
-                ast.NumberNode(Token(token_kinds.number, "2")), ),
+                tree.NumberNode(Token(token_kinds.number, "2")), ),
             Token(token_kinds.plus),
-            ast.NumberNode(Token(token_kinds.number, "3"))))  # yapf: disable
+            tree.NumberNode(Token(token_kinds.number, "3"))))  # yapf: disable
 
     def test_product_sum_order_of_operations(self):  # noqa: D400, D403
         """15 * 10 + 5 * 0"""
@@ -168,16 +170,16 @@ class ExpressionTests(unittest.TestCase):
 
         ast_root = Parser(tokens).parse_expression(0)[0]
         # yapf: disable
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.BinaryOperatorNode(
-                ast.NumberNode(Token(token_kinds.number, "15")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "15")),
                 Token(token_kinds.star),
-                ast.NumberNode(Token(token_kinds.number, "10"))),
+                tree.NumberNode(Token(token_kinds.number, "10"))),
             Token(token_kinds.plus),
-            ast.BinaryOperatorNode(
-                ast.NumberNode(Token(token_kinds.number, "5")),
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "5")),
                 Token(token_kinds.star),
-                ast.NumberNode(Token(token_kinds.number, "0")))))
+                tree.NumberNode(Token(token_kinds.number, "0")))))
         # yapf: enable
 
     def test_equals_right_associative(self):  # noqa: D400, D403
@@ -189,13 +191,13 @@ class ExpressionTests(unittest.TestCase):
 
         ast_root = Parser(tokens).parse_expression(0)[0]
         # yapf: disable
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.IdentifierNode(Token(token_kinds.identifier, "a")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.IdentifierNode(Token(token_kinds.identifier, "a")),
             Token(token_kinds.equals),
-            ast.BinaryOperatorNode(
-                ast.IdentifierNode(Token(token_kinds.identifier, "b")),
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "b")),
                 Token(token_kinds.equals),
-                ast.NumberNode(Token(token_kinds.number, "10")))))
+                tree.NumberNode(Token(token_kinds.number, "10")))))
         # yapf: enable
 
     def test_equals_precedence_with_plus(self):  # noqa: D400, D403
@@ -207,13 +209,13 @@ class ExpressionTests(unittest.TestCase):
 
         ast_root = Parser(tokens).parse_expression(0)[0]
         # yapf: disable
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.IdentifierNode(Token(token_kinds.identifier, "a")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.IdentifierNode(Token(token_kinds.identifier, "a")),
             Token(token_kinds.equals),
-            ast.BinaryOperatorNode(
-                ast.IdentifierNode(Token(token_kinds.identifier, "b")),
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "b")),
                 Token(token_kinds.plus),
-                ast.NumberNode(Token(token_kinds.number, "10")))))
+                tree.NumberNode(Token(token_kinds.number, "10")))))
         # yapf: enable
 
     def test_parens(self):  # noqa: D400, D403
@@ -226,17 +228,17 @@ class ExpressionTests(unittest.TestCase):
                   Token(token_kinds.number, "20")]
 
         ast_root = Parser(tokens).parse_expression(0)[0]
-        self.assertEqual(ast_root, ast.BinaryOperatorNode(
-            ast.BinaryOperatorNode(
-                ast.NumberNode(Token(token_kinds.number, "5")),
+        self.assertEqual(ast_root, tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "5")),
                 Token(token_kinds.plus),
-                ast.ParenExprNode(
-                    ast.BinaryOperatorNode(
-                        ast.NumberNode(Token(token_kinds.number, "10")), Token(
-                            token_kinds.plus),
-                        ast.NumberNode(Token(token_kinds.number, "15"))))),
+                tree.ParenExprNode(
+                    tree.BinaryOperatorNode(
+                        tree.NumberNode(Token(token_kinds.number, "10")),
+                        Token(token_kinds.plus),
+                        tree.NumberNode(Token(token_kinds.number, "15"))))),
             Token(token_kinds.plus),
-            ast.NumberNode(Token(token_kinds.number, "20"))))  # yapf: disable
+            tree.NumberNode(Token(token_kinds.number, "20"))))  # yapf: disable
 
 
 class DeclarationTests(unittest.TestCase):
@@ -255,7 +257,7 @@ class DeclarationTests(unittest.TestCase):
         # yapf: enable
         self.assertEqual(
             ast_root,
-            ast.DeclarationNode(Token(token_kinds.identifier, "var")))
+            tree.DeclarationNode(Token(token_kinds.identifier, "var")))
         # yapf: disable
 
 
