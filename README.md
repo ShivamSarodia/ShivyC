@@ -1,7 +1,7 @@
 # ShivyC
 
 [![Build Status](https://travis-ci.org/ShivamSarodia/ShivyC.svg?branch=master)](https://travis-ci.org/ShivamSarodia/ShivyC)
-[![Coverage Status](https://coveralls.io/repos/github/ShivamSarodia/ShivyC/badge.svg)](https://coveralls.io/github/ShivamSarodia/ShivyC)
+[![Coverage Status](https://codeclimate.com/github/ShivamSarodia/ShivyC/badges/coverage.svg)](https://codeclimate.com/github/ShivamSarodia/ShivyC/coverage)
 
 ShivyC is a small C11 compiler written in Python 3, targeting Linux x86-64 machines. Seeks to eventually support the entire C11 standard and produce reasonably efficient code, although it's currently far from meeting these long-term goals.
 
