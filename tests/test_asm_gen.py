@@ -270,3 +270,31 @@ class ASTGenTests(unittest.TestCase):
                         "     add eax, DWORD [rbp-4]", "     ret"]
 
         self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
+
+    def test_useless_addition(self):
+        """Test a useless addition statement.
+
+        We expect that code will not be generated for the useless
+        addition statement.
+
+        """
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_variable_2 = VariableILValue(ctypes.integer, 8)
+        il_variable_3 = VariableILValue(ctypes.integer, 12)
+        il_temp_1 = TempILValue(ctypes.integer)
+        il_temp_2 = TempILValue(ctypes.integer)
+        il_code = ILCode()
+        il_code.add_command(ILCode.ADD, il_variable_1, il_variable_2,
+                            il_temp_1)
+        il_code.add_command(ILCode.ADD, il_variable_1, il_variable_3,
+                            il_temp_2)
+        il_code.add_command(ILCode.RETURN, il_temp_2)
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected_asm = ["global main", "", "main:",
+                        "     mov eax, DWORD [rbp-4]",
+                        "     add eax, DWORD [rbp-12]", "     ret"]
+
+        self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
