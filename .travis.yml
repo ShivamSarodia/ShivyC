@@ -2,7 +2,7 @@ language: python
 python:
  - "3.5"
 install:
- - pip install coveralls
+ - pip install codeclimate-test-reporter
 addons:
   apt:
     packages:
@@ -10,4 +10,4 @@ addons:
     - binutils
     - gcc
 script: coverage run -m unittest discover
-after_success: coveralls
+after_success: codeclimate-test-reporter
