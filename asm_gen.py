@@ -1,5 +1,7 @@
 """Objects for the IL->ASM stage of the compiler."""
 
+from collections import namedtuple
+
 import ctypes
 import spots
 from il_gen import ILCode
@@ -221,6 +223,26 @@ class ASMGen:
         """
         return max(self.value_refs[il_value]) <= line_num
 
+    def get_arg_spots(self, arg1, arg2):
+        """Get information on which spots store the arguments.
+
+        The object returned has an arg1 attribute and an arg2 attribute; each
+        is either None if the argument was originally None or a set of
+        spots. The sets are copies, so the value map can be modified without
+        changing the values of the returned sets.
+
+        """
+        ArgSpots = namedtuple("ArgSpots", ["arg1", "arg2"])
+        return ArgSpots(
+            set(self.value_map.spots(arg1))
+            if arg1 else None, set(self.value_map.spots(arg2))
+            if arg2 else None)
+
+    def forget_if_unused(self, arg, line_num):
+        """Forget the given argument if it is unused after line_num."""
+        if arg and self.is_unused_after(arg, line_num):
+            self.value_map.forget(arg)
+
     def make_asm(self):
         """Generate ASM code.
 
@@ -236,37 +258,24 @@ class ASMGen:
                     self.is_unused_after(line.output, line_num)):
                 continue
 
-            if line.command == ILCode.SET:
-                arg_spots = self.value_map.spots(line.arg1)
-                self.value_map.set_spots(line.output, arg_spots)
+            arg_spots = self.get_arg_spots(line.arg1, line.arg2)
+            self.forget_if_unused(line.arg1, line_num)
+            self.forget_if_unused(line.arg2, line_num)
 
-                if self.is_unused_after(line.arg1, line_num):
-                    self.value_map.forget(line.arg1)
+            if line.command == ILCode.SET:
+                self.value_map.set_spots(line.output, arg_spots.arg1)
             elif line.command == ILCode.RETURN:
-                self.move_to_spot(
-                    self.value_map.spots(line.arg1), spots.RAX,
-                    line.arg1.ctype.size)
+                self.move_to_spot(arg_spots.arg1, spots.RAX,
+                                  line.arg1.ctype.size)
                 self.asm_code.add_command("ret")
             elif line.command == ILCode.ADD:
-                # TODO: Clean up this function.
-
-                arg1_spots = set(self.value_map.spots(line.arg1))
-                arg2_spots = set(self.value_map.spots(line.arg2))
-
-                # Forget the arguments if possible, so we can reuse those
-                # registers.
-                if self.is_unused_after(line.arg1, line_num):
-                    self.value_map.forget(line.arg1)
-                if self.is_unused_after(line.arg2, line_num):
-                    self.value_map.forget(line.arg2)
-
                 # If they're both literal ints, add them at compile time.
                 if (line.arg1.ctype == ctypes.integer and
                         line.arg2.ctype == ctypes.integer and
-                        self.get_literal_spot(arg1_spots) and
-                        self.get_literal_spot(arg2_spots)):
-                    arg1_literal = self.get_literal_spot(arg1_spots)
-                    arg2_literal = self.get_literal_spot(arg2_spots)
+                        self.get_literal_spot(arg_spots.arg1) and
+                        self.get_literal_spot(arg_spots.arg2)):
+                    arg1_literal = self.get_literal_spot(arg_spots.arg1)
+                    arg2_literal = self.get_literal_spot(arg_spots.arg2)
                     result_detail = str(
                         int(arg1_literal.detail) + int(arg2_literal.detail))
                     self.value_map.set_spots(
@@ -274,25 +283,25 @@ class ASMGen:
                     continue
 
                 # Check if arg1 was stored in a register that is now free
-                arg1_regs = [spot for spot in arg1_spots
+                arg1_regs = [spot for spot in arg_spots.arg1
                              if spot.spot_type == Spot.REGISTER and
                              not self.value_map.values(spot)]
                 if arg1_regs:
                     self.asm_code.add_command(
                         "add", arg1_regs[0].asm_str(line.arg1.ctype.size),
-                        self.best_spot(arg2_spots).asm_str(
+                        self.best_spot(arg_spots.arg2).asm_str(
                             line.arg2.ctype.size))
                     self.value_map.set_spots(line.output, {arg1_regs[0]})
                     continue
 
                 # Check if arg2 was stored in a register that is now free
-                arg2_regs = [spot for spot in arg2_spots
+                arg2_regs = [spot for spot in arg_spots.arg2
                              if spot.spot_type == Spot.REGISTER and
                              not self.value_map.values(spot)]
                 if arg2_regs:
                     self.asm_code.add_command(
                         "add", arg2_regs[0].asm_str(line.arg2.ctype.size),
-                        self.best_spot(arg1_spots).asm_str(
+                        self.best_spot(arg_spots.arg1).asm_str(
                             line.arg1.ctype.size))
                     self.value_map.set_spots(line.output, {arg2_regs[0]})
                     continue
@@ -301,8 +310,8 @@ class ASMGen:
                 reg = self.value_map.get_free_register()
                 if reg:
                     # TODO: issues/13
-                    arg1_best = self.best_spot(arg1_spots)
-                    arg2_best = self.best_spot(arg2_spots)
+                    arg1_best = self.best_spot(arg_spots.arg1)
+                    arg2_best = self.best_spot(arg_spots.arg2)
                     self.asm_code.add_command(
                         "mov", reg.asm_str(line.arg1.ctype.size),
                         arg1_best.asm_str(line.arg1.ctype.size))
