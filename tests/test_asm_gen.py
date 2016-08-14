@@ -166,7 +166,7 @@ class ASTGenTests(unittest.TestCase):
         self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
 
     def test_add_literal_to_itself(self):
-        """Test add literal to itself."""
+        """Test adding literal to itself."""
         il_literal_1 = LiteralILValue(ctypes.integer, "15")
         il_literal_2 = LiteralILValue(ctypes.integer, "15")
         il_temp_1 = TempILValue(ctypes.integer)
@@ -179,5 +179,94 @@ class ASTGenTests(unittest.TestCase):
 
         expected_asm = ["global main", "", "main:", "     mov eax, 30",
                         "     ret"]
+
+        self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
+
+    def test_add_stack_values(self):
+        """Test adding two stack values."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_variable_2 = VariableILValue(ctypes.integer, 8)
+        il_temp_1 = TempILValue(ctypes.integer)
+        il_code = ILCode()
+        il_code.add_command(ILCode.ADD, il_variable_1, il_variable_2,
+                            il_temp_1)
+        il_code.add_command(ILCode.RETURN, il_temp_1)
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected_asm = ["global main", "", "main:",
+                        "     mov eax, DWORD [rbp-4]",
+                        "     add eax, DWORD [rbp-8]", "     ret"]
+
+        self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
+
+    def test_add_stack_values_to_variable(self):
+        """Test adding two stack values."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_variable_2 = VariableILValue(ctypes.integer, 8)
+        il_variable_3 = VariableILValue(ctypes.integer, 12)
+        il_code = ILCode()
+        il_code.add_command(ILCode.ADD, il_variable_1, il_variable_2,
+                            il_variable_3)
+        il_code.add_command(ILCode.RETURN, il_variable_3)
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected_asm = ["global main", "", "main:",
+                        "     mov eax, DWORD [rbp-4]",
+                        "     add eax, DWORD [rbp-8]", "     ret"]
+
+        self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
+
+    def test_add_equals_value(self):
+        """Test: b = (c = a) + b."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_variable_2 = VariableILValue(ctypes.integer, 8)
+        il_variable_3 = VariableILValue(ctypes.integer, 12)
+        il_temp_1 = TempILValue(ctypes.integer)
+        il_code = ILCode()
+        il_code.add_command(ILCode.SET, il_variable_1, None, il_variable_3)
+        il_code.add_command(ILCode.ADD, il_variable_3, il_variable_2,
+                            il_temp_1)
+        il_code.add_command(ILCode.SET, il_temp_1, None, il_variable_2)
+        il_code.add_command(ILCode.RETURN, il_variable_2)
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected_asm = ["global main", "", "main:",
+                        "     mov eax, DWORD [rbp-4]",
+                        "     add eax, DWORD [rbp-8]", "     ret"]
+
+        self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))
+
+    def test_complex_expression(self):
+        """Test complex expression: c = a + b + (3 + c) + a."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_variable_2 = VariableILValue(ctypes.integer, 8)
+        il_variable_3 = VariableILValue(ctypes.integer, 12)
+        il_literal_1 = LiteralILValue(ctypes.integer, "3")
+        il_temp_1 = TempILValue(ctypes.integer)
+        il_temp_2 = TempILValue(ctypes.integer)
+        il_temp_3 = TempILValue(ctypes.integer)
+        il_code = ILCode()
+        il_code.add_command(ILCode.ADD, il_variable_1, il_variable_2,
+                            il_temp_1)
+        il_code.add_command(ILCode.ADD, il_literal_1, il_variable_3, il_temp_2)
+        il_code.add_command(ILCode.ADD, il_temp_1, il_temp_2, il_temp_3)
+        il_code.add_command(ILCode.ADD, il_temp_3, il_variable_1,
+                            il_variable_3)
+        il_code.add_command(ILCode.RETURN, il_variable_3)
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected_asm = ["global main", "", "main:",
+                        "     mov eax, DWORD [rbp-4]",
+                        "     add eax, DWORD [rbp-8]", "     mov esi, 3",
+                        "     add esi, DWORD [rbp-12]", "     add eax, esi",
+                        "     add eax, DWORD [rbp-4]", "     ret"]
 
         self.assertEqual(asm_code.full_code(), '\n'.join(expected_asm))

@@ -66,6 +66,9 @@ class ValueMap:
 
     """
 
+    # List of all registers recognized.
+    REGISTERS = [spots.RAX, spots.RSI, spots.RDX]
+
     def __init__(self):
         """Initialize value map."""
         self.value_to_spots = dict()
@@ -75,9 +78,7 @@ class ValueMap:
         """Return all spots from which we can currently get this IL value."""
         if il_value not in self.value_to_spots:
             if il_value.value_type == ILValue.TEMP:
-                # Direct access here is OK because we aren't associating with
-                # any spot.
-                self.value_to_spots[il_value] = set()
+                return set()
             elif il_value.value_type == ILValue.VARIABLE:
                 spot = Spot(Spot.STACK, -il_value.offset)
                 self._add_value_spot_pair(il_value, spot)
@@ -86,6 +87,13 @@ class ValueMap:
                 self._add_value_spot_pair(il_value, spot)
 
         return self.value_to_spots[il_value]
+
+    def values(self, spot):
+        """Return all IL values which are currently stored at this spot."""
+        if spot not in self.spot_to_values:
+            return set()
+        else:
+            return self.spot_to_values[spot]
 
     def set_spots(self, il_value, new_spots):
         """Update the IL value to be stored in the given spots.
@@ -109,6 +117,12 @@ class ValueMap:
 
         """
         self.set_spots(il_value, set())
+
+    def get_free_register(self):
+        """Return a free register, or None if all registers are occupied."""
+        for reg in self.REGISTERS:
+            if not self.values(reg):
+                return reg
 
     def _add_value_spot_pair(self, il_value, spot):
         """Add a value-spot pair without considering value/spot types.
@@ -232,6 +246,8 @@ class ASMGen:
                     line.arg1.ctype.size)
                 self.asm_code.add_command("ret")
             elif line.command == ILCode.ADD:
+                # TODO: Clean up this function.
+
                 arg1_spots = set(self.value_map.spots(line.arg1))
                 arg2_spots = set(self.value_map.spots(line.arg2))
 
@@ -253,8 +269,48 @@ class ASMGen:
                         int(arg1_literal.detail) + int(arg2_literal.detail))
                     self.value_map.set_spots(
                         line.output, {Spot(Spot.LITERAL, result_detail)})
+                    continue
+
+                # Check if arg1 was stored in a register that is now free
+                arg1_regs = [spot for spot in arg1_spots
+                             if spot.spot_type == Spot.REGISTER and
+                             not self.value_map.values(spot)]
+                if arg1_regs:
+                    self.asm_code.add_command(
+                        "add", arg1_regs[0].asm_str(line.arg1.ctype.size),
+                        self.best_spot(arg2_spots).asm_str(
+                            line.arg2.ctype.size))
+                    self.value_map.set_spots(line.output, {arg1_regs[0]})
+                    continue
+
+                # Check if arg2 was stored in a register that is now free
+                arg2_regs = [spot for spot in arg2_spots
+                             if spot.spot_type == Spot.REGISTER and
+                             not self.value_map.values(spot)]
+                if arg2_regs:
+                    self.asm_code.add_command(
+                        "add", arg2_regs[0].asm_str(line.arg2.ctype.size),
+                        self.best_spot(arg1_spots).asm_str(
+                            line.arg1.ctype.size))
+                    self.value_map.set_spots(line.output, {arg2_regs[0]})
+                    continue
+
+                # Try finding a free register.
+                reg = self.value_map.get_free_register()
+                if reg:
+                    # TODO: issues/13
+                    arg1_best = self.best_spot(arg1_spots)
+                    arg2_best = self.best_spot(arg2_spots)
+                    self.asm_code.add_command(
+                        "mov", reg.asm_str(line.arg1.ctype.size),
+                        arg1_best.asm_str(line.arg1.ctype.size))
+                    self.asm_code.add_command(
+                        "add", reg.asm_str(line.arg1.ctype.size),
+                        arg2_best.asm_str(line.arg1.ctype.size))
+                    self.value_map.set_spots(line.output, {reg})
                 else:
-                    raise NotImplementedError
+                    raise NotImplementedError("No free registers")
+
             elif line.command == ILCode.MULT:
                 raise NotImplementedError
             else:

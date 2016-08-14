@@ -73,3 +73,5 @@ class Spot:
 
 
 RAX = Spot(Spot.REGISTER, "rax")
+RSI = Spot(Spot.REGISTER, "rsi")
+RDX = Spot(Spot.REGISTER, "rdx")
