@@ -1,5 +1,7 @@
 """The Spot object definition and and some predefined spots, like registers."""
 
+from collections.abc import MutableSet
+
 
 class Spot:
     """Spot in the machine where an IL value can be.
@@ -60,6 +62,29 @@ class Spot:
         else:
             raise NotImplementedError("Unsupported spot_type/size combo")
 
+    @staticmethod
+    def better(spot1, spot2):
+        """Check if self is preferred over the other spot.
+
+        Specifically, we prefer a register spot over a literal spot over a
+        stack spot.
+
+        """
+        if not spot2:
+            return spot1
+        if not spot1:
+            return spot2
+        elif spot1.spot_type == Spot.REGISTER:
+            return spot1
+        elif spot2.spot_type == Spot.REGISTER:
+            return spot2
+        elif spot1.spot_type == Spot.LITERAL:
+            return spot1
+        elif spot2.spot_type == Spot.LITERAL:
+            return spot2
+        else:  # both are stack
+            return spot1
+
     # It's very important spots to compare equal iff they have the same type
     # and detail, so the ASM generation step can keep track of their values as
     # one unit.
@@ -70,6 +95,59 @@ class Spot:
     def __hash__(self):
         """Hash based on type and detail."""
         return hash((self.spot_type, self.detail))
+
+
+class SpotSet(MutableSet):
+    """Unordered collection of Spot objects."""
+
+    def __init__(self, spots=None):
+        """Initialize SpotSet."""
+        if spots:
+            # Copy the provided set
+            self.spots = set(spots)
+        else:
+            self.spots = set()
+
+    def literal_spot(self):
+        """Return a literal spot in this spot set, if possible."""
+        for spot in self.spots:
+            if spot.spot_type == Spot.LITERAL:
+                return spot
+
+    def free_register_spot(self, value_map):
+        """Return a free register spot in this spot set, if possible."""
+        for spot in self.spots:
+            if spot.spot_type == Spot.REGISTER and not value_map.values(spot):
+                return spot
+
+    def best_spot(self):
+        """Pick the best spot in this spot set.
+
+        If this set contains a register spot, pick that one. Next best is a
+        literal spot, and worst-case is a stack spot. Returns the best spot it
+        finds, or None if the spot set is empty.
+
+        """
+        best_spot = None
+        for spot in self.spots:
+            best_spot = Spot.better(best_spot, spot)
+        return best_spot
+
+    # Implement the Set abstact methods
+    def __contains__(self, spot):  # noqa: D102, D105
+        return spot in self.spots
+
+    def __iter__(self):  # noqa: D102, D105
+        return iter(self.spots)
+
+    def __len__(self):  # noqa: D102, D105
+        return len(self.spots)
+
+    def add(self, spot):  # noqa: D102, D105
+        self.spots.add(spot)
+
+    def discard(self, spot):  # noqa: D102, D105
+        self.spots.discard(spot)
 
 
 RAX = Spot(Spot.REGISTER, "rax")

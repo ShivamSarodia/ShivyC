@@ -7,6 +7,7 @@ import spots
 from il_gen import ILCode
 from il_gen import ILValue
 from spots import Spot
+from spots import SpotSet
 
 
 class ASMCode:
@@ -61,10 +62,10 @@ class ASMCode:
 class ValueMap:
     """Tracks the correspondence between IL values and machine storage.
 
-    value_to_spots (Dict(ILValue -> Set(Spot))) - Map from a IL value to a list
-    of spots that IL value is stored at.
-    spot_to_values (Dict(Spot -> Set(ILValue))) - Map from a spot to a list of
-    IL values that are stored at that spot.
+    value_to_spots (Dict(ILValue -> SpotSet)) - Map from a IL value to a
+    set of spots that IL value is stored at.
+    spot_to_values (Dict(Spot -> Set(ILValue))) - Map from a spot to a set
+    of IL values that are stored at that spot.
 
     """
 
@@ -80,7 +81,7 @@ class ValueMap:
         """Return all spots from which we can currently get this IL value."""
         if il_value not in self.value_to_spots:
             if il_value.value_type == ILValue.TEMP:
-                return set()
+                return SpotSet()
             elif il_value.value_type == ILValue.VARIABLE:
                 spot = Spot(Spot.STACK, -il_value.offset)
                 self._add_value_spot_pair(il_value, spot)
@@ -101,11 +102,11 @@ class ValueMap:
         """Update the IL value to be stored in the given spots.
 
         That is, we remove IL value from all spots it was previously stored in,
-        and add it to all of the spots provided.
+        and add it to all of the spots provided in the new_spots iterable.
 
         """
-        old_spots = set(self.spots(il_value))
-        new_spots = set(new_spots)
+        old_spots = SpotSet(self.spots(il_value))
+        new_spots = SpotSet(new_spots)
         for spot in old_spots:
             self._remove_value_spot_pair(il_value, spot)
         for spot in new_spots:
@@ -118,7 +119,7 @@ class ValueMap:
         regsters it may have been holding.
 
         """
-        self.set_spots(il_value, set())
+        self.set_spots(il_value, SpotSet())
 
     def get_free_register(self):
         """Return a free register, or None if all registers are occupied."""
@@ -138,7 +139,7 @@ class ValueMap:
         if spot not in self.spot_to_values:
             self.spot_to_values[spot] = set()
         if il_value not in self.value_to_spots:
-            self.value_to_spots[il_value] = set()
+            self.value_to_spots[il_value] = SpotSet()
 
         self.value_to_spots[il_value].add(spot)
         self.spot_to_values[spot].add(il_value)
@@ -234,9 +235,8 @@ class ASMGen:
         """
         ArgSpots = namedtuple("ArgSpots", ["arg1", "arg2"])
         return ArgSpots(
-            set(self.value_map.spots(arg1))
-            if arg1 else None, set(self.value_map.spots(arg2))
-            if arg2 else None)
+            SpotSet(self.value_map.spots(arg1) if arg1 else None),
+            SpotSet(self.value_map.spots(arg2) if arg2 else None))
 
     def forget_if_unused(self, arg, line_num):
         """Forget the given argument if it is unused after line_num."""
@@ -268,93 +268,64 @@ class ASMGen:
                 self.move_to_spot(arg_spots.arg1, spots.RAX,
                                   line.arg1.ctype.size)
                 self.asm_code.add_command("ret")
-            elif line.command == ILCode.ADD:
-                # If they're both literal ints, add them at compile time.
-                if (line.arg1.ctype == ctypes.integer and
-                        line.arg2.ctype == ctypes.integer and
-                        self.get_literal_spot(arg_spots.arg1) and
-                        self.get_literal_spot(arg_spots.arg2)):
-                    arg1_literal = self.get_literal_spot(arg_spots.arg1)
-                    arg2_literal = self.get_literal_spot(arg_spots.arg2)
-                    result_detail = str(
-                        int(arg1_literal.detail) + int(arg2_literal.detail))
-                    self.value_map.set_spots(
-                        line.output, {Spot(Spot.LITERAL, result_detail)})
-                    continue
 
-                # Check if arg1 was stored in a register that is now free
-                arg1_regs = [spot for spot in arg_spots.arg1
-                             if spot.spot_type == Spot.REGISTER and
-                             not self.value_map.values(spot)]
-                if arg1_regs:
-                    self.asm_code.add_command(
-                        "add", arg1_regs[0].asm_str(line.arg1.ctype.size),
-                        self.best_spot(arg_spots.arg2).asm_str(
-                            line.arg2.ctype.size))
-                    self.value_map.set_spots(line.output, {arg1_regs[0]})
-                    continue
+            # Add literal ints at compile time
+            elif (line.command == ILCode.ADD and
+                  line.arg1.ctype == ctypes.integer and
+                  line.arg2.ctype == ctypes.integer and
+                  arg_spots.arg1.literal_spot() and
+                  arg_spots.arg2.literal_spot()):
+                arg1_literal = arg_spots.arg1.literal_spot()
+                arg2_literal = arg_spots.arg2.literal_spot()
+                result_detail = str(
+                    int(arg1_literal.detail) + int(arg2_literal.detail))
+                self.value_map.set_spots(line.output,
+                                         {Spot(Spot.LITERAL, result_detail)})
 
-                # Check if arg2 was stored in a register that is now free
-                arg2_regs = [spot for spot in arg_spots.arg2
-                             if spot.spot_type == Spot.REGISTER and
-                             not self.value_map.values(spot)]
-                if arg2_regs:
-                    self.asm_code.add_command(
-                        "add", arg2_regs[0].asm_str(line.arg2.ctype.size),
-                        self.best_spot(arg_spots.arg1).asm_str(
-                            line.arg1.ctype.size))
-                    self.value_map.set_spots(line.output, {arg2_regs[0]})
-                    continue
+            # One operand is already in a free register
+            elif (line.command == ILCode.ADD and
+                  (arg_spots.arg1.free_register_spot(self.value_map) or
+                   arg_spots.arg2.free_register_spot(self.value_map))):
 
-                # Try finding a free register.
-                reg = self.value_map.get_free_register()
-                if reg:
-                    # TODO: issues/13
-                    arg1_best = self.best_spot(arg_spots.arg1)
-                    arg2_best = self.best_spot(arg_spots.arg2)
-                    self.asm_code.add_command(
-                        "mov", reg.asm_str(line.arg1.ctype.size),
-                        arg1_best.asm_str(line.arg1.ctype.size))
-                    self.asm_code.add_command(
-                        "add", reg.asm_str(line.arg1.ctype.size),
-                        arg2_best.asm_str(line.arg1.ctype.size))
-                    self.value_map.set_spots(line.output, {reg})
+                if arg_spots.arg1.free_register_spot(self.value_map):
+                    reg_arg, reg_spots = line.arg1, arg_spots.arg1
+                    other_arg, other_spots = line.arg2, arg_spots.arg2
                 else:
-                    raise NotImplementedError("No free registers")
+                    reg_arg, reg_spots = line.arg2, arg_spots.arg2
+                    other_arg, other_spots = line.arg1, arg_spots.arg1
 
+                reg = reg_spots.free_register_spot(self.value_map)
+                self.asm_code.add_command(
+                    "add", reg.asm_str(reg_arg.ctype.size),
+                    other_spots.best_spot().asm_str(other_arg.ctype.size))
+                self.value_map.set_spots(line.output, {reg})
+
+            # Grab a free register for the addition
+            elif (line.command == ILCode.ADD and
+                  self.value_map.get_free_register()):
+                # TODO: Be intelligent on how we pick the free
+                # register here. For example, if this value is later
+                # the operand of a 'return' statement, then we want to
+                # pick RAX. If it's the first argument to a function,
+                # we want to pick RSI.
+                reg = self.value_map.get_free_register()
+                arg1_best = arg_spots.arg1.best_spot()
+                arg2_best = arg_spots.arg2.best_spot()
+                self.asm_code.add_command(
+                    "mov", reg.asm_str(line.arg1.ctype.size),
+                    arg1_best.asm_str(line.arg1.ctype.size))
+                self.asm_code.add_command(
+                    "add", reg.asm_str(line.arg1.ctype.size),
+                    arg2_best.asm_str(line.arg1.ctype.size))
+                self.value_map.set_spots(line.output, {reg})
+
+            # No free registers. We need to spill a value.
+            elif line.command == ILCode.ADD:
+                raise NotImplementedError("No free registers")
             elif line.command == ILCode.MULT:
                 raise NotImplementedError
             else:
                 raise NotImplementedError
-
-    def get_literal_spot(self, spots):
-        """Find a literal spot from the given spots, if possible.
-
-        If any of spots is a literal spot, return it. If not, return None.
-
-        """
-        for spot in spots:
-            if spot.spot_type == Spot.LITERAL:
-                return spot
-
-    def best_spot(self, spots):
-        """Pick the best spot from the given list of spots.
-
-        Best is a register spot, next best is a literal spot, worst-case is a
-        stack spot. Returns the best spot it finds, or None if spots is empty.
-
-        """
-        best_spot = None
-        for spot in spots:
-            # TODO: Pick the best register, not just the first one
-            # encountered.
-            if spot.spot_type == Spot.REGISTER:
-                return spot
-            elif spot.spot_type == Spot.LITERAL:
-                best_spot = spot
-            elif spot.spot_type == Spot.STACK and not best_spot:
-                best_spot = spot
-        return best_spot
 
     def move_to_spot(self, from_spots, to_spot, size):
         """Make asm code to move the given IL value to the given spot.
@@ -374,7 +345,7 @@ class ASMGen:
         if any(spot == to_spot for spot in from_spots):
             return
 
-        from_spot = self.best_spot(from_spots)
+        from_spot = from_spots.best_spot()
 
         self.asm_code.add_command("mov", to_spot.asm_str(size),
                                   from_spot.asm_str(size))
