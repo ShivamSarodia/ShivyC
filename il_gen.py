@@ -64,7 +64,7 @@ class ILCode:
         """
         return iter(self.lines)
 
-    def __str__(self):  # noqa: D202
+    def __str__(self):  # noqa: D202, pragma: no cover
         """Return a pretty-printed version of the IL code.
 
         Useful for debugging, but not to be used for testing. See
@@ -92,7 +92,7 @@ class ILCode:
                 str(line.arg1) + ", " + str(line.arg2))
         return '\n'.join(strlines)
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # pragma: no cover
         """Check for equality between this IL code object and another.
 
         Equality is only checked by verifying the IL values are correct
