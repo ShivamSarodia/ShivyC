@@ -229,7 +229,9 @@ class ASMGen:
         """
         for line_num, line in enumerate(self.il_code):
             # If we're producing a temporary output and this is would be the
-            # only use, then skip this line.
+            # only use, then skip this line. TODO: Once we have pointer
+            # liveliness anaysis, we can also forget variables if we're sure
+            # their values will not be used.
             if (line.output and line.output.value_type == ILValue.TEMP and
                     self.is_forgettable(line.output, line_num)):
                 continue
