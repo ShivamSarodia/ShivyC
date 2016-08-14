@@ -14,6 +14,8 @@ from lexer import Lexer
 from parser import Parser
 from il_gen import ILCode
 from il_gen import SymbolTable
+from asm_gen import ASMCode
+from asm_gen import ASMGen
 
 
 def main():
@@ -43,10 +45,11 @@ def main():
     il_code = ILCode()
     symbol_table = SymbolTable()
     ast_root.make_code(il_code, symbol_table)
-    print(il_code)
-    raise NotImplementedError("IL->ASM phase still in construction")
 
-    s_source = ""
+    asm_code = ASMCode()
+    ASMGen(il_code, asm_code).make_asm()
+
+    s_source = asm_code.full_code()
     try:
         with open("out.s", "w") as s_file:
             s_file.write(s_source)

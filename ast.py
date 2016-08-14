@@ -9,7 +9,7 @@ import errors
 import ctypes
 import token_kinds
 from il_gen import ILCode
-from il_gen import ILValue
+from il_gen import TempILValue
 from il_gen import LiteralILValue
 from tokens import Token
 
@@ -260,7 +260,7 @@ class BinaryOperatorNode(Node):
 
             if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
                 raise NotImplementedError("type error")
-            output = ILValue(ctypes.integer)
+            output = TempILValue(ctypes.integer)
             il_code.add_command(ILCode.ADD, left, right, output)
             return output
         elif self.operator == Token(token_kinds.star):
@@ -271,7 +271,7 @@ class BinaryOperatorNode(Node):
 
             if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
                 raise NotImplementedError("type error")
-            output = ILValue(ctypes.integer)
+            output = TempILValue(ctypes.integer)
             il_code.add_command(ILCode.MULT, left, right, output)
             return output
         elif self.operator == Token(token_kinds.star):

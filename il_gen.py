@@ -22,6 +22,7 @@ class ILCode:
     """Stores the IL code generated from the AST.
 
     lines (List) - The lines of code recorded.
+
     """
 
     def __init__(self):
@@ -61,7 +62,7 @@ class ILCode:
         command.
 
         """
-        return self.lines
+        return iter(self.lines)
 
     def __str__(self):  # noqa: D202
         """Return a pretty-printed version of the IL code.
@@ -146,42 +147,76 @@ class ILCode:
 class ILValue:
     """Value that appears as an element in generated IL code.
 
-    ctype (Type) - the C type of this value
+    Do not use this class directly; instead, use one of the derived classes
+    below.
+
+    value_type (enum) - One of the values below describing the general
+    type of value this is.
+    ctype (Type) - C type of this value.
 
     """
 
-    def __init__(self, ctype):
+    # Options for value_type:
+    # Temporary value. These are used to store intermediate values in
+    # computations.
+    TEMP = 1
+    # Literal value. These are literal values that are known at compile time.
+    LITERAL = 2
+    # Variable value. These represent variables in the original C code.
+    VARIABLE = 3
+
+    def __init__(self, value_type, ctype):
         """Initialize IL value."""
         self.ctype = ctype
+        self.value_type = value_type
 
     def __str__(self):
         """Pretty-print the last 4 digits of the ID for display."""
         return str(id(self) % 10000)
 
 
+class TempILValue(ILValue):
+    """ILValue that represents a temporary intermediate value."""
+
+    def __init__(self, ctype):
+        """Initialize temp IL value."""
+        super().__init__(ILValue.TEMP, ctype)
+
+
 class LiteralILValue(ILValue):
     """ILValue that represents a literal value.
 
-    value (str) - the value in an representation that is convenient for asm
+    value (str) - Value in an representation that is convenient for asm.
 
     """
 
     def __init__(self, ctype, value):
         """Initialize literal IL value."""
-        super().__init__(ctype)
+        super().__init__(ILValue.LITERAL, ctype)
         self.value = value
+
+    # We want to literals to compare equal iff they have the same value and
+    # type, so the ASM generation step can keep track of their storage
+    # locations as one unit.
+    def __eq__(self, other):
+        """Test equality by comparing type and value."""
+        return self.ctype == other.ctype and self.value == other.value
+
+    def __hash__(self):
+        """Hash based on type and value."""
+        return hash((self.ctype, self.value))
 
 
 class VariableILValue(ILValue):
     """ILValue that represents a variable.
 
-    offset (int) - the memory offset of this variable
+    offset (int) - Memory offset of this variable, usually positive.
 
     """
 
     def __init__(self, ctype, offset):
         """Initialize variable IL value."""
-        super().__init__(ctype)
+        super().__init__(ILValue.VARIABLE, ctype)
         self.offset = offset
 
 
@@ -202,7 +237,7 @@ class SymbolTable:
 
         This function returns the ILValue object for the identifier.
 
-        name (str) - The identifier name to search for.
+        name (str) - Identifier name to search for.
 
         """
         if name in self.table:
@@ -214,8 +249,8 @@ class SymbolTable:
     def add(self, name, ctype):
         """Add an identifier with the given name and type to the symbol table.
 
-        name (str) - The identifier name to add.
-        ctype (CType) - The C type of the identifier we're adding.
+        name (str) - Identifier name to add.
+        ctype (CType) - C type of the identifier we're adding.
 
         """
         if name not in self.table:
