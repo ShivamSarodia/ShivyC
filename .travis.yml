@@ -1,10 +1,13 @@
 language: python
 python:
  - "3.5"
+install:
+ - pip install coveralls
 addons:
   apt:
     packages:
     - nasm
     - binutils
     - gcc
-script: python3 -m unittest discover
+script: coverage run -m unittest discover
+after_success: coveralls
