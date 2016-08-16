@@ -44,19 +44,20 @@ def main():
     assemble_and_link("out", asm_filename, "out.o")
 
 
-def write_asm(asm_source, asm_filename):
-    """Save the given assembly source to disk at asm_filename.
+def get_arguments():
+    """Get the command-line arguments.
 
-    asm_source (str) - Full assembly source code.
-    asm_filename (str) - Filename to which to save the generated assembly.
+    This function sets up the argument parser and returns an object storing the
+    argument values (as returned by argparse.parse_args()).
 
     """
-    try:
-        with open(asm_filename, "w") as s_file:
-            s_file.write(asm_source)
-    except IOError:
-        raise CompilerError("could not write output file '{}'".format(
-            asm_filename))
+    parser = argparse.ArgumentParser(description="Compile C files.")
+
+    # The file name of the C file to compile. The file name gets saved to the
+    # file_name attribute of the returned object, but this parameter appears as
+    # "filename" (no underscore) on the command line.
+    parser.add_argument("file_name", metavar="filename")
+    return parser.parse_args()
 
 
 def compile_to_asm(code_lines):
@@ -81,20 +82,19 @@ def compile_to_asm(code_lines):
     return asm_code.full_code()
 
 
-def get_arguments():
-    """Get the command-line arguments.
+def write_asm(asm_source, asm_filename):
+    """Save the given assembly source to disk at asm_filename.
 
-    This function sets up the argument parser and returns an object storing the
-    argument values (as returned by argparse.parse_args()).
+    asm_source (str) - Full assembly source code.
+    asm_filename (str) - Filename to which to save the generated assembly.
 
     """
-    parser = argparse.ArgumentParser(description="Compile C files.")
-
-    # The file name of the C file to compile. The file name gets saved to the
-    # file_name attribute of the returned object, but this parameter appears as
-    # "filename" (no underscore) on the command line.
-    parser.add_argument("file_name", metavar="filename")
-    return parser.parse_args()
+    try:
+        with open(asm_filename, "w") as s_file:
+            s_file.write(asm_source)
+    except IOError:
+        raise CompilerError("could not write output file '{}'".format(
+            asm_filename))
 
 
 def assemble_and_link(binary_name, asm_name, obj_name):
