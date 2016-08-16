@@ -10,14 +10,7 @@ one or more of the other test_*.py files.
 import subprocess
 import unittest
 
-import token_kinds
-from lexer import Lexer
-from parser import Parser
-from il_gen import ILCode
-from il_gen import SymbolTable
-from asm_gen import ASMCode
-from asm_gen import ASMGen
-from shivyc import assemble_and_link
+import shivyc
 
 
 class TestUtil(unittest.TestCase):
@@ -30,23 +23,10 @@ class TestUtil(unittest.TestCase):
         Otherwise, it returns the return code of the compiled program.
 
         """
-        lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
-        token_list = lexer.tokenize([(code, "filename.c", 7)])
-
-        ast_root = Parser(token_list).parse()
-
-        il_code = ILCode()
-        symbol_table = SymbolTable()
-        ast_root.make_code(il_code, symbol_table)
-
-        asm_code = ASMCode()
-        ASMGen(il_code, asm_code).make_asm()
-
-        s_source = asm_code.full_code()
-        with open("tests/temp/out.s", "w") as s_file:
-            s_file.write(s_source)
-        assemble_and_link("tests/temp/out", "tests/temp/out.s",
-                          "tests/temp/temp.o")
+        asm_source = shivyc.compile_to_asm([(code, "filename.c", 7)])
+        shivyc.write_asm(asm_source, "tests/temp/out.s")
+        shivyc.assemble_and_link("tests/temp/out", "tests/temp/out.s",
+                                 "tests/temp/temp.o")
         return subprocess.call(["tests/temp/out"])
 
     def assertReturns(self, code, value):

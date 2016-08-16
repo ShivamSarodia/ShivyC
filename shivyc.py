@@ -37,6 +37,35 @@ def main():
         raise CompilerError("could not read file: '{}'"
                             .format(arguments.file_name))
 
+    asm_source = compile_to_asm(code_lines)
+    asm_filename = "out.s"
+    write_asm(asm_source, asm_filename)
+
+    assemble_and_link("out", asm_filename, "out.o")
+
+
+def write_asm(asm_source, asm_filename):
+    """Save the given assembly source to disk at asm_filename.
+
+    asm_source (str) - Full assembly source code.
+    asm_filename (str) - Filename to which to save the generated assembly.
+
+    """
+    try:
+        with open(asm_filename, "w") as s_file:
+            s_file.write(asm_source)
+    except IOError:
+        raise CompilerError("could not write output file '{}'".format(
+            asm_filename))
+
+
+def compile_to_asm(code_lines):
+    """Compile the given code lines to asm.
+
+    code_lines (List(tuple)) - Lines of code. First element is the line of code
+    itself, second element is the file name, third element is the line number.
+
+    """
     lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
     token_list = lexer.tokenize(code_lines)
 
@@ -49,14 +78,7 @@ def main():
     asm_code = ASMCode()
     ASMGen(il_code, asm_code).make_asm()
 
-    s_source = asm_code.full_code()
-    try:
-        with open("out.s", "w") as s_file:
-            s_file.write(s_source)
-    except IOError:
-        raise CompilerError("could not write output file '{}'".format("out.s"))
-
-    assemble_and_link("out", "out.s", "out.o")
+    return asm_code.full_code()
 
 
 def get_arguments():
