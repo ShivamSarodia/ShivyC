@@ -47,7 +47,7 @@ class TestUtil(unittest.TestCase):
             s_file.write(s_source)
         assemble_and_link("tests/temp/out", "tests/temp/out.s",
                           "tests/temp/temp.o")
-        return subprocess.run(["tests/temp/out"]).returncode
+        return subprocess.call(["tests/temp/out"])
 
     def assertReturns(self, code, value):
         """Assert that the code returns the given value."""

@@ -86,13 +86,12 @@ def assemble_and_link(binary_name, asm_name, obj_name):
     obj_name (str) - Name of the obj file to output
 
     """
-    subprocess.run(["nasm", "-f", "elf64", "-o", obj_name,
-                    asm_name]).check_returncode()
-    subprocess.run([
+    subprocess.check_call(["nasm", "-f", "elf64", "-o", obj_name, asm_name])
+    subprocess.check_call([
         "ld", "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2",
         "/usr/lib/x86_64-linux-gnu/crt1.o", "/usr/lib/x86_64-linux-gnu/crti.o",
         "-lc", obj_name, "/usr/lib/x86_64-linux-gnu/crtn.o", "-o", binary_name
-    ]).check_returncode()
+    ])
 
 
 if __name__ == "__main__":
