@@ -167,8 +167,10 @@ class ValueMap:
 class ASMGen:
     """Contains the main logic for generation of the ASM from the IL.
 
-    Note: This class will be refactored once it starts to get unweildy, but
-    right now it's fine as a single class.
+    Note: Because this class only has one real public method, we use
+    underscore prefix on a method name to indicate that method is meant mostly
+    for one-time use in a single function. This class will be refactored once
+    it starts to get unwieldy, but right now it's fine as a single class.
 
     il_code (ILCode) - IL code to convert to ASM.
     asm_code (ASMCode) - ASMCode object to populate with ASM.
@@ -185,16 +187,16 @@ class ASMGen:
         self.asm_code = asm_code
         self.value_map = ValueMap()
 
-        self.value_refs = self.value_references()
+        self.value_refs = self._value_references()
 
-    def value_references(self):
+    def _value_references(self):
         """Get IL value references by line number.
 
         This functon returns a dictionary mapping every IL value present in the
         provided IL code to an increasing list of line numbers (relative to the
         IL code) where that IL value is referenced. That is, if:
 
-        n in self.value_references(self)[il_value]
+        n in self._value_references(self)[il_value]
 
         then at least one of self.il_code[n].arg1, self.il_code[n].arg2, or
         self.il_code[n].output is il_value.
@@ -224,24 +226,28 @@ class ASMGen:
         """
         return max(self.value_refs[il_value]) <= line_num
 
-    def get_arg_spots(self, arg1, arg2):
-        """Get information on which spots store the arguments.
+    def move_to_spot(self, from_spots, to_spot, size):
+        """Make asm code to move the given IL value to the given spot.
 
-        The object returned has an arg1 attribute and an arg2 attribute; each
-        is either None if the argument was originally None or a set of
-        spots. The sets are copies, so the value map can be modified without
-        changing the values of the returned sets.
+        This function is currently very dangerous--it overwrites the value of
+        the spot without updating the value map. Hence, it should only be used
+        at the very end of a block. This will be fixed as needed. If the
+        il_value is already in the given register, may not produce any ASM
+        code.
 
         """
-        ArgSpots = namedtuple("ArgSpots", ["arg1", "arg2"])
-        return ArgSpots(
-            SpotSet(self.value_map.spots(arg1) if arg1 else None),
-            SpotSet(self.value_map.spots(arg2) if arg2 else None))
+        if to_spot.spot_type != Spot.REGISTER:
+            raise NotImplementedError(
+                "Only register spots currently supported")
 
-    def forget_if_unused(self, arg, line_num):
-        """Forget the given argument if it is unused after line_num."""
-        if arg and self.is_unused_after(arg, line_num):
-            self.value_map.forget(arg)
+        # Check if the value is already in the desired spot
+        if any(spot == to_spot for spot in from_spots):
+            return
+
+        from_spot = from_spots.best_spot()
+
+        self.asm_code.add_command("mov", to_spot.asm_str(size),
+                                  from_spot.asm_str(size))
 
     def make_asm(self):
         """Generate ASM code.
@@ -258,9 +264,9 @@ class ASMGen:
                     self.is_unused_after(line.output, line_num)):
                 continue
 
-            arg_spots = self.get_arg_spots(line.arg1, line.arg2)
-            self.forget_if_unused(line.arg1, line_num)
-            self.forget_if_unused(line.arg2, line_num)
+            arg_spots = self._get_arg_spots(line.arg1, line.arg2)
+            self._forget_if_unused(line.arg1, line_num)
+            self._forget_if_unused(line.arg2, line_num)
 
             if line.command == ILCode.SET:
                 self.value_map.set_spots(line.output, arg_spots.arg1)
@@ -327,25 +333,21 @@ class ASMGen:
             else:
                 raise NotImplementedError
 
-    def move_to_spot(self, from_spots, to_spot, size):
-        """Make asm code to move the given IL value to the given spot.
+    def _get_arg_spots(self, arg1, arg2):
+        """Get information on which spots store the arguments.
 
-        This function is currently very dangerous--it overwrites the value of
-        the spot without updating the value map. Hence, it should only be used
-        at the very end of a block. This will be fixed as needed. If the
-        il_value is already in the given register, may not produce any ASM
-        code.
+        The object returned has an arg1 attribute and an arg2 attribute; each
+        is either None if the argument was originally None or a set of
+        spots. The sets are copies, so the value map can be modified without
+        changing the values of the returned sets.
 
         """
-        if to_spot.spot_type != Spot.REGISTER:
-            raise NotImplementedError(
-                "Only register spots currently supported")
+        ArgSpots = namedtuple("ArgSpots", ["arg1", "arg2"])
+        return ArgSpots(
+            SpotSet(self.value_map.spots(arg1) if arg1 else None),
+            SpotSet(self.value_map.spots(arg2) if arg2 else None))
 
-        # Check if the value is already in the desired spot
-        if any(spot == to_spot for spot in from_spots):
-            return
-
-        from_spot = from_spots.best_spot()
-
-        self.asm_code.add_command("mov", to_spot.asm_str(size),
-                                  from_spot.asm_str(size))
+    def _forget_if_unused(self, arg, line_num):
+        """Forget the given argument if it is unused after line_num."""
+        if arg and self.is_unused_after(arg, line_num):
+            self.value_map.forget(arg)
