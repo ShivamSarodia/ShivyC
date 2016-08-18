@@ -136,6 +136,27 @@ class GeneralTests(ParserTestUtil):
                     tree.NumberNode(Token(token_kinds.number, "10"))
                 ))])  # yapf: disable
 
+    def test_compound_statement(self):  # noqa: D400, D403
+        """int main() { { return 15; return 20; } return 25; }"""
+        tokens = [
+            Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "20"),
+            Token(token_kinds.semicolon), Token(token_kinds.close_brack),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "25"),
+            Token(token_kinds.semicolon)
+        ]
+
+        self.assertParsesTo(tokens, [
+            tree.CompoundNode([
+                tree.ReturnNode(tree.NumberNode(
+                    Token(token_kinds.number, "15"))),
+                tree.ReturnNode(tree.NumberNode(
+                    Token(token_kinds.number, "20")))
+            ]),
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "25")))
+        ])  # yapf: disable
+
     def test_one_line_if_statement(self):  # noqa: D400, D403
         """int main() { if(a) return 10; return 5; }"""
         tokens = [
@@ -152,8 +173,66 @@ class GeneralTests(ParserTestUtil):
                 tree.ReturnNode(tree.NumberNode(
                     Token(token_kinds.number, "10")))
             ),
-            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "5")))
+            tree.ReturnNode(
+                tree.NumberNode(Token(token_kinds.number, "5")))
         ])  # yapf: disable
+
+    def test_compound_if_statement(self):  # noqa: D400, D403
+        """int main() { if(a) {return 15; return 20;} return 25; }"""
+        tokens = [
+            Token(token_kinds.if_kw), Token(token_kinds.open_paren),
+            Token(token_kinds.identifier, "a"), Token(token_kinds.close_paren),
+            Token(token_kinds.open_brack), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "20"),
+            Token(token_kinds.semicolon), Token(token_kinds.close_brack),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "25"),
+            Token(token_kinds.semicolon)
+        ]
+
+        self.assertParsesTo(tokens, [
+            tree.IfStatementNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                tree.CompoundNode([
+                    tree.ReturnNode(tree.NumberNode(
+                        Token(token_kinds.number, "15"))),
+                    tree.ReturnNode(tree.NumberNode(
+                        Token(token_kinds.number, "20")))
+                ])
+            ),
+            tree.ReturnNode(
+                tree.NumberNode(Token(token_kinds.number, "25")))
+        ])  # yapf: disable
+
+    def test_missing_if_statement_open_paren(self):  # noqa: D400, D403
+        """int main() { if a) {return 15;} }"""
+        tokens = [
+            Token(token_kinds.if_kw), Token(token_kinds.identifier, "a"),
+            Token(token_kinds.close_paren), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
+        ]
+
+        self.assertParserError(tokens, "expected '\(' after 'if'")
+
+    def test_missing_if_statement_conditional(self):  # noqa: D400, D403
+        """int main() { if () {return 15;} }"""
+        tokens = [
+            Token(token_kinds.if_kw), Token(token_kinds.open_paren),
+            Token(token_kinds.close_paren), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
+        ]
+
+        self.assertParserError(tokens, "expected expression, got '\)'")
+
+    def test_missing_if_statement_close_paren(self):  # noqa: D400, D403
+        """int main() { if (a {return 15;} }"""
+        tokens = [
+            Token(token_kinds.if_kw), Token(token_kinds.open_paren),
+            Token(token_kinds.identifier, "a"), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
+        ]
+
+        self.assertParserError(tokens, "expected '\)' after 'a'")
 
 
 class ExpressionTests(ParserTestUtil):

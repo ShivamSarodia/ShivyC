@@ -119,6 +119,11 @@ class Parser:
 
         """
         try:
+            return self.parse_compound_statement(index)
+        except ParserError as e:
+            self.log_error(e)
+
+        try:
             return self.parse_return(index)
         except ParserError as e:
             self.log_error(e)
@@ -129,6 +134,46 @@ class Parser:
             self.log_error(e)
 
         return self.parse_expr_statement(index)
+
+    def parse_compound_statement(self, index):
+        """Parse a compound statement.
+
+        A compound statement is a collection of several
+        statements/declarations, enclosed in braces.
+
+        """
+        try:
+            index = self.match_token(index, token_kinds.open_brack)
+        except MatchError:
+            err = "expected '{'"
+            raise ParserError(err, index, self.tokens, ParserError.GOT)
+
+        # Read block items (statements/declarations) until there are no more.
+        nodes = []
+        while True:
+            try:
+                node, index = self.parse_statement(index)
+                nodes.append(node)
+                continue
+            except ParserError as e:
+                self.log_error(e)
+
+            try:
+                node, index = self.parse_declaration(index)
+                nodes.append(node)
+                continue
+            except ParserError as e:
+                self.log_error(e)
+                # When both of our parsing attempts fail, break out of the loop
+                break
+
+        try:
+            index = self.match_token(index, token_kinds.close_brack)
+        except MatchError:
+            err = "expected '}'"
+            raise ParserError(err, index, self.tokens, ParserError.GOT)
+
+        return (tree.CompoundNode(nodes), index)
 
     def parse_return(self, index):
         """Parse a return statement.
@@ -154,17 +199,14 @@ class Parser:
             err = "expected keyword 'if'"
             raise ParserError(err, index, self.tokens, ParserError.GOT)
 
-        # TODO: Test for this error
         try:
             index = self.match_token(index, token_kinds.open_paren)
         except MatchError:
             err = "expected '('"
             raise ParserError(err, index, self.tokens, ParserError.AFTER)
 
-        # TODO: Test for failure to parse expression
         conditional, index = self.parse_expression(index)
 
-        # TODO: Test for this error
         try:
             index = self.match_token(index, token_kinds.close_paren)
         except MatchError:

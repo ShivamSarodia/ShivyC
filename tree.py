@@ -107,6 +107,30 @@ class MainNode(Node):
         return_node.make_code(il_code, symbol_table)
 
 
+class CompoundNode(Node):
+    """Rule for a compound node.
+
+    A compound node is a statement that consists of several
+    statements/declarations enclosed in braces.
+
+    """
+
+    symbol = Node.STATEMENT
+
+    def __init__(self, block_items):
+        """Initialize node."""
+        super().__init__()
+
+        for item in block_items:
+            self.assert_symbols(item, [self.STATEMENT, self.DECLARATION])
+        self.block_items = block_items
+
+    def make_code(self, il_code, symbol_table):
+        """Make IL code for every block item, in order."""
+        for block_item in self.block_items:
+            block_item.make_code(il_code, symbol_table)
+
+
 class ReturnNode(Node):
     """Rule for the return statement.
 
