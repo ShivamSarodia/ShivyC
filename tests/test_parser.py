@@ -21,7 +21,7 @@ class ParserTestUtil(unittest.TestCase):
 
         """
         ast_root = Parser(self._token_wrap_main(tokens)).parse()
-        self.assertEqual(ast_root, tree.MainNode(nodes))
+        self.assertEqual(ast_root, tree.MainNode(tree.CompoundNode(nodes)))
 
     def assertParserError(self, tokens, regex):
         """Assert the given tokens raise a compiler error during parsing.
@@ -107,8 +107,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.open_brack), Token(token_kinds.return_kw),
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
-        with self.assertRaisesRegex(CompilerError,
-                                    "expected closing brace after ';'"):
+        with self.assertRaisesRegex(CompilerError, "expected '}' after ';'"):
             Parser(tokens).parse()
 
     def test_declaration_in_main(self):  # noqa: D400, D403

@@ -77,39 +77,15 @@ class Parser:
 
         """
         kinds_before = [token_kinds.int_kw, token_kinds.main,
-                        token_kinds.open_paren, token_kinds.close_paren,
-                        token_kinds.open_brack]
+                        token_kinds.open_paren, token_kinds.close_paren]
         try:
             index = self.match_tokens(index, kinds_before)
         except MatchError:
             err = "expected main function starting"
             raise ParserError(err, index, self.tokens, ParserError.AT)
 
-        nodes = []
-        while True:
-            try:
-                node, index = self.parse_statement(index)
-                nodes.append(node)
-                continue
-            except ParserError as e:
-                self.log_error(e)
-
-            try:
-                node, index = self.parse_declaration(index)
-                nodes.append(node)
-                continue
-            except ParserError as e:
-                self.log_error(e)
-                # When all of our parsing attempts fail, break out of the loop
-                break
-
-        try:
-            index = self.match_token(index, token_kinds.close_brack)
-        except MatchError:
-            err = "expected closing brace"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
-
-        return (tree.MainNode(nodes), index)
+        node, index = self.parse_compound_statement(index)
+        return (tree.MainNode(node), index)
 
     def parse_statement(self, index):
         """Parse a statement.

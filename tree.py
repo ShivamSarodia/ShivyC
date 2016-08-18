@@ -85,23 +85,23 @@ class MainNode(Node):
 
     symbol = Node.MAIN_FUNCTION
 
-    def __init__(self, block_items):
+    def __init__(self, body):
         """Initialize node."""
         super().__init__()
 
-        for item in block_items:
-            self.assert_symbols(item, [self.STATEMENT, self.DECLARATION])
-        self.block_items = block_items
+        # Specifically, we expect 'body' to be a compound statement.
+        self.assert_symbol(body, Node.STATEMENT)
+
+        self.body = body
 
     def make_code(self, il_code, symbol_table):
-        """Make IL code for every block item, in order.
+        """Make IL code for the function body.
 
-        At the end, this function adds code for an artifical return call for if
-        the provided main function completes without returning.
+        At the end, this function adds code for an artificial return call
+        for if the provided function body completes without returning.
 
         """
-        for block_item in self.block_items:
-            block_item.make_code(il_code, symbol_table)
+        self.body.make_code(il_code, symbol_table)
 
         return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")))
         return_node.make_code(il_code, symbol_table)
