@@ -123,6 +123,11 @@ class Parser:
         except ParserError as e:
             self.log_error(e)
 
+        try:
+            return self.parse_if_statement(index)
+        except ParserError as e:
+            self.log_error(e)
+
         return self.parse_expr_statement(index)
 
     def parse_return(self, index):
@@ -140,6 +145,35 @@ class Parser:
         node, index = self.parse_expression(index)
         index = self.expect_semicolon(index)
         return (tree.ReturnNode(node), index)
+
+    def parse_if_statement(self, index):
+        """Parse an if statement."""
+        try:
+            index = self.match_token(index, token_kinds.if_kw)
+        except MatchError:
+            err = "expected keyword 'if'"
+            raise ParserError(err, index, self.tokens, ParserError.GOT)
+
+        # TODO: Test for this error
+        try:
+            index = self.match_token(index, token_kinds.open_paren)
+        except MatchError:
+            err = "expected '('"
+            raise ParserError(err, index, self.tokens, ParserError.AFTER)
+
+        # TODO: Test for failure to parse expression
+        conditional, index = self.parse_expression(index)
+
+        # TODO: Test for this error
+        try:
+            index = self.match_token(index, token_kinds.close_paren)
+        except MatchError:
+            err = "expected ')'"
+            raise ParserError(err, index, self.tokens, ParserError.AFTER)
+
+        statement, index = self.parse_statement(index)
+
+        return (tree.IfStatementNode(conditional, statement), index)
 
     def parse_expr_statement(self, index):
         """Parse a statement that is an expression.

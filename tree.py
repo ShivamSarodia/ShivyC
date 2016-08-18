@@ -228,6 +228,32 @@ class ParenExprNode(Node):
         return self.expr.make_code(il_code, symbol_table)
 
 
+class IfStatementNode(Node):
+    """If statement.
+
+    conditional - Condition expression of the if statement.
+    statement - Statement to be executed by the if statement. Note this is
+    very often a compound-statement blocked out with curly braces.
+
+    """
+
+    symbol = Node.STATEMENT
+
+    def __init__(self, conditional, statement):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(conditional, Node.EXPRESSION)
+        self.assert_symbol(statement, Node.STATEMENT)
+
+        self.conditional = conditional
+        self.statement = statement
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for this node."""
+        raise NotImplementedError
+
+
 class BinaryOperatorNode(Node):
     """Expression that is a sum/difference/xor/etc of two expressions.
 

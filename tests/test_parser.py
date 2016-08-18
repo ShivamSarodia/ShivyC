@@ -123,6 +123,29 @@ class GeneralTests(unittest.TestCase):
                 tree.NumberNode(Token(token_kinds.number, "10"))
             ))]))  # yapf: disable
 
+    def test_one_line_if_statement(self):  # noqa: D400, D403
+        """int main() { if(a) return 10; return 5; }"""
+        tokens = [
+            Token(token_kinds.int_kw), Token(token_kinds.main),
+            Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+            Token(token_kinds.open_brack), Token(token_kinds.if_kw),
+            Token(token_kinds.open_paren), Token(token_kinds.identifier, "a"),
+            Token(token_kinds.close_paren), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "10"), Token(token_kinds.semicolon),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "5"),
+            Token(token_kinds.semicolon), Token(token_kinds.close_brack)
+        ]
+
+        ast_root = Parser(tokens).parse()
+        self.assertEqual(ast_root, tree.MainNode([
+            tree.IfStatementNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                tree.ReturnNode(tree.NumberNode(
+                    Token(token_kinds.number, "10")))
+            ),
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "5")))
+        ]))  # yapf: disable
+
 
 class ExpressionTests(unittest.TestCase):
     """Tests expression parsing.
