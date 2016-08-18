@@ -12,17 +12,6 @@ from errors import ParserError
 from tokens import Token
 
 
-class MatchError(Exception):
-    """Error indicating a failure to match the token_kinds expected.
-
-    This exception is raised only by match_token and match_tokens and is meant
-    to be used only internally by the parser.
-
-    """
-
-    pass
-
-
 class Parser:
     """Logic for converting a list of tokens into an AST.
 
@@ -34,10 +23,11 @@ class Parser:
     parse. If no match is not found, raises an appropriate ParserError.
 
     Whenever a call to a parse_* function raises a ParserError, the calling
-    function must either catch the exception and log it (using self.log_error),
-    or pass the exception on to the caller. A function takes the first approach
-    if there are other possible parse paths to consider, and the second
-    approach if the function cannot parse the entity from the tokens.
+    function must either catch the exception and log it (using
+    self._log_error), or pass the exception on to the caller. A function
+    takes the first approach if there are other possible parse paths to
+    consider, and the second approach if the function cannot parse the entity
+    from the tokens.
 
     tokens (List(Token)) - The list of tokens to be parsed.
     best_error (ParserError) - The "best error" encountered thusfar. That is,
@@ -60,7 +50,7 @@ class Parser:
         try:
             node, index = self.parse_main(0)
         except ParserError as e:
-            self.log_error(e)
+            self._log_error(e)
             raise self.best_error
 
         # Ensure there's no tokens left at after the main function
@@ -76,13 +66,14 @@ class Parser:
         Ex: int main() { return 4; }
 
         """
-        kinds_before = [token_kinds.int_kw, token_kinds.main,
-                        token_kinds.open_paren, token_kinds.close_paren]
-        try:
-            index = self.match_tokens(index, kinds_before)
-        except MatchError:
-            err = "expected main function starting"
-            raise ParserError(err, index, self.tokens, ParserError.AT)
+        err = "expected main function starting"
+        index = self._match_token(index, token_kinds.int_kw, err,
+                                  ParserError.AT)
+        index = self._match_token(index, token_kinds.main, err, ParserError.AT)
+        index = self._match_token(index, token_kinds.open_paren, err,
+                                  ParserError.AT)
+        index = self._match_token(index, token_kinds.close_paren, err,
+                                  ParserError.AT)
 
         node, index = self.parse_compound_statement(index)
         return (tree.MainNode(node), index)
@@ -97,17 +88,17 @@ class Parser:
         try:
             return self.parse_compound_statement(index)
         except ParserError as e:
-            self.log_error(e)
+            self._log_error(e)
 
         try:
             return self.parse_return(index)
         except ParserError as e:
-            self.log_error(e)
+            self._log_error(e)
 
         try:
             return self.parse_if_statement(index)
         except ParserError as e:
-            self.log_error(e)
+            self._log_error(e)
 
         return self.parse_expr_statement(index)
 
@@ -118,11 +109,8 @@ class Parser:
         statements/declarations, enclosed in braces.
 
         """
-        try:
-            index = self.match_token(index, token_kinds.open_brack)
-        except MatchError:
-            err = "expected '{'"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
+        index = self._match_token(index, token_kinds.open_brack,
+                                  "expected '{'", ParserError.GOT)
 
         # Read block items (statements/declarations) until there are no more.
         nodes = []
@@ -132,22 +120,19 @@ class Parser:
                 nodes.append(node)
                 continue
             except ParserError as e:
-                self.log_error(e)
+                self._log_error(e)
 
             try:
                 node, index = self.parse_declaration(index)
                 nodes.append(node)
                 continue
             except ParserError as e:
-                self.log_error(e)
+                self._log_error(e)
                 # When both of our parsing attempts fail, break out of the loop
                 break
 
-        try:
-            index = self.match_token(index, token_kinds.close_brack)
-        except MatchError:
-            err = "expected '}'"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
+        index = self._match_token(index, token_kinds.close_brack,
+                                  "expected '}'", ParserError.GOT)
 
         return (tree.CompoundNode(nodes), index)
 
@@ -157,38 +142,21 @@ class Parser:
         Ex: return 5;
 
         """
-        try:
-            index = self.match_token(index, token_kinds.return_kw)
-        except MatchError:
-            err = "expected return keyword"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
-
+        index = self._match_token(index, token_kinds.return_kw,
+                                  "expected keyword 'return'", ParserError.GOT)
         node, index = self.parse_expression(index)
-        index = self.expect_semicolon(index)
+        index = self._expect_semicolon(index)
         return (tree.ReturnNode(node), index)
 
     def parse_if_statement(self, index):
         """Parse an if statement."""
-        try:
-            index = self.match_token(index, token_kinds.if_kw)
-        except MatchError:
-            err = "expected keyword 'if'"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
-
-        try:
-            index = self.match_token(index, token_kinds.open_paren)
-        except MatchError:
-            err = "expected '('"
-            raise ParserError(err, index, self.tokens, ParserError.AFTER)
-
+        index = self._match_token(index, token_kinds.if_kw,
+                                  "expected keyword 'if'", ParserError.GOT)
+        index = self._match_token(index, token_kinds.open_paren,
+                                  "expected '('", ParserError.AFTER)
         conditional, index = self.parse_expression(index)
-
-        try:
-            index = self.match_token(index, token_kinds.close_paren)
-        except MatchError:
-            err = "expected ')'"
-            raise ParserError(err, index, self.tokens, ParserError.AFTER)
-
+        index = self._match_token(index, token_kinds.close_paren,
+                                  "expected ')'", ParserError.AFTER)
         statement, index = self.parse_statement(index)
 
         return (tree.IfStatementNode(conditional, statement), index)
@@ -200,7 +168,7 @@ class Parser:
 
         """
         node, index = self.parse_expression(index)
-        index = self.expect_semicolon(index)
+        index = self._expect_semicolon(index)
         return (tree.ExprStatementNode(node), index)
 
     def parse_expression(self, index):
@@ -317,69 +285,38 @@ class Parser:
         intializer are supported.
 
         """
-        try:
-            index = self.match_token(index, token_kinds.int_kw)
-        except MatchError:
-            err = "expected type name"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
-
-        try:
-            index = self.match_token(index, token_kinds.identifier)
-        except MatchError:
-            err = "expected identifier"
-            raise ParserError(err, index, self.tokens, ParserError.AFTER)
-
+        index = self._match_token(index, token_kinds.int_kw,
+                                  "expected type name", ParserError.GOT)
+        index = self._match_token(index, token_kinds.identifier,
+                                  "expected identifier", ParserError.AFTER)
         variable_name = self.tokens[index - 1]
-
-        index = self.expect_semicolon(index)
-
+        index = self._expect_semicolon(index)
         return (tree.DeclarationNode(variable_name), index)
 
-    def expect_semicolon(self, index):
+    def _expect_semicolon(self, index):
         """Expect a semicolon at self.tokens[index].
 
         If one is found, return index+1. Otherwise, raise an appropriate
         ParserError.
 
         """
-        try:
-            return self.match_token(index, token_kinds.semicolon)
-        except MatchError:
-            err = "expected semicolon"
-            raise ParserError(err, index, self.tokens, ParserError.AFTER)
+        return self._match_token(index, token_kinds.semicolon,
+                                 "expected semicolon", ParserError.AFTER)
 
-    #
-    # Utility functions for the parser
-    #
-    def match_token(self, index, kind_expected):
-        """Check if self.tokens[index] is of the token kind expected.
+    def _match_token(self, index, kind, message, message_type):
+        """Raise ParserError if tokens[index] is not of the expected kind.
 
-        This function is shorthand for match_tokens for a single token.
+        If tokens[index] is of the expected kind, returns index + 1.
+        Otherwise, raises a ParserError with the given message and
+        message_type.
 
         """
-        return self.match_tokens(index, [kind_expected])
-
-    def match_tokens(self, index, kinds_expected):
-        """Check if self.tokens matches the expected token kinds.
-
-        If the tokens all have the expected kinds, starting at the given index,
-        this function returns the index one more than the last matched
-        element. Otherwise, raises a MatchException.
-
-        index (int) - Index at which to begin matching.
-        kinds_expected (List[TokenKind, None]) - List of token kinds expected.
-
-        """
-        tokens = self.tokens[index:]
-        if len(tokens) < len(kinds_expected):
-            raise MatchError()
-        elif all(kind == token.kind
-                 for kind, token in zip(kinds_expected, tokens)):
-            return index + len(kinds_expected)
+        if (len(self.tokens) > index and self.tokens[index].kind == kind):
+            return index + 1
         else:
-            raise MatchError()
+            raise ParserError(message, index, self.tokens, message_type)
 
-    def log_error(self, error):
+    def _log_error(self, error):
         """Log the error in the parser to be used for error reporting.
 
         The value of error.amount_parsed is used to determine the amount
