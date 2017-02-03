@@ -4,7 +4,7 @@ from collections import namedtuple
 
 import ctypes
 import spots
-from il_gen import ILCode
+from il_gen import ILCommand
 from il_gen import ILValue
 from spots import Spot
 from spots import SpotSet
@@ -198,8 +198,8 @@ class ASMGen:
 
         n in self._value_references(self)[il_value]
 
-        then at least one of self.il_code[n].arg1, self.il_code[n].arg2, or
-        self.il_code[n].output is il_value.
+        then at least one of self.il_code[n].args[1], self.il_code[n].args[2], or
+        self.il_code[n].args[0] is il_value.
 
         """
         refs = dict()
@@ -211,9 +211,9 @@ class ASMGen:
                 refs[il_value].append(line_num)
 
         for line_num, line in enumerate(self.il_code):
-            add_to_refs(line.output, line_num)
-            add_to_refs(line.arg1, line_num)
-            add_to_refs(line.arg2, line_num)
+            add_to_refs(line.args[0], line_num)
+            add_to_refs(line.args[1], line_num)
+            add_to_refs(line.args[2], line_num)
 
         return refs
 
@@ -260,54 +260,54 @@ class ASMGen:
             # only use, then skip this line. TODO: Once we have pointer
             # liveliness anaysis, we can also forget variables if we're sure
             # their values will not be used.
-            if (line.output and line.output.value_type == ILValue.TEMP and
-                    self.is_unused_after(line.output, line_num)):
+            if (line.args[0] and line.args[0].value_type == ILValue.TEMP and
+                    self.is_unused_after(line.args[0], line_num)):
                 continue
 
-            arg_spots = self._get_arg_spots(line.arg1, line.arg2)
-            self._forget_if_unused(line.arg1, line_num)
-            self._forget_if_unused(line.arg2, line_num)
+            arg_spots = self._get_arg_spots(line.args[1], line.args[2])
+            self._forget_if_unused(line.args[1], line_num)
+            self._forget_if_unused(line.args[2], line_num)
 
-            if line.command == ILCode.SET:
-                self.value_map.set_spots(line.output, arg_spots.arg1)
-            elif line.command == ILCode.RETURN:
+            if line.op == ILCommand.SET:
+                self.value_map.set_spots(line.args[0], arg_spots.arg1)
+            elif line.op == ILCommand.RETURN:
                 self.move_to_spot(arg_spots.arg1, spots.RAX,
-                                  line.arg1.ctype.size)
+                                  line.args[1].ctype.size)
                 self.asm_code.add_command("ret")
 
             # Add literal ints at compile time
-            elif (line.command == ILCode.ADD and
-                  line.arg1.ctype == ctypes.integer and
-                  line.arg2.ctype == ctypes.integer and
+            elif (line.op == ILCommand.ADD and
+                  line.args[1].ctype == ctypes.integer and
+                  line.args[2].ctype == ctypes.integer and
                   arg_spots.arg1.literal_spot() and
                   arg_spots.arg2.literal_spot()):
                 arg1_literal = arg_spots.arg1.literal_spot()
                 arg2_literal = arg_spots.arg2.literal_spot()
                 result_detail = str(
                     int(arg1_literal.detail) + int(arg2_literal.detail))
-                self.value_map.set_spots(line.output,
+                self.value_map.set_spots(line.args[0],
                                          {Spot(Spot.LITERAL, result_detail)})
 
             # One operand is already in a free register
-            elif (line.command == ILCode.ADD and
+            elif (line.op == ILCommand.ADD and
                   (arg_spots.arg1.free_register_spot(self.value_map) or
                    arg_spots.arg2.free_register_spot(self.value_map))):
 
                 if arg_spots.arg1.free_register_spot(self.value_map):
-                    reg_arg, reg_spots = line.arg1, arg_spots.arg1
-                    other_arg, other_spots = line.arg2, arg_spots.arg2
+                    reg_arg, reg_spots = line.args[1], arg_spots.arg1
+                    other_arg, other_spots = line.args[2], arg_spots.arg2
                 else:
-                    reg_arg, reg_spots = line.arg2, arg_spots.arg2
-                    other_arg, other_spots = line.arg1, arg_spots.arg1
+                    reg_arg, reg_spots = line.args[2], arg_spots.arg2
+                    other_arg, other_spots = line.args[1], arg_spots.arg1
 
                 reg = reg_spots.free_register_spot(self.value_map)
                 self.asm_code.add_command(
                     "add", reg.asm_str(reg_arg.ctype.size),
                     other_spots.best_spot().asm_str(other_arg.ctype.size))
-                self.value_map.set_spots(line.output, {reg})
+                self.value_map.set_spots(line.args[0], {reg})
 
             # Grab a free register for the addition
-            elif (line.command == ILCode.ADD and
+            elif (line.op == ILCommand.ADD and
                   self.value_map.get_free_register()):
                 # TODO: Be intelligent on how we pick the free
                 # register here. For example, if this value is later
@@ -318,17 +318,17 @@ class ASMGen:
                 arg1_best = arg_spots.arg1.best_spot()
                 arg2_best = arg_spots.arg2.best_spot()
                 self.asm_code.add_command(
-                    "mov", reg.asm_str(line.arg1.ctype.size),
-                    arg1_best.asm_str(line.arg1.ctype.size))
+                    "mov", reg.asm_str(line.args[1].ctype.size),
+                    arg1_best.asm_str(line.args[1].ctype.size))
                 self.asm_code.add_command(
-                    "add", reg.asm_str(line.arg1.ctype.size),
-                    arg2_best.asm_str(line.arg1.ctype.size))
-                self.value_map.set_spots(line.output, {reg})
+                    "add", reg.asm_str(line.args[1].ctype.size),
+                    arg2_best.asm_str(line.args[1].ctype.size))
+                self.value_map.set_spots(line.args[0], {reg})
 
             # No free registers. We need to spill a value.
-            elif line.command == ILCode.ADD:
+            elif line.op == ILCommand.ADD:
                 raise NotImplementedError("No free registers")
-            elif line.command == ILCode.MULT:
+            elif line.op == ILCommand.MULT:
                 raise NotImplementedError
             else:
                 raise NotImplementedError

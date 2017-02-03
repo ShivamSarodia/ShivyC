@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 
-
 class CType:
     """Represents a C type, like `int` or `double` or a struct.
 
@@ -14,22 +13,15 @@ class CType:
         """Initialize type."""
         self.size = size
 
-# Stores a single line of command in the ILCode
-ILCommand = namedtuple("ILCommand", ["command", "arg1", "arg2", "output"])
+class ILCommand:
+    """Stores a single IL command.
 
-
-class ILCode:
-    """Stores the IL code generated from the AST.
-
-    lines (List) - The lines of code recorded.
+    op (Enum) - Type of command, like ADD or MULT
+    args - (List[ILValue]) - Arguments of command
 
     """
 
-    def __init__(self):
-        """Initialize IL code."""
-        self.lines = []
-
-    # Supported commands, as used in the command argument of add_command.
+    # Supported commands, as used in the constructor of ILCommand.
     #
     # Accepts one output argument and one input argument. Sets the output
     # argument to the input argument.
@@ -44,6 +36,22 @@ class ILCode:
     # argument to the product of the input arguments.
     MULT = 4
 
+    def __init__(self, op, args):
+        """Initialize an ILCommand."""
+        self.op = op
+        self.args = args
+
+class ILCode:
+    """Stores the IL code generated from the AST.
+
+    lines (List) - The lines of code recorded.
+
+    """
+
+    def __init__(self):
+        """Initialize IL code."""
+        self.commands = []
+
     def add_command(self, command, arg1=None, arg2=None, output=None):
         """Add a new command to the IL code.
 
@@ -52,7 +60,7 @@ class ILCode:
         arguments.
 
         """
-        self.lines.append(ILCommand(command, arg1, arg2, output))
+        self.commands.append(ILCommand(command, [output, arg1, arg2]))
 
     def __iter__(self):
         """Return the lines of code in order when iterating through ILCode.
@@ -62,7 +70,7 @@ class ILCode:
         command.
 
         """
-        return iter(self.lines)
+        return iter(self.commands)
 
     def __str__(self):  # noqa: D202, pragma: no cover
         """Return a pretty-printed version of the IL code.
@@ -72,24 +80,24 @@ class ILCode:
 
         """
 
-        def command_name(command):
-            """Return the name of a command as a string.
+        def op_name(op):
+            """Return the name of an op as a string.
 
             Example:
-                command_name(self.RETURN) -> "RETURN"
+                op_name(ILCommand.RETURN) -> "RETURN"
 
             This is a /terrible/ hack, but works for debugging purposes.
             """
-            for name in ILCode.__dict__:
-                if ILCode.__dict__[name] == command:
+            for name in ILCommand.__dict__:
+                if ILCommand.__dict__[name] == op:
                     return name.ljust(7)
             return None
 
         strlines = []
-        for line in self.lines:
+        for command in self.commands:
             strlines.append(
-                str(line.output) + " - " + command_name(line.command) + " " +
-                str(line.arg1) + ", " + str(line.arg2))
+                str(command.args[0]) + " - " + command_name(command.op) + " " +
+                str(command.args[1]) + ", " + str(command.args[2]))
         return '\n'.join(strlines)
 
     def __eq__(self, other):  # pragma: no cover
@@ -130,17 +138,16 @@ class ILCode:
                 return True
 
         # Check if number of lines match
-        if len(other.lines) != len(self.lines):
+        if len(other.commands) != len(self.commands):
             return False
-        for line1, line2 in zip(self.lines, other.lines):
-            if line1.command != line2.command:
+        for com1, com2 in zip(self.commands, other.commands):
+            if com1.op != com2.op:
                 return False
-            if not is_equivalent(line1.arg1, line2.arg1):
+            if len(com1.args) != len(com2.args):
                 return False
-            if not is_equivalent(line1.arg2, line2.arg2):
-                return False
-            if not is_equivalent(line1.output, line2.output):
-                return False
+            for arg1, arg2 in zip(com1.args, com2.args):
+                if not is_equivalent(arg1, arg2):
+                    return False
         return True
 
 

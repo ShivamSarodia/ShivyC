@@ -8,7 +8,7 @@ that generates code in our three-address IL.
 import errors
 import ctypes
 import token_kinds
-from il_gen import ILCode
+from il_gen import ILCommand
 from il_gen import TempILValue
 from il_gen import LiteralILValue
 from tokens import Token
@@ -155,7 +155,7 @@ class ReturnNode(Node):
             # TODO: raise a type error
             raise NotImplementedError("type error")
         else:
-            il_code.add_command(ILCode.RETURN, il_value)
+            il_code.add_command(ILCommand.RETURN, il_value)
 
 
 class NumberNode(Node):
@@ -311,7 +311,7 @@ class BinaryOperatorNode(Node):
             if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
                 raise NotImplementedError("type error")
             output = TempILValue(ctypes.integer)
-            il_code.add_command(ILCode.ADD, left, right, output)
+            il_code.add_command(ILCommand.ADD, left, right, output)
             return output
         elif self.operator == Token(token_kinds.star):
             # TODO: Consider chosing intelligently which side to make code for
@@ -322,7 +322,7 @@ class BinaryOperatorNode(Node):
             if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
                 raise NotImplementedError("type error")
             output = TempILValue(ctypes.integer)
-            il_code.add_command(ILCode.MULT, left, right, output)
+            il_code.add_command(ILCommand.MULT, left, right, output)
             return output
         elif self.operator == Token(token_kinds.star):
             raise NotImplementedError("multiplication not supported")
@@ -330,7 +330,7 @@ class BinaryOperatorNode(Node):
             if isinstance(self.left_expr, IdentifierNode):
                 right = self.right_expr.make_code(il_code, symbol_table)
                 left = symbol_table.lookup(self.left_expr.identifier.content)
-                il_code.add_command(ILCode.SET, right, output=left)
+                il_code.add_command(ILCommand.SET, right, output=left)
                 return left
             else:
                 raise NotImplementedError("expected identifier on left side")
