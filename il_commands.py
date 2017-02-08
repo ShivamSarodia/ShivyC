@@ -46,22 +46,22 @@ class ILCommand:
 class Add(ILCommand):
     """ADD - adds arg1 and arg2, then saves to output."""
 
-    def __init__(self, output, arg1, arg2):
+    def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
 
-    def input_values(self):
+    def input_values(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self):
+    def output_values(self): # noqa D102
         return [self.output]
 
-    def clobber_spots(self):
+    def clobber_spots(self): # noqa D102
         # Current implementation lazily clobbers RAX always.
         return [spots.RAX]
 
-    def make_asm(self, spotmap, asm_code):
+    def make_asm(self, spotmap, asm_code): # noqa D102
         arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
@@ -75,22 +75,22 @@ class Add(ILCommand):
 class Mult(ILCommand):
     """MULT - multiplies arg1 and arg2, then saves to output."""
 
-    def __init__(self, output, arg1, arg2):
+    def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
 
-    def input_values(self):
+    def input_values(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self):
+    def output_values(self): # noqa D102
         return [self.output]
 
-    def clobber_spots(self):
+    def clobber_spots(self): # noqa D102
         # Current implementation lazily clobbers RAX always.
         return [spots.RAX]
 
-    def make_asm(self, spotmap, asm_code):
+    def make_asm(self, spotmap, asm_code): # noqa D102
         arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
@@ -104,21 +104,21 @@ class Mult(ILCommand):
 class Set(ILCommand):
     """SET - sets output IL value to arg IL value."""
 
-    def __init__(self, output, arg):
+    def __init__(self, output, arg): # noqa D102
         self.output = output
         self.arg = arg
 
-    def input_values(self):
+    def input_values(self): # noqa D102
         return [self.arg]
 
-    def output_values(self):
+    def output_values(self): # noqa D102
         return [self.output]
 
-    def clobber_spots(self):
+    def clobber_spots(self): # noqa D102
         # Current implementation lazily clobbers RAX at times.
         return [spots.RAX]
 
-    def make_asm(self, spotmap, asm_code):
+    def make_asm(self, spotmap, asm_code): # noqa D102
         arg_spot = spotmap[self.arg]
         output_spot = spotmap[self.output]
 
@@ -141,19 +141,19 @@ class Set(ILCommand):
 class Return(ILCommand):
     """RETURN - returns the given value from function."""
 
-    def __init__(self, arg):
+    def __init__(self, arg): # noqa D102
         self.arg = arg
 
-    def input_values(self):
+    def input_values(self): # noqa D102
         return [self.arg]
 
-    def output_values(self):
+    def output_values(self): # noqa D102
         return []
 
-    def clobber_spots(self):
+    def clobber_spots(self): # noqa D102
         return [spots.RAX]
 
-    def make_asm(self, spotmap, asm_code):
+    def make_asm(self, spotmap, asm_code): # noqa D102
         arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
         rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
 
