@@ -96,60 +96,6 @@ class Spot:
         """Hash based on type and detail."""
         return hash((self.spot_type, self.detail))
 
-
-class SpotSet(MutableSet):
-    """Unordered collection of Spot objects."""
-
-    def __init__(self, spots=None):
-        """Initialize SpotSet."""
-        if spots:
-            # Copy the provided set
-            self.spots = set(spots)
-        else:
-            self.spots = set()
-
-    def literal_spot(self):
-        """Return a literal spot in this spot set, if possible."""
-        for spot in self.spots:
-            if spot.spot_type == Spot.LITERAL:
-                return spot
-
-    def free_register_spot(self, value_map):
-        """Return a free register spot in this spot set, if possible."""
-        for spot in self.spots:
-            if spot.spot_type == Spot.REGISTER and not value_map.values(spot):
-                return spot
-
-    def best_spot(self):
-        """Pick the best spot in this spot set.
-
-        If this set contains a register spot, pick that one. Next best is a
-        literal spot, and worst-case is a stack spot. Returns the best spot it
-        finds, or None if the spot set is empty.
-
-        """
-        best_spot = None
-        for spot in self.spots:
-            best_spot = Spot.better(best_spot, spot)
-        return best_spot
-
-    # Implement the Set abstact methods
-    def __contains__(self, spot):  # noqa: D102, D105
-        return spot in self.spots
-
-    def __iter__(self):  # noqa: D102, D105
-        return iter(self.spots)
-
-    def __len__(self):  # noqa: D102, D105
-        return len(self.spots)
-
-    def add(self, spot):  # noqa: D102, D105
-        self.spots.add(spot)
-
-    def discard(self, spot):  # noqa: D102, D105
-        self.spots.discard(spot)
-
-
 RAX = Spot(Spot.REGISTER, "rax")
 RSI = Spot(Spot.REGISTER, "rsi")
 RDX = Spot(Spot.REGISTER, "rdx")

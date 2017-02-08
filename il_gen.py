@@ -13,34 +13,6 @@ class CType:
         """Initialize type."""
         self.size = size
 
-class ILCommand:
-    """Stores a single IL command.
-
-    op (Enum) - Type of command, like ADD or MULT
-    args - (List[ILValue]) - Arguments of command
-
-    """
-
-    # Supported commands, as used in the constructor of ILCommand.
-    #
-    # Accepts one output argument and one input argument. Sets the output
-    # argument to the input argument.
-    SET = 1
-    # Accepts one input argument. Returns the input argument value from the
-    # current function.
-    RETURN = 2
-    # Accepts one output argument and two input arguments. Sets the output
-    # argument to the sum of the input arguments.
-    ADD = 3
-    # Accepts one output argument and two input arguments. Sets the output
-    # argument to the product of the input arguments.
-    MULT = 4
-
-    def __init__(self, op, args):
-        """Initialize an ILCommand."""
-        self.op = op
-        self.args = args
-
 class ILCode:
     """Stores the IL code generated from the AST.
 
@@ -52,15 +24,12 @@ class ILCode:
         """Initialize IL code."""
         self.commands = []
 
-    def add_command(self, command, arg1=None, arg2=None, output=None):
+    def add(self, command):
         """Add a new command to the IL code.
 
-        command (int) - One of the supported commands, as described above.
-        arg1, arg2, output (ILValue) - ILValue objects representing the command
-        arguments.
+        command (ILCommand) - command to be added"""
 
-        """
-        self.commands.append(ILCommand(command, [output, arg1, arg2]))
+        self.commands.append(command)
 
     def __iter__(self):
         """Return the lines of code in order when iterating through ILCode.
@@ -72,84 +41,16 @@ class ILCode:
         """
         return iter(self.commands)
 
-    def __str__(self):  # noqa: D202, pragma: no cover
-        """Return a pretty-printed version of the IL code.
-
-        Useful for debugging, but not to be used for testing. See
-        __eq__ below instead.
-
-        """
-
-        def op_name(op):
-            """Return the name of an op as a string.
-
-            Example:
-                op_name(ILCommand.RETURN) -> "RETURN"
-
-            This is a /terrible/ hack, but works for debugging purposes.
-            """
-            for name in ILCommand.__dict__:
-                if ILCommand.__dict__[name] == op:
-                    return name.ljust(7)
-            return None
-
-        strlines = []
-        for command in self.commands:
-            strlines.append(
-                str(command.args[0]) + " - " + command_name(command.op) + " " +
-                str(command.args[1]) + ", " + str(command.args[2]))
-        return '\n'.join(strlines)
-
     def __eq__(self, other):  # pragma: no cover
         """Check for equality between this IL code object and another.
 
-        Equality is only checked by verifying the IL values are correct
-        relative to each other. That is,
-
-        0492 - SET 5823
-        5823 - ADD 0492, 1043
-
-        and
-
-        5943 - SET 1342
-        1342 - ADD 5943, 8742
-
-        evaluate equal. It the provided ILCode objects need not use real
-        ILValue objects as the command arguments. For testing, it can be easier
-        to use integers or strings.
+        Equality is only checked by verifying the IL commands are correct! The
+        arguments are currently not examined. This is a very weak form of
+        equality checking, and could perhaps be improved.
 
         """
-        # keys are ILValue ids from self, and values are ILValue ids from other
-        value_map = dict()
-
-        def is_equivalent(value1, value2):
-            """Check if the given IL values are equivalent based on context."""
-            if value1 is None and value2 is None:
-                return True
-            elif value1 is None or value2 is None:
-                return False
-
-            if value1 in value_map:
-                return value2 is value_map[value1]
-            elif value2 in value_map.values():
-                return False
-            else:
-                value_map[value1] = value2
-                return True
-
-        # Check if number of lines match
-        if len(other.commands) != len(self.commands):
-            return False
-        for com1, com2 in zip(self.commands, other.commands):
-            if com1.op != com2.op:
-                return False
-            if len(com1.args) != len(com2.args):
-                return False
-            for arg1, arg2 in zip(com1.args, com2.args):
-                if not is_equivalent(arg1, arg2):
-                    return False
-        return True
-
+        if len(self.commands) != len(other.commands): return False
+        return all(c1 == c2 for c1, c2 in zip(self.commands, other.commands))
 
 class ILValue:
     """Value that appears as an element in generated IL code.
@@ -222,6 +123,8 @@ class VariableILValue(ILValue):
     offset (int) - Memory offset of this variable, usually positive.
 
     """
+
+    # TODO: why does this have an offset? shouldn't offset be ASM specific?
 
     def __init__(self, ctype, offset):
         """Initialize variable IL value."""

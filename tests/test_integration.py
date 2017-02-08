@@ -57,3 +57,58 @@ class IntegrationTests(TestUtil):
         }
         """
         self.assertReturns(source, 20)
+
+    def test_simple_addition(self):
+        """Test a simple addition of variables."""
+        source = """
+        int main() {
+            int a; int b;
+            a = 5; b = 10;
+            return a + b;
+        }
+        """
+        self.assertReturns(source, 15)
+
+    def test_complex_addition(self):
+        """Test complex addition of variables."""
+        source = """
+        int main() {
+            int a; int b; int c; int d;
+            a = 5; b = 10;
+            c = a + b + (a + b);
+            d = c + c + 3;
+            return d;
+        }
+        """
+        self.assertReturns(source, 63)
+
+    def test_simple_multiplcation(self):
+        """Test simple multiplication of variables."""
+        source = """
+        int main() {
+            int a; int b;
+            a = 5; b = 10;
+            return a * b;
+        }
+        """
+        self.assertReturns(source, 50)
+
+    def test_complex_math(self):
+        """Test complex multiplication of variables."""
+        source = """
+        int main() {
+            int a; int b; int c; int d;
+            a = 5; b = 10;
+            c = b + a * b + 10 * a + 10 * 3;
+            d = c * b + a;
+            return d * c;
+        }
+        """
+
+        a = 5
+        b = 10
+        c = b + a * b + 10 * a + 10 * 3;
+        d = c * b + a
+        final = d * c
+
+        self.assertReturns(source, final % 256)

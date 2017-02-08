@@ -3,8 +3,8 @@
 import unittest
 
 import token_kinds
+import il_commands
 from il_gen import ILCode
-from il_gen import ILCommand
 from il_gen import SymbolTable
 from lexer import Lexer
 from parser import Parser
@@ -27,8 +27,8 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.RETURN, 15)
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Return(15))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -38,9 +38,9 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.ADD, 10, 20, "t1")
-        expected_code.add_command(ILCommand.RETURN, "t1")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Add("t1", 10, 20))
+        expected_code.add(il_commands.Return("t1"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -50,8 +50,8 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.RETURN, "a")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Return("a"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -61,9 +61,9 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.ADD, "a", "b", "t1")
-        expected_code.add_command(ILCommand.RETURN, "t1")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Add("t1", "a", "b"))
+        expected_code.add(il_commands.Return("t1"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -73,10 +73,10 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.ADD, "a", "b", "t1")
-        expected_code.add_command(ILCommand.SET, "t1", None, "c")
-        expected_code.add_command(ILCommand.RETURN, "c")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Add("t1", "a", "b"))
+        expected_code.add(il_commands.Set("c", "t1"))
+        expected_code.add(il_commands.Return("c"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -86,10 +86,10 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.MULT, "a", "b", "t1")
-        expected_code.add_command(ILCommand.SET, "t1", None, "c")
-        expected_code.add_command(ILCommand.RETURN, "c")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Mult("t1", "a", "b"))
+        expected_code.add(il_commands.Set("c", "t1"))
+        expected_code.add(il_commands.Return("c"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -104,10 +104,10 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.SET, "b", None, "a")
-        expected_code.add_command(ILCommand.SET, "a", None, "c")
-        expected_code.add_command(ILCommand.RETURN, "c")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Set("a", "b"))
+        expected_code.add(il_commands.Set("c", "a"))
+        expected_code.add(il_commands.Return("c"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
@@ -122,13 +122,13 @@ class ILGenTests(unittest.TestCase):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add_command(ILCommand.MULT, "a", "b", "t1")
-        expected_code.add_command(ILCommand.ADD, "c", "a", "t2")
-        expected_code.add_command(ILCommand.MULT, "t2", "a", "t3")
-        expected_code.add_command(ILCommand.ADD, "t1", "t3", "t4")
-        expected_code.add_command(ILCommand.SET, "t4", None, "c")
-        expected_code.add_command(ILCommand.RETURN, "c")
-        expected_code.add_command(ILCommand.RETURN, 0)
+        expected_code.add(il_commands.Mult("t1", "a", "b"))
+        expected_code.add(il_commands.Add("t2", "c", "a"))
+        expected_code.add(il_commands.Mult("t3", "t2", "a"))
+        expected_code.add(il_commands.Add("t4", "t1", "t3"))
+        expected_code.add(il_commands.Set("c", "t4"))
+        expected_code.add(il_commands.Return("c"))
+        expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
 
