@@ -60,6 +60,7 @@ class Spot:
         return (self.spot_type, self.detail) == (other.spot_type, other.detail)
 
     def __hash__(self):
+        """Hash based on type and detail."""
         return hash((self.spot_type, self.detail))
 
 RAX = Spot(Spot.REGISTER, "rax")
