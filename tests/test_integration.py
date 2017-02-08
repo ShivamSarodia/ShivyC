@@ -107,7 +107,7 @@ class IntegrationTests(TestUtil):
 
         a = 5
         b = 10
-        c = b + a * b + 10 * a + 10 * 3;
+        c = b + a * b + 10 * a + 10 * 3
         d = c * b + a
         final = d * c
 

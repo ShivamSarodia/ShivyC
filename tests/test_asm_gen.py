@@ -11,6 +11,7 @@ from il_gen import LiteralILValue
 from il_gen import TempILValue
 from il_gen import VariableILValue
 
+
 class ASTGenTests(unittest.TestCase):
     """Tests for the IL->ASM phase of the compiler."""
 

@@ -1,15 +1,17 @@
-"""Classes representing IL commands, including procedures to generate asm code
-from a given IL command.
+"""Classes representing IL commands.
+
+Each IL command is represented by a class that inherits from the ILCommand
+interface. The implementation provides code that generates ASM for each IL
+command.
 
 """
 
 import spots
 from spots import Spot
 
+
 class ILCommand:
-    """Base interface for all IL commands"""
-    def __init__(self):
-        raise NotImplementedError
+    """Base interface for all IL commands."""
 
     def input_values(self):
         """Return list of values read by this command."""
@@ -24,10 +26,11 @@ class ILCommand:
         raise NotImplementedError
 
     def make_asm(self, spotmap, asm_code):
-        """Generate assembly code for this command. Generated assembly can read
-        any of the values returned from input_values, may overwrite any values
-        returned from output_values, and may change the value of any spots
-        returned from clobber_spots without worry.
+        """Generate assembly code for this command.
+
+        Generated assembly can read any of the values returned from
+        input_values, may overwrite any values returned from output_values, and
+        may change the value of any spots returned from clobber_spots.
 
         asm_code (ASMCode) - Object to which to save generated code.
         spotmap - Dictionary mapping each input/output value to a spot.
@@ -39,8 +42,10 @@ class ILCommand:
         """Check equality by comparing types."""
         return type(other) == type(self)
 
+
 class Add(ILCommand):
-    """ADD - adds arg1 and arg2, then saves to output"""
+    """ADD - adds arg1 and arg2, then saves to output."""
+
     def __init__(self, output, arg1, arg2):
         self.output = output
         self.arg1 = arg1
@@ -66,8 +71,10 @@ class Add(ILCommand):
         asm_code.add_command("add", rax_asm, arg2_asm)
         asm_code.add_command("mov", output_asm, rax_asm)
 
+
 class Mult(ILCommand):
-    """MULT - multiplies arg1 and arg2, then saves to output"""
+    """MULT - multiplies arg1 and arg2, then saves to output."""
+
     def __init__(self, output, arg1, arg2):
         self.output = output
         self.arg1 = arg1
@@ -93,8 +100,10 @@ class Mult(ILCommand):
         asm_code.add_command("imul", rax_asm, arg2_asm)
         asm_code.add_command("mov", output_asm, rax_asm)
 
+
 class Set(ILCommand):
-    """SET - sets output IL value to arg IL value"""
+    """SET - sets output IL value to arg IL value."""
+
     def __init__(self, output, arg):
         self.output = output
         self.arg = arg
@@ -122,14 +131,16 @@ class Set(ILCommand):
 
         # Cannot move stack spot directly to another stack spot
         if (arg_spot.spot_type == Spot.STACK and
-            output_spot.spot_type == Spot.STACK):
+             output_spot.spot_type == Spot.STACK):
             asm_code.add_command("mov", rax_asm, arg_asm)
             asm_code.add_command("mov", output_asm, rax_asm)
         else:
             asm_code.add_command("mov", output_asm, arg_asm)
 
+
 class Return(ILCommand):
-    """RETURN - returns the given value from function"""
+    """RETURN - returns the given value from function."""
+
     def __init__(self, arg):
         self.arg = arg
 

@@ -1,7 +1,5 @@
 """The Spot object definition and and some predefined spots, like registers."""
 
-from collections.abc import MutableSet
-
 
 class Spot:
     """Spot in the machine where an IL value can be.

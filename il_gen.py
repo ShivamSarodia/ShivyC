@@ -1,6 +1,5 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
-from collections import namedtuple
 
 class CType:
     """Represents a C type, like `int` or `double` or a struct.
@@ -12,6 +11,7 @@ class CType:
     def __init__(self, size):
         """Initialize type."""
         self.size = size
+
 
 class ILCode:
     """Stores the IL code generated from the AST.
@@ -27,8 +27,9 @@ class ILCode:
     def add(self, command):
         """Add a new command to the IL code.
 
-        command (ILCommand) - command to be added"""
+        command (ILCommand) - command to be added
 
+        """
         self.commands.append(command)
 
     def __iter__(self):
@@ -49,8 +50,10 @@ class ILCode:
         equality checking, and could perhaps be improved.
 
         """
-        if len(self.commands) != len(other.commands): return False
+        if len(self.commands) != len(other.commands):
+            return False
         return all(c1 == c2 for c1, c2 in zip(self.commands, other.commands))
+
 
 class ILValue:
     """Value that appears as an element in generated IL code.

@@ -1,11 +1,8 @@
 """Objects for the IL->ASM stage of the compiler."""
 
-from collections import namedtuple
-
-import ctypes
-import spots
 from il_gen import ILValue
 from spots import Spot
+
 
 class ASMCode:
     """Stores the ASM code generated from the IL code.
@@ -56,6 +53,7 @@ class ASMCode:
 
         return "\n".join(header + [to_string(line) for line in self.lines])
 
+
 class ASMGen:
     """Contains the main logic for generation of the ASM from the IL.
 
@@ -100,6 +98,7 @@ class ASMGen:
         all_values = []
         for command in self.il_code:
             for value in command.input_values() + command.output_values():
-                if value not in all_values: all_values.append(value)
+                if value not in all_values:
+                    all_values.append(value)
 
         return all_values
