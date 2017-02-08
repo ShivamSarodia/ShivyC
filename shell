@@ -1,3 +1,0 @@
-#!/bin/bash
-
-docker run -it -v /Users/shivam/Dev/ShivyC:/ShivyC -w /ShivyC shivyc /bin/bash
