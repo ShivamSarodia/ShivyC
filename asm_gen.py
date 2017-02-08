@@ -88,6 +88,7 @@ class ASMGen:
         # Back up rbp and move rsp
         self.asm_code.add_command("push", "rbp")
         self.asm_code.add_command("mov", "rbp", "rsp")
+        self.asm_code.add_command("sub", "rsp", str(offset))
 
         # Generate all asm code
         for command in self.il_code:

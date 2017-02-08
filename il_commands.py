@@ -158,6 +158,6 @@ class Return(ILCommand):
         rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
 
         asm_code.add_command("mov", rax_asm, arg_asm)
-        # All functions begin by pushing the rbp, so we pop before returning
+        asm_code.add_command("mov", "rsp", "rbp")
         asm_code.add_command("pop", "rbp")
         asm_code.add_command("ret")
