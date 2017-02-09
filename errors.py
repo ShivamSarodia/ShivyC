@@ -24,7 +24,7 @@ class ErrorCollector:
 
     def ok(self):
         """Return True iff there are no errors."""
-        return not any(issue.error for issue in self.issues)
+        return not any(not issue.warning for issue in self.issues)
 
     def show(self):
         """Display all warnings and errors."""

@@ -8,7 +8,7 @@ that generates code in our three-address IL.
 import ctypes
 import token_kinds
 import il_commands
-from errors import CompilerError
+from errors import CompilerError, error_collector
 from il_gen import TempILValue
 from il_gen import LiteralILValue
 from tokens import Token
@@ -151,11 +151,9 @@ class ReturnNode(Node):
     def make_code(self, il_code, symbol_table):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
-        if il_value.ctype != ctypes.integer:
-            # TODO: raise a type error
-            raise NotImplementedError("type error")
-        else:
-            il_code.add(il_commands.Return(il_value))
+
+        # TODO: raise a type error if the return value does not match
+        il_code.add(il_commands.Return(il_value))
 
 
 class NumberNode(Node):
@@ -308,8 +306,6 @@ class BinaryOperatorNode(Node):
             left = self.left_expr.make_code(il_code, symbol_table)
             right = self.right_expr.make_code(il_code, symbol_table)
 
-            if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
-                raise NotImplementedError("type error")
             output = TempILValue(ctypes.integer)
             il_code.add(il_commands.Add(output, left, right))
             return output
@@ -319,8 +315,6 @@ class BinaryOperatorNode(Node):
             left = self.left_expr.make_code(il_code, symbol_table)
             right = self.right_expr.make_code(il_code, symbol_table)
 
-            if left.ctype != ctypes.integer or right.ctype != ctypes.integer:
-                raise NotImplementedError("type error")
             output = TempILValue(ctypes.integer)
             il_code.add(il_commands.Mult(output, left, right))
             return output
@@ -331,12 +325,17 @@ class BinaryOperatorNode(Node):
                 il_code.add(il_commands.Set(left, right))
                 return left
             else:
-                raise NotImplementedError("expected identifier on left side")
+                descrip = "expression on left of '=' is not assignable"
+                error_collector.add(
+                    CompilerError(descrip,
+                                  self.operator.file_name,
+                                  self.operator.line_num))
         else:
             descrip = "unsupported binary operator: '{}'"
-            raise CompilerError(descrip.format(str(self.operator)),
-                                self.operator.file_name,
-                                self.operator.line_num)
+            error_collector.add(CompilerError(
+                descrip.format(str(self.operator)),
+                self.operator.file_name,
+                self.operator.line_num))
 
 
 class DeclarationNode(Node):
