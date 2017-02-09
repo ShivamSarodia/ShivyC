@@ -5,6 +5,35 @@ The main executable catches an exception and prints it for the user.
 """
 
 
+class ErrorCollector:
+    """Class that accumulates all errors and warnings encountered.
+
+    We create a global instance of this class so all parts of the compiler can
+    access it and add errors to it. This is kind of janky, but it's much easier
+    than passing an instance to every function that could potentially fail.
+
+    """
+
+    def __init__(self):
+        """Initialize the ErrorCollector with no issues to report."""
+        self.issues = []
+
+    def add(self, issue):
+        """Add the given error or warning (CompilerError) to list of errors."""
+        self.issues.append(issue)
+
+    def ok(self):
+        """Return True iff there are no errors."""
+        return not any(issue.error for issue in self.issues)
+
+    def show(self):
+        """Display all warnings and errors."""
+        for issue in self.issues:
+            print(issue)
+
+error_collector = ErrorCollector()
+
+
 class CompilerError(Exception):
     """Class representing compile-time errors.
 
@@ -15,13 +44,14 @@ class CompilerError(Exception):
 
     """
 
-    def __init__(self, descrip, file_name=None, line_num=None):
+    def __init__(self, descrip, file_name=None, line_num=None, warning=False):
         """Initialize error.
 
         descrip (str) - Description of the error.
         file_name (str) - File in which the error appeared. If none is
         provided, uses "shivyc" when printing the message.
         line_num (int) - Line number of the file where the error appears.
+        warning (bool) - True if this is a warning
 
         """
         self.descrip = descrip

@@ -9,7 +9,7 @@ import argparse
 import subprocess
 
 import token_kinds
-from errors import CompilerError
+from errors import error_collector, CompilerError
 from lexer import Lexer
 from parser import Parser
 from il_gen import ILCode
@@ -38,10 +38,12 @@ def main():
                             .format(arguments.file_name))
 
     asm_source = compile_to_asm(code_lines)
-    asm_filename = "out.s"
-    write_asm(asm_source, asm_filename)
 
-    assemble_and_link("out", asm_filename, "out.o")
+    # Only continue with writing files if there were no errors
+    if error_collector.ok():
+        asm_filename = "out.s"
+        write_asm(asm_source, asm_filename)
+        assemble_and_link("out", asm_filename, "out.o")
 
 
 def get_arguments():
@@ -120,4 +122,7 @@ if __name__ == "__main__":
     try:
         main()
     except CompilerError as e:
-        print(e)
+        error_collector.add(e)
+
+    # Show all errors
+    error_collector.show()
