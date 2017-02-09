@@ -5,10 +5,10 @@ that generates code in our three-address IL.
 
 """
 
-import errors
 import ctypes
 import token_kinds
 import il_commands
+from errors import CompilerError
 from il_gen import TempILValue
 from il_gen import LiteralILValue
 from tokens import Token
@@ -333,8 +333,10 @@ class BinaryOperatorNode(Node):
             else:
                 raise NotImplementedError("expected identifier on left side")
         else:
-            raise errors.token_error("unsupported binary operator: '{}'",
-                                     self.operator)
+            descrip = "unsupported binary operator: '{}'"
+            raise CompilerError(descrip.format(str(self.operator)),
+                                self.operator.file_name,
+                                self.operator.line_num)
 
 
 class DeclarationNode(Node):

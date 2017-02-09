@@ -73,19 +73,6 @@ class CompilerError(Exception):
             return "shivyc: error: {}".format(self.descrip)
 
 
-# TODO: Remove this function. It's only used once.
-def token_error(descrip, token):
-    """Return a CompilerError based on the given description and token.
-
-    descrip (string) - String containing '{}' where the token content is to
-    be inserted.
-    token (Token) - Token for which an error is being reported.
-
-    """
-    return CompilerError(
-        descrip.format(str(token)), token.file_name, token.line_num)
-
-
 class ParserError(CompilerError):
     """Class representing parser errors.
 
