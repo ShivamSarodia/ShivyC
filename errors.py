@@ -65,13 +65,15 @@ class CompilerError(Exception):
         The returned expression is user friendly and pretty-printable.
 
         """
+        issue_type = "warning" if self.warning else "error"
         if self.file_name and self.line_num:
-            return "{}:{}: error: {}".format(self.file_name, self.line_num,
-                                             self.descrip)
+            return "{}:{}: {}: {}".format(self.file_name, self.line_num,
+                                          issue_type, self.descrip)
         elif self.file_name:
-            return "{}: error: {}".format(self.file_name, self.descrip)
+            return "{}: {}: {}".format(self.file_name, issue_type,
+                                       self.descrip)
         else:
-            return "shivyc: error: {}".format(self.descrip)
+            return "shivyc: {}: {}".format(issue_type, self.descrip)
 
 
 class ParserError(CompilerError):
