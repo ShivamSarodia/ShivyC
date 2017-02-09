@@ -57,6 +57,7 @@ class CompilerError(Exception):
         self.descrip = descrip
         self.file_name = file_name
         self.line_num = line_num
+        self.warning = warning
 
     def __str__(self):
         """Return a full representation of the error.
