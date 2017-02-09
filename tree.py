@@ -300,6 +300,7 @@ class BinaryOperatorNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
+        # TODO: split this into multiple functions
         if self.operator == Token(token_kinds.plus):
             # TODO: Consider chosing intelligently which side to make code for
             # first.

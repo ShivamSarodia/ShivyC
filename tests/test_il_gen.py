@@ -4,6 +4,7 @@ import unittest
 
 import token_kinds
 import il_commands
+from errors import error_collector
 from il_gen import ILCode
 from il_gen import SymbolTable
 from lexer import Lexer
@@ -20,6 +21,10 @@ class ILGenTests(unittest.TestCase):
     anyway.
 
     """
+
+    def setUp(self):
+        """Clear the error collector before each new test."""
+        error_collector.clear()
 
     def test_return_literal(self):
         """Test returning a single literal."""
@@ -131,6 +136,18 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return(0))
 
         self.assertEqual(il_code, expected_code)
+
+    def test_error_unassignable(self):
+        """Verify errors when expression on left of '=' is unassignable."""
+        source = """
+                 int main() {
+                     3 = 4;
+                 }"""
+        self.make_il_code(source)
+
+        descrip = "error: expression on left of '=' is not assignable"
+        self.assertEqual(len(error_collector.issues), 1)
+        self.assertTrue(descrip in str(error_collector.issues[0]))
 
     def make_il_code(self, source):
         """Make IL code from the given source.

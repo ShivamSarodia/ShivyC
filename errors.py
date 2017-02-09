@@ -31,6 +31,10 @@ class ErrorCollector:
         for issue in self.issues:
             print(issue)
 
+    def clear(self):
+        """Clear all warnings and errors. Intended only for testing use."""
+        self.issues = []
+
 error_collector = ErrorCollector()
 
 
