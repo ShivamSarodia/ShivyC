@@ -143,11 +143,15 @@ class ILGenTests(unittest.TestCase):
                  int main() {
                      3 = 4;
                  }"""
-        self.make_il_code(source)
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Return(0))
 
         descrip = "error: expression on left of '=' is not assignable"
         self.assertEqual(len(error_collector.issues), 1)
         self.assertTrue(descrip in str(error_collector.issues[0]))
+        self.assertEqual(il_code, expected_code)
 
     def make_il_code(self, source):
         """Make IL code from the given source.
