@@ -2,7 +2,6 @@
 
 import unittest
 
-import token_kinds
 import il_commands
 from errors import error_collector
 from il_gen import ILCode
@@ -186,8 +185,7 @@ class ILGenTests(unittest.TestCase):
         returns (ILCode) - the produced IL code object
 
         """
-        lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
-        token_list = lexer.tokenize([(source, "test.c", "7")])
+        token_list = Lexer().tokenize([(source, "test.c", "7")])
 
         ast_root = Parser(token_list).parse()
 

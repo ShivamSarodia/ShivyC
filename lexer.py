@@ -29,19 +29,18 @@ class Lexer:
 
     """
 
-    def __init__(self, symbol_kinds, keyword_kinds):
-        """Sort the provided token kind lists and initialize lexer."""
+    def __init__(self):
+        """Sort the token kind lists and initialize lexer."""
         self.symbol_kinds = sorted(
-            symbol_kinds, key=lambda kind: -len(kind.text_repr))
+            token_kinds.symbol_kinds, key=lambda kind: -len(kind.text_repr))
         self.keyword_kinds = sorted(
-            keyword_kinds, key=lambda kind: -len(kind.text_repr))
+            token_kinds.keyword_kinds, key=lambda kind: -len(kind.text_repr))
 
     def tokenize(self, code_lines):
         """Convert the given lines of code into a list of tokens.
 
         The tokenizing algorithm proceeds through the content linearly in one
-        pass, producing the list of tokens as we go. This function has a direct
-        external reference to token_kinds.number.
+        pass, producing the list of tokens as we go.
 
         content (List(tuple)) - Lines of code to tokenize, provided in the
         following form:
@@ -137,7 +136,7 @@ class Lexer:
         return None
 
     def add_chunk(self, chunk, tokens):
-        """Convert the provided chunk into a token if possible and add it to tokens.
+        """Convert chunk into a token if possible and add to tokens.
 
         If chunk is non-empty but cannot be made into a token, this function
         raises a compiler error. We don't need to check for symbol kind tokens

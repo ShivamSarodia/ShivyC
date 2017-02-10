@@ -8,7 +8,6 @@ For usage, run "./shivyc.py --help".
 import argparse
 import subprocess
 
-import token_kinds
 from errors import error_collector, CompilerError
 from lexer import Lexer
 from parser import Parser
@@ -69,8 +68,7 @@ def compile_to_asm(code_lines):
     itself, second element is the file name, third element is the line number.
 
     """
-    lexer = Lexer(token_kinds.symbol_kinds, token_kinds.keyword_kinds)
-    token_list = lexer.tokenize(code_lines)
+    token_list = Lexer().tokenize(code_lines)
 
     ast_root = Parser(token_list).parse()
 
