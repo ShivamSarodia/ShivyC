@@ -128,7 +128,10 @@ class CompoundNode(Node):
     def make_code(self, il_code, symbol_table):
         """Make IL code for every block item, in order."""
         for block_item in self.block_items:
-            block_item.make_code(il_code, symbol_table)
+            try:
+                block_item.make_code(il_code, symbol_table)
+            except CompilerError as e:
+                error_collector.add(e)
 
 
 class ReturnNode(Node):
@@ -207,7 +210,7 @@ class IdentifierNode(Node):
         corresponding ILValue.
 
         """
-        return symbol_table.lookup(self.identifier.content)
+        return symbol_table.lookup_tok(self.identifier)
 
 
 class ExprStatementNode(Node):
@@ -322,21 +325,18 @@ class BinaryOperatorNode(Node):
         elif self.operator == Token(token_kinds.equals):
             if isinstance(self.left_expr, IdentifierNode):
                 right = self.right_expr.make_code(il_code, symbol_table)
-                left = symbol_table.lookup(self.left_expr.identifier.content)
+                left = symbol_table.lookup_tok(self.left_expr.identifier)
                 il_code.add(il_commands.Set(left, right))
                 return left
             else:
                 descrip = "expression on left of '=' is not assignable"
-                error_collector.add(
-                    CompilerError(descrip,
-                                  self.operator.file_name,
-                                  self.operator.line_num))
+                raise CompilerError(descrip, self.operator.file_name,
+                                    self.operator.line_num)
         else:
             descrip = "unsupported binary operator: '{}'"
-            error_collector.add(CompilerError(
-                descrip.format(str(self.operator)),
-                self.operator.file_name,
-                self.operator.line_num))
+            raise CompilerError(descrip.format(str(self.operator)),
+                                self.operator.file_name,
+                                self.operator.line_num)
 
 
 class DeclarationNode(Node):

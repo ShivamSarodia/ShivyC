@@ -1,5 +1,7 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
+from errors import CompilerError
+
 
 class CType:
     """Represents a C type, like `int` or `double` or a struct.
@@ -150,7 +152,8 @@ class SymbolTable:
     def lookup(self, name):
         """Look up the identifier with the given name.
 
-        This function returns the ILValue object for the identifier.
+        This function returns the ILValue object for the identifier, or None if
+        not found.
 
         name (str) - Identifier name to search for.
 
@@ -158,8 +161,25 @@ class SymbolTable:
         if name in self.table:
             return self.table[name]
         else:
-            # TODO: raise a real exception here
-            raise NotImplementedError("unknown identifier")
+            return None
+
+    def lookup_tok(self, identifier):
+        """Look up the given identifier.
+
+        This function returns the ILValue object for the identifier, or raises
+        an exception if not found.
+
+        identifier (Token(Identifier)) - Identifier to look up
+
+        """
+        ret = self.lookup(identifier.content)
+        if ret:
+            return ret
+        else:
+            descrip = "use of undeclared identifier '{}'"
+            raise CompilerError(descrip.format(identifier.content),
+                                identifier.file_name,
+                                identifier.line_num)
 
     def add(self, name, ctype):
         """Add an identifier with the given name and type to the symbol table.

@@ -35,6 +35,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return(15))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_sum(self):
@@ -47,6 +48,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("t1"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable(self):
@@ -58,6 +60,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("a"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_sum(self):
@@ -70,6 +73,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("t1"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_equal_sum(self):
@@ -83,6 +87,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_equal_product(self):
@@ -96,6 +101,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_equal_return_value(self):
@@ -114,6 +120,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_complex_expression(self):
@@ -135,6 +142,7 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
+        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_error_unassignable(self):
@@ -148,9 +156,28 @@ class ILGenTests(unittest.TestCase):
         expected_code = ILCode()
         expected_code.add(il_commands.Return(0))
 
-        descrip = "error: expression on left of '=' is not assignable"
-        self.assertEqual(len(error_collector.issues), 1)
-        self.assertTrue(descrip in str(error_collector.issues[0]))
+        issues = ["error: expression on left of '=' is not assignable"]
+        self.assertIssues(issues)
+        self.assertEqual(il_code, expected_code)
+
+    def test_error_two_unassignable(self):
+        """Verify errors when multiple expressions are unassignable."""
+        source = """
+                 int main() {
+                     int a;
+                     3 = 4;
+                     a = (5 = 6);
+                     a = 10;
+                 }"""
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Set("a", 10))
+        expected_code.add(il_commands.Return(0))
+
+        issues = ["error: expression on left of '=' is not assignable",
+                  "error: expression on left of '=' is not assignable"]
+        self.assertIssues(issues)
         self.assertEqual(il_code, expected_code)
 
     def make_il_code(self, source):
@@ -169,6 +196,21 @@ class ILGenTests(unittest.TestCase):
         ast_root.make_code(il_code, symbol_table)
         return il_code
 
+    def assertIssues(self, issues):
+        """Assert that all given issues have been raised in expected order.
+
+        issues (List[str]) - list of issue descriptions, like
+                             "error: expression invalid"
+
+        """
+        self.assertEqual(len(error_collector.issues), len(issues))
+        for descrip, issue in zip(issues, error_collector.issues):
+            self.assertTrue(descrip in str(issue))
+
+    def assertNoIssues(self):
+        """Assert that there are no issues in error collector."""
+        for issue in error_collector.issues:
+            raise issue
 
 if __name__ == "__main__":
     unittest.main()
