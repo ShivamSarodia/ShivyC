@@ -196,3 +196,29 @@ class ASTGenTests(unittest.TestCase):
         expected.add_command("ret")
 
         self.assertEqual(asm_code.full_code(), expected.full_code())
+
+    def test_mutliply_stack_values(self):
+        """Test multiply two stack values."""
+        il_literal_1 = LiteralILValue(ctypes.integer, "4")
+        il_literal_2 = LiteralILValue(ctypes.integer, "8")
+        il_temp_1 = TempILValue(ctypes.integer)
+        il_code = ILCode()
+        il_code.add(il_commands.Mult(il_temp_1, il_literal_1, il_literal_2))
+        il_code.add(il_commands.Return(il_temp_1))
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected = ASMCode()
+        expected.add_command("push", "rbp")
+        expected.add_command("mov", "rbp", "rsp")
+        expected.add_command("sub", "rsp", "4")
+        expected.add_command("mov", "eax", "4")
+        expected.add_command("imul", "eax", "8")
+        expected.add_command("mov", "DWORD [rbp-4]", "eax")
+        expected.add_command("mov", "eax", "DWORD [rbp-4]")
+        expected.add_command("mov", "rsp", "rbp")
+        expected.add_command("pop", "rbp")
+        expected.add_command("ret")
+
+        self.assertEqual(asm_code.full_code(), expected.full_code())
