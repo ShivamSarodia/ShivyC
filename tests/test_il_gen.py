@@ -248,6 +248,22 @@ class ILGenTests(TestUtils):
                   "error: expression on left of '=' is not assignable"]
         self.assertIssues(issues)
 
+    def test_undeclared_identifier(self):
+        """Test undeclared identifier raises error."""
+        source = """
+                 int main() {
+                     int a; int b;
+                     c = 0;
+                     a = d;
+                     return e;
+                 }
+        """
+        self.make_il_code(source)
+        issues = ["error: use of undeclared identifier 'c'",
+                  "error: use of undeclared identifier 'd'",
+                  "error: use of undeclared identifier 'e'"]
+        self.assertIssues(issues)
+
     def make_il_code(self, source):
         """Make IL code from the given source.
 
