@@ -339,11 +339,6 @@ class BinaryOperatorNode(Node):
                 descrip = "expression on left of '=' is not assignable"
                 raise CompilerError(descrip, self.operator.file_name,
                                     self.operator.line_num)
-        else:
-            descrip = "unsupported binary operator: '{}'"
-            raise CompilerError(descrip.format(str(self.operator)),
-                                self.operator.file_name,
-                                self.operator.line_num)
 
 
 class DeclarationNode(Node):
