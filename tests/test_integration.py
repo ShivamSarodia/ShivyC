@@ -8,7 +8,6 @@ one or more of the other test_*.py files.
 """
 
 import subprocess
-import unittest
 import shivyc
 
 from asm_gen import ASMCode, ASMGen
@@ -16,10 +15,19 @@ from errors import error_collector
 from il_gen import ILCode, SymbolTable
 from lexer import Lexer
 from parser import Parser
+from tests.test_utils import TestUtils
 
 
-class IntegrationTestUtil(unittest.TestCase):
+class IntegrationTestUtil(TestUtils):
     """Useful functions for the integration tests."""
+
+    def setUp(self):
+        """Clear error collector."""
+        error_collector.clear()
+
+    def tearDown(self):
+        """Assert no errors."""
+        self.assertNoIssues()
 
     def compile_and_run(self, code):
         """Compile, assemble, link, and run the provided C code.
@@ -42,7 +50,6 @@ class IntegrationTestUtil(unittest.TestCase):
                                  "tests/temp/temp.o")
         ret = subprocess.call(["tests/temp/out"])
 
-        self.assertTrue(error_collector.ok())
         return ret
 
     def assertReturns(self, code, value):
