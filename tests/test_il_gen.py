@@ -176,6 +176,80 @@ class ILGenTests(TestUtils):
         self.assertIssues(issues)
         self.assertEqual(il_code, expected_code)
 
+    def test_if_statement(self):
+        """Test basic if-statement."""
+        source = """
+                 int main() {
+                     int a;
+                     a = 0;
+                     if(2) {
+                          a = 5;
+                     }
+                     return a;
+                 }
+        """
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Set("a", 0))
+        expected_code.add(il_commands.JumpZero("2", 1))
+        expected_code.add(il_commands.Set("a", 5))
+        expected_code.add(il_commands.Label(1))
+        expected_code.add(il_commands.Return("a"))
+        expected_code.add(il_commands.Return(0))
+
+        self.assertEqual(il_code, expected_code)
+
+    def test_compound_if_statement(self):
+        """Test compound if-statement."""
+        source = """
+                 int main() {
+                     int a;
+                     a = 0;
+                     if(2) {
+                          a = 5;
+                          if(3) {
+                               a = 10;
+                          }
+                          a = 7;
+                     }
+                     return a;
+                 }
+        """
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Set("a", 0))
+        expected_code.add(il_commands.JumpZero("2", 1))
+        expected_code.add(il_commands.Set("a", 5))
+        expected_code.add(il_commands.JumpZero("3", 2))
+        expected_code.add(il_commands.Set("a", 10))
+        expected_code.add(il_commands.Label(2))
+        expected_code.add(il_commands.Set("a", 7))
+        expected_code.add(il_commands.Label(1))
+        expected_code.add(il_commands.Return("a"))
+        expected_code.add(il_commands.Return(0))
+
+        self.assertEqual(il_code, expected_code)
+
+    def test_error_in_if_statement(self):
+        """Test errors in if-statement are proprerly reported."""
+        source = """
+                 int main() {
+                     int a;
+                     a = 0;
+                     if(2) {
+                          3 = 5;
+                     }
+                     4 = 5;
+                     return a;
+                 }
+        """
+        self.make_il_code(source)
+        issues = ["error: expression on left of '=' is not assignable",
+                  "error: expression on left of '=' is not assignable"]
+        self.assertIssues(issues)
+
     def make_il_code(self, source):
         """Make IL code from the given source.
 

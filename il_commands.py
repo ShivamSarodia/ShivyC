@@ -7,6 +7,7 @@ command.
 """
 
 import spots
+from asm_gen import ASMCode
 from spots import Spot
 
 
@@ -161,3 +162,51 @@ class Return(ILCommand):
         asm_code.add_command("mov", "rsp", "rbp")
         asm_code.add_command("pop", "rbp")
         asm_code.add_command("ret")
+
+
+class Label(ILCommand):
+    """Label - Analogous to an ASM label."""
+
+    def __init__(self, label): # noqa D102
+        """The label argument is an integer identifier unique to this label."""
+        self.label = label
+
+    def input_values(self): # noqa D102
+        return []
+
+    def output_values(self): # noqa D102
+        return []
+
+    def clobber_spots(self): # noqa D102
+        return []
+
+    def make_asm(self, spotmap, asm_code): # noqa D102
+        asm_code.add_label(ASMCode.to_label(self.label))
+
+
+class JumpZero(ILCommand):
+    """Jumps to a label if given condition is zero."""
+
+    def __init__(self, cond, label): # noqa D102
+        self.cond = cond
+        self.label = label
+
+    def input_values(self): # noqa D102
+        return [self.cond]
+
+    def output_values(self): # noqa D102
+        return []
+
+    def clobber_spots(self): # noqa D102
+        return []
+
+    def make_asm(self, spotmap, asm_code): # noqa D102
+        cond_asm = spotmap[self.cond].asm_str(self.cond.ctype.size)
+        if spotmap[self.cond].spot_type == Spot.LITERAL:
+            # Must do manual comparison in this case.
+            # TODO: check if the literal is "00" or something like that.
+            if cond_asm == "0":
+                asm_code.add_command("jmp", ASMCode.to_label(self.label))
+        else:
+            asm_code.add_command("cmp", cond_asm, "0")
+            asm_code.add_command("je", ASMCode.to_label(self.label))

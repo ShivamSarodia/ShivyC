@@ -276,7 +276,14 @@ class IfStatementNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
-        raise NotImplementedError
+        try:
+            label = il_code.get_label()
+            condition = self.conditional.make_code(il_code, symbol_table)
+            il_code.add(il_commands.JumpZero(condition, label))
+            self.statement.make_code(il_code, symbol_table)
+            il_code.add(il_commands.Label(label))
+        except CompilerError as e:
+            error_collector.add(e)
 
 
 class BinaryOperatorNode(Node):

@@ -98,3 +98,35 @@ class IntegrationTests(unittest.TestCase):
         final = d * c
 
         self.assertReturns(source, final % 256)
+
+    def test_simple_variable_if(self):
+        """Test a simple variable if-statement."""
+        source = """
+        int main() {
+             int a; int b; int c;
+             a = b = c = 10;
+             if(a) return 10;
+             return 20;
+        }
+        """
+        self.assertReturns(source, 10)
+
+    def test_complex_if(self):
+        """Test a complex if-statement."""
+        source = """
+                 int main() {
+                   int a; int b; int c;
+                   a = b = c = 10;
+                   if(a) {
+                     if(b) {
+                       if(c * 0) {
+                         a = 0;
+                       }
+                       a = a + a;
+                     }
+                     b = b + a;
+                   }
+                   return b + c;
+                 }
+                """
+        self.assertReturns(source, 40)

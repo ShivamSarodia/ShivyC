@@ -18,13 +18,15 @@ class CType:
 class ILCode:
     """Stores the IL code generated from the AST.
 
-    lines (List) - The lines of code recorded.
+    commands (List) - The commands recorded.
+    label_num (int) - Unique identifier returned by get_label
 
     """
 
     def __init__(self):
         """Initialize IL code."""
         self.commands = []
+        self.label_num = 0
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -33,6 +35,11 @@ class ILCode:
 
         """
         self.commands.append(command)
+
+    def get_label(self):
+        """Return a unique label identifier."""
+        self.label_num += 1
+        return self.label_num
 
     def __iter__(self):
         """Return the lines of code in order when iterating through ILCode.

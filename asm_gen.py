@@ -27,6 +27,19 @@ class ASMCode:
         """
         self.lines.append((command, arg1, arg2))
 
+    @staticmethod
+    def to_label(label):
+        """Given a label integer, produce the full label name."""
+        return "__shivyc_label" + str(label)
+
+    def add_label(self, label):
+        """Add a label to the code.
+
+        label (str) - The label string to add.
+
+        """
+        self.lines.append(label)
+
     def full_code(self):  # noqa: D202
         """Produce the full assembly code.
 
@@ -36,17 +49,20 @@ class ASMCode:
         """
 
         def to_string(line):
-            """Convert the provided tuple into a string of asm code.
+            """Convert the provided tuple/string into a string of asm code.
 
             Does not terminate with a newline.
 
             """
-            line_str = "     " + line[0]
-            if line[1]:
-                line_str += " " + line[1]
-            if line[2]:
-                line_str += ", " + line[2]
-            return line_str
+            if isinstance(line, str):  # this is a label
+                return line + ":"
+            else:
+                line_str = "     " + line[0]
+                if line[1]:
+                    line_str += " " + line[1]
+                if line[2]:
+                    line_str += ", " + line[2]
+                return line_str
 
         # This code starts every asm program so far, so we put it here.
         header = ["global main", "", "main:"]

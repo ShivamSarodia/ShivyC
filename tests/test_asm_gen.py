@@ -222,3 +222,99 @@ class ASTGenTests(unittest.TestCase):
         expected.add_command("ret")
 
         self.assertEqual(asm_code.full_code(), expected.full_code())
+
+    def test_basic_if_statement(self):
+        """Test a basic if-statement."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_literal_0 = LiteralILValue(ctypes.integer, "0")
+        il_literal_1 = LiteralILValue(ctypes.integer, "1")
+        label = 1
+
+        il_code = ILCode()
+        il_code.add(il_commands.Set(il_variable_1, il_literal_0))
+        il_code.add(il_commands.JumpZero(il_variable_1, label))
+        il_code.add(il_commands.Set(il_variable_1, il_literal_1))
+        il_code.add(il_commands.Label(label))
+        il_code.add(il_commands.Return(il_variable_1))
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected = ASMCode()
+        expected.add_command("push", "rbp")
+        expected.add_command("mov", "rbp", "rsp")
+        expected.add_command("sub", "rsp", "4")
+        expected.add_command("mov", "DWORD [rbp-4]", "0")
+        expected.add_command("cmp", "DWORD [rbp-4]", "0")
+        expected.add_command("je", "__shivyc_label1")
+        expected.add_command("mov", "DWORD [rbp-4]", "1")
+        expected.add_label("__shivyc_label1")
+        expected.add_command("mov", "eax", "DWORD [rbp-4]")
+        expected.add_command("mov", "rsp", "rbp")
+        expected.add_command("pop", "rbp")
+        expected.add_command("ret")
+
+        self.assertEqual(asm_code.full_code(), expected.full_code())
+
+    def test_literal_true_if_statement(self):
+        """Test a basic if-statement with true literal condition."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_literal_0 = LiteralILValue(ctypes.integer, "0")
+        il_literal_1 = LiteralILValue(ctypes.integer, "1")
+        label = 1
+
+        il_code = ILCode()
+        il_code.add(il_commands.Set(il_variable_1, il_literal_0))
+        il_code.add(il_commands.JumpZero(il_literal_1, label))
+        il_code.add(il_commands.Set(il_variable_1, il_literal_1))
+        il_code.add(il_commands.Label(label))
+        il_code.add(il_commands.Return(il_variable_1))
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected = ASMCode()
+        expected.add_command("push", "rbp")
+        expected.add_command("mov", "rbp", "rsp")
+        expected.add_command("sub", "rsp", "4")
+        expected.add_command("mov", "DWORD [rbp-4]", "0")
+        expected.add_command("mov", "DWORD [rbp-4]", "1")
+        expected.add_label("__shivyc_label1")
+        expected.add_command("mov", "eax", "DWORD [rbp-4]")
+        expected.add_command("mov", "rsp", "rbp")
+        expected.add_command("pop", "rbp")
+        expected.add_command("ret")
+
+        self.assertEqual(asm_code.full_code(), expected.full_code())
+
+    def test_literal_false_if_statement(self):
+        """Test a basic if-statement with false literal condition."""
+        il_variable_1 = VariableILValue(ctypes.integer, 4)
+        il_literal_0 = LiteralILValue(ctypes.integer, "0")
+        il_literal_1 = LiteralILValue(ctypes.integer, "1")
+        label = 1
+
+        il_code = ILCode()
+        il_code.add(il_commands.Set(il_variable_1, il_literal_0))
+        il_code.add(il_commands.JumpZero(il_literal_0, label))
+        il_code.add(il_commands.Set(il_variable_1, il_literal_1))
+        il_code.add(il_commands.Label(label))
+        il_code.add(il_commands.Return(il_variable_1))
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected = ASMCode()
+        expected.add_command("push", "rbp")
+        expected.add_command("mov", "rbp", "rsp")
+        expected.add_command("sub", "rsp", "4")
+        expected.add_command("mov", "DWORD [rbp-4]", "0")
+        expected.add_command("jmp", "__shivyc_label1")
+        expected.add_command("mov", "DWORD [rbp-4]", "1")
+        expected.add_label("__shivyc_label1")
+        expected.add_command("mov", "eax", "DWORD [rbp-4]")
+        expected.add_command("mov", "rsp", "rbp")
+        expected.add_command("pop", "rbp")
+        expected.add_command("ret")
+
+        self.assertEqual(asm_code.full_code(), expected.full_code())
