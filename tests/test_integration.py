@@ -9,11 +9,16 @@ one or more of the other test_*.py files.
 
 import subprocess
 import unittest
-
 import shivyc
 
+from asm_gen import ASMCode, ASMGen
+from errors import error_collector
+from il_gen import ILCode, SymbolTable
+from lexer import Lexer
+from parser import Parser
 
-class TestUtil(unittest.TestCase):
+
+class IntegrationTestUtil(unittest.TestCase):
     """Useful functions for the integration tests."""
 
     def compile_and_run(self, code):
@@ -23,18 +28,29 @@ class TestUtil(unittest.TestCase):
         Otherwise, it returns the return code of the compiled program.
 
         """
-        asm_source = shivyc.compile_to_asm([(code, "filename.c", 7)])
-        shivyc.write_asm(asm_source, "tests/temp/out.s")
+        token_list = Lexer().tokenize([(code, "test.c", 7)])
+        ast_root = Parser(token_list).parse()
+        il_code = ILCode()
+        ast_root.make_code(il_code, SymbolTable())
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+        asm_source = asm_code.full_code()
+
+        asm_filename = "tests/temp/out.s"
+        shivyc.write_asm(asm_source, asm_filename)
         shivyc.assemble_and_link("tests/temp/out", "tests/temp/out.s",
                                  "tests/temp/temp.o")
-        return subprocess.call(["tests/temp/out"])
+        ret = subprocess.call(["tests/temp/out"])
+
+        self.assertTrue(error_collector.ok())
+        return ret
 
     def assertReturns(self, code, value):
         """Assert that the code returns the given value."""
         self.assertEqual(self.compile_and_run(code), value)
 
 
-class IntegrationTests(TestUtil):
+class IntegrationTests(IntegrationTestUtil):
     """Integration tests for the compiler."""
 
     def test_basic_return_main(self):

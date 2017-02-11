@@ -8,9 +8,10 @@ from il_gen import ILCode
 from il_gen import SymbolTable
 from lexer import Lexer
 from parser import Parser
+from tests.test_utils import TestUtils
 
 
-class ILGenTests(unittest.TestCase):
+class ILGenTests(TestUtils):
     """Tests for the AST->IL phase of the compiler.
 
     We're lowkey cheating here--these are more of integration tests than unit
@@ -25,6 +26,10 @@ class ILGenTests(unittest.TestCase):
         """Clear the error collector before each new test."""
         error_collector.clear()
 
+    def tearDown(self):
+        """Assert there are no remaining errors."""
+        self.assertNoIssues()
+
     def test_return_literal(self):
         """Test returning a single literal."""
         source = "int main() { return 15; }"
@@ -34,7 +39,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return(15))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_sum(self):
@@ -47,7 +51,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("t1"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable(self):
@@ -59,7 +62,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("a"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_sum(self):
@@ -72,7 +74,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("t1"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_equal_sum(self):
@@ -86,7 +87,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_return_variable_equal_product(self):
@@ -100,7 +100,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_equal_return_value(self):
@@ -119,7 +118,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_complex_expression(self):
@@ -141,7 +139,6 @@ class ILGenTests(unittest.TestCase):
         expected_code.add(il_commands.Return("c"))
         expected_code.add(il_commands.Return(0))
 
-        self.assertNoIssues()
         self.assertEqual(il_code, expected_code)
 
     def test_error_unassignable(self):
@@ -203,7 +200,8 @@ class ILGenTests(unittest.TestCase):
         """
         self.assertEqual(len(error_collector.issues), len(issues))
         for descrip, issue in zip(issues, error_collector.issues):
-            self.assertTrue(descrip in str(issue))
+            self.assertIn(descrip, str(issue))
+        error_collector.clear()
 
     def assertNoIssues(self):
         """Assert that there are no issues in error collector."""

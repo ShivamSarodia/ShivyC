@@ -7,6 +7,7 @@ For usage, run "./shivyc.py --help".
 
 import argparse
 import subprocess
+import sys
 
 from errors import error_collector, CompilerError
 from lexer import Lexer
@@ -18,31 +19,51 @@ from asm_gen import ASMGen
 
 
 def main():
-    """Load the input files, compile them, and save output.
+    """Run the main compiler script."""
+    # Each of these functions should add any issues to the global
+    # error_collector -- NOT raise them. After each stage of the compiler,
+    # compiliation only proceeds if no errors were found.
 
-    The main function handles interfacing with the user, like reading the
-    command line arguments, printing errors, and generating output files.
-
-    """
     arguments = get_arguments()
 
-    try:
-        with open(arguments.file_name) as c_file:
-            code_lines = [
-                (line_text.strip(), arguments.file_name, line_num + 1)
-                for line_num, line_text in enumerate(c_file)
-            ]
-    except IOError:
-        raise CompilerError("could not read file: '{}'"
-                            .format(arguments.file_name))
+    code_lines = get_code_lines(arguments)
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
 
-    asm_source = compile_to_asm(code_lines)
+    token_list = Lexer().tokenize(code_lines)
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
 
-    # Only continue with writing files if there were no errors
-    if error_collector.ok():
-        asm_filename = "out.s"
-        write_asm(asm_source, asm_filename)
-        assemble_and_link("out", asm_filename, "out.o")
+    ast_root = Parser(token_list).parse()
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
+
+    il_code = ILCode()
+    ast_root.make_code(il_code, SymbolTable())
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
+
+    asm_code = ASMCode()
+    ASMGen(il_code, asm_code).make_asm()
+    asm_source = asm_code.full_code()
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
+
+    asm_filename = "out.s"
+    write_asm(asm_source, asm_filename)
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
+
+    assemble_and_link("out", asm_filename, "out.o")
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
 
 
 def get_arguments():
@@ -61,25 +82,15 @@ def get_arguments():
     return parser.parse_args()
 
 
-def compile_to_asm(code_lines):
-    """Compile the given code lines to asm.
-
-    code_lines (List(tuple)) - Lines of code. First element is the line of code
-    itself, second element is the file name, third element is the line number.
-
-    """
-    token_list = Lexer().tokenize(code_lines)
-
-    ast_root = Parser(token_list).parse()
-
-    il_code = ILCode()
-    symbol_table = SymbolTable()
-    ast_root.make_code(il_code, symbol_table)
-
-    asm_code = ASMCode()
-    ASMGen(il_code, asm_code).make_asm()
-
-    return asm_code.full_code()
+def get_code_lines(arguments):
+    """Open the file(s) in arguments and return lines of code."""
+    try:
+        with open(arguments.file_name) as c_file:
+            return [(line_text.strip(), arguments.file_name, line_num + 1)
+                    for line_num, line_text in enumerate(c_file)]
+    except IOError:
+        descrip = "could not read file: '{}'"
+        error_collector.add(CompilerError(descrip.format(arguments.file_name)))
 
 
 def write_asm(asm_source, asm_filename):
@@ -93,8 +104,8 @@ def write_asm(asm_source, asm_filename):
         with open(asm_filename, "w") as s_file:
             s_file.write(asm_source)
     except IOError:
-        raise CompilerError("could not write output file '{}'".format(
-            asm_filename))
+        descrip = "could not write output file '{}'"
+        error_collector.add(CompilerError(descrip.format(asm_filename)))
 
 
 def assemble_and_link(binary_name, asm_name, obj_name):
@@ -117,10 +128,4 @@ def assemble_and_link(binary_name, asm_name, obj_name):
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except CompilerError as e:
-        error_collector.add(e)
-
-    # Show all errors
-    error_collector.show()
+    sys.exit(main())

@@ -8,7 +8,7 @@ from collections import namedtuple
 
 import tree
 import token_kinds
-from errors import ParserError
+from errors import ParserError, error_collector
 from tokens import Token
 
 
@@ -51,12 +51,14 @@ class Parser:
             node, index = self.parse_main(0)
         except ParserError as e:
             self._log_error(e)
-            raise self.best_error
+            error_collector.add(self.best_error)
+            return None
 
         # Ensure there's no tokens left at after the main function
         if self.tokens[index:]:
-            err = "unexpected token"
-            raise ParserError(err, index, self.tokens, ParserError.AT)
+            descrip = "unexpected token"
+            error_collector.add(
+                ParserError(descrip, index, self.tokens, ParserError.AT))
 
         return node
 

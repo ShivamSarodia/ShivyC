@@ -9,7 +9,7 @@ contents.
 import re
 
 import token_kinds
-from errors import CompilerError
+from errors import CompilerError, error_collector
 from tokens import Token
 
 
@@ -66,7 +66,7 @@ class Lexer:
             except CompilerError as e:
                 e.file_name = line_with_info[1]
                 e.line_num = line_with_info[2]
-                raise e
+                error_collector.add(e)
 
             for token in tokens:
                 token.file_name = line_with_info[1]
@@ -139,7 +139,7 @@ class Lexer:
         """Convert chunk into a token if possible and add to tokens.
 
         If chunk is non-empty but cannot be made into a token, this function
-        raises a compiler error. We don't need to check for symbol kind tokens
+        records a compiler error. We don't need to check for symbol kind tokens
         here because they are converted before they are shifted into the chunk.
 
         chunk (str) - Chunk to convert into a token.
@@ -162,7 +162,8 @@ class Lexer:
                 tokens.append(Token(token_kinds.identifier, identifier_name))
                 return
 
-            raise CompilerError("unrecognized token at '{}'".format(chunk))
+            descrip = "unrecognized token at '{}'"
+            error_collector.add(CompilerError(descrip.format(chunk)))
 
     # These match_* functions can safely assume the input token_repr is
     # non-empty.

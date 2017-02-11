@@ -4,13 +4,22 @@ import unittest
 
 import tree
 import token_kinds
-from errors import CompilerError
+from errors import error_collector
 from parser import Parser
 from tokens import Token
+from tests.test_utils import TestUtils
 
 
-class ParserTestUtil(unittest.TestCase):
+class ParserTestUtil(TestUtils):
     """Utilities for parser tests."""
+
+    def setUp(self):
+        """Clear the error collector before each new test."""
+        error_collector.clear()
+
+    def tearDown(self):
+        """Assert there are no remaining errors."""
+        self.assertNoIssues()
 
     def assertParsesTo(self, tokens, nodes):
         """Assert the given tokens parse to the given tree nodes.
@@ -23,15 +32,14 @@ class ParserTestUtil(unittest.TestCase):
         ast_root = Parser(self._token_wrap_main(tokens)).parse()
         self.assertEqual(ast_root, tree.MainNode(tree.CompoundNode(nodes)))
 
-    def assertParserError(self, tokens, regex):
-        """Assert the given tokens raise a compiler error during parsing.
+    def assertParserError(self, tokens, descrip):
+        """Assert the given tokens create a compiler error.
 
-        Expects the raised compiler error message to match the given regex.
         As above, no need to include 'int main() { }' in the tokens.
 
         """
-        with self.assertRaisesRegex(CompilerError, regex):
-            Parser(self._token_wrap_main(tokens)).parse()
+        Parser(self._token_wrap_main(tokens)).parse()
+        self.assertIssues([descrip])
 
     def _token_wrap_main(self, tokens):
         """Prefix the `tokens` list with 'int main() {' and suffix with '}'."""
@@ -77,9 +85,9 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
             Token(token_kinds.close_brack), Token(token_kinds.int_kw)
         ]
-        with self.assertRaisesRegex(CompilerError,
-                                    "unexpected token at 'int'"):
-            Parser(tokens).parse()
+
+        Parser(tokens).parse()
+        self.assertIssues(["unexpected token at 'int'"])
 
     def test_missing_semicolon_and_end_brace(self):  # noqa: D400, D403
         """int main() { return 15"""
@@ -88,15 +96,16 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.close_paren),
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15")]
-        with self.assertRaisesRegex(CompilerError,
-                                    "expected semicolon after '15'"):
-            Parser(tokens).parse()
+
+        Parser(tokens).parse()
+        self.assertIssues(["expected semicolon after '15'"])
 
     def test_missing_semicolon_after_number(self):  # noqa: D400, D403
         """int main() { return 15 }"""
         tokens = [
             Token(token_kinds.return_kw), Token(token_kinds.number, "15")
         ]
+
         self.assertParserError(tokens, "expected semicolon after '15'")
 
     def test_missing_final_brace_main(self):  # noqa: D400, D403
@@ -107,8 +116,9 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.open_brack), Token(token_kinds.return_kw),
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
-        with self.assertRaisesRegex(CompilerError, "expected '}' after ';'"):
-            Parser(tokens).parse()
+
+        Parser(tokens).parse()
+        self.assertIssues(["expected '}' after ';'"])
 
     def test_declaration_in_main(self):  # noqa: D400, D403
         """int main() { int var; }"""
@@ -211,7 +221,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
 
-        self.assertParserError(tokens, "expected '\(' after 'if'")
+        self.assertParserError(tokens, "expected '(' after 'if'")
 
     def test_missing_if_statement_conditional(self):  # noqa: D400, D403
         """int main() { if () {return 15;} }"""
@@ -221,7 +231,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
 
-        self.assertParserError(tokens, "expected expression, got '\)'")
+        self.assertParserError(tokens, "expected expression, got ')'")
 
     def test_missing_if_statement_close_paren(self):  # noqa: D400, D403
         """int main() { if (a {return 15;} }"""
@@ -231,7 +241,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
 
-        self.assertParserError(tokens, "expected '\)' after 'a'")
+        self.assertParserError(tokens, "expected ')' after 'a'")
 
 
 class ExpressionTests(ParserTestUtil):
