@@ -8,57 +8,20 @@ one or more of the other test_*.py files.
 """
 
 import subprocess
-import shivyc
-
-from asm_gen import ASMCode, ASMGen
-from errors import error_collector
-from il_gen import ILCode, SymbolTable
-from lexer import Lexer
-from parser import Parser
-from tests.test_utils import TestUtils
+import unittest
 
 
-class IntegrationTestUtil(TestUtils):
-    """Useful functions for the integration tests."""
-
-    def setUp(self):
-        """Clear error collector."""
-        error_collector.clear()
-
-    def tearDown(self):
-        """Assert no errors."""
-        self.assertNoIssues()
-
-    def compile_and_run(self, code):
-        """Compile, assemble, link, and run the provided C code.
-
-        This function raises an exception if any of these steps fails.
-        Otherwise, it returns the return code of the compiled program.
-
-        """
-        token_list = Lexer().tokenize([(code, "test.c", 7)])
-        ast_root = Parser(token_list).parse()
-        il_code = ILCode()
-        ast_root.make_code(il_code, SymbolTable())
-        asm_code = ASMCode()
-        ASMGen(il_code, asm_code).make_asm()
-        asm_source = asm_code.full_code()
-
-        asm_filename = "tests/temp/out.s"
-        shivyc.write_asm(asm_source, asm_filename)
-        shivyc.assemble_and_link("tests/temp/out", "tests/temp/out.s",
-                                 "tests/temp/temp.o")
-        ret = subprocess.call(["tests/temp/out"])
-
-        return ret
+class IntegrationTests(unittest.TestCase):
+    """Integration tests for the compiler."""
 
     def assertReturns(self, code, value):
         """Assert that the code returns the given value."""
-        self.assertEqual(self.compile_and_run(code), value)
+        with open("tests/temp/test.c", "w") as f:
+            f.write(code)
 
-
-class IntegrationTests(IntegrationTestUtil):
-    """Integration tests for the compiler."""
+        compiler_return = subprocess.call(["./shivyc.py", "tests/temp/test.c"])
+        self.assertEqual(compiler_return, 0)
+        self.assertEqual(subprocess.call(["./out"]), value)
 
     def test_basic_return_main(self):
         """Test returning single literal."""
