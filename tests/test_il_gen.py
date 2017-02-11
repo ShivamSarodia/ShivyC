@@ -191,22 +191,5 @@ class ILGenTests(TestUtils):
         ast_root.make_code(il_code, symbol_table)
         return il_code
 
-    def assertIssues(self, issues):
-        """Assert that all given issues have been raised in expected order.
-
-        issues (List[str]) - list of issue descriptions, like
-                             "error: expression invalid"
-
-        """
-        self.assertEqual(len(error_collector.issues), len(issues))
-        for descrip, issue in zip(issues, error_collector.issues):
-            self.assertIn(descrip, str(issue))
-        error_collector.clear()
-
-    def assertNoIssues(self):
-        """Assert that there are no issues in error collector."""
-        for issue in error_collector.issues:
-            raise issue
-
 if __name__ == "__main__":
     unittest.main()
