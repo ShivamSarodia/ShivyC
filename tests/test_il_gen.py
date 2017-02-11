@@ -238,9 +238,7 @@ class ILGenTests(TestUtils):
                  int main() {
                      int a;
                      a = 0;
-                     if(2) {
-                          3 = 5;
-                     }
+                     if(2) 3 = 5;
                      4 = 5;
                      return a;
                  }
