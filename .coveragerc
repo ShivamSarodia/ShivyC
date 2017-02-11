@@ -2,3 +2,7 @@
 exclude_lines =
     pragma: no cover
     NotImplementedError
+
+[run]
+omit =
+    shivyc.py
