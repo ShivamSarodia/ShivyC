@@ -194,35 +194,29 @@ class Set(ILCommand):
         arg_spot = spotmap[self.arg]
         output_spot = spotmap[self.output]
 
-        arg_asm = arg_spot.asm_str(self.arg.ctype.size)
         output_asm = output_spot.asm_str(self.output.ctype.size)
-        rax_asm = spots.RAX.asm_str(self.output.ctype.size)
 
-        # Cannot move stack spot directly to another stack spot
-        if (arg_spot.spot_type == Spot.STACK and
-             output_spot.spot_type == Spot.STACK):
-            if self.output.ctype.size == self.arg.ctype.size:
-                asm_code.add_command("mov", rax_asm, arg_asm)
-            elif self.output.ctype.size < self.arg.ctype.size:
-                asm_code.add_command("mov", rax_asm,
-                                     arg_spot.asm_str(self.output.ctype.size))
-            elif self.output.ctype.size > self.arg.ctype.size:
-                # TODO: make sure "self.output" should not be self.arg
-                mov = "movsx" if self.output.ctype.signed else "movzx"
-                asm_code.add_command(mov, rax_asm, arg_asm)
+        both_stack = (arg_spot.spot_type == Spot.STACK and
+                      output_spot.spot_type == Spot.STACK)
 
-            # Now we can just move because rax_asm has same size as output_asm
-            asm_code.add_command("mov", output_asm, rax_asm)
+        if both_stack:
+            temp = spots.RAX.asm_str(self.output.ctype.size)
         else:
-            if self.output.ctype.size == self.arg.ctype.size:
-                asm_code.add_command("mov", output_asm, arg_asm)
-            elif self.output.ctype.size < self.arg.ctype.size:
-                asm_code.add_command("mov", output_asm,
-                                     arg_spot.asm_str(self.output.ctype.size))
-            elif self.output.ctype.size > self.arg.ctype.size:
-                # TODO: make sure "self.output" should not be self.arg
-                mov = "movsx" if self.output.ctype.signed else "movzx"
-                asm_code.add_command(mov, output_asm, arg_asm)
+            temp = output_asm
+
+        if self.output.ctype.size <= self.arg.ctype.size:
+            asm_code.add_command("mov", temp,
+                                 arg_spot.asm_str(self.output.ctype.size))
+        elif self.output.ctype.size > self.arg.ctype.size:
+            # TODO: make sure "self.output" below should be replaced with
+            # self.arg
+            mov = "movsx" if self.output.ctype.signed else "movzx"
+            asm_code.add_command(mov, temp,
+                                 arg_spot.asm_str(self.arg.ctype.size))
+
+        if both_stack:
+            # We can move because rax_asm has same size as output_asm
+            asm_code.add_command("mov", output_asm, temp)
 
 
 class Return(ILCommand):
