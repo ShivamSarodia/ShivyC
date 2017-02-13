@@ -310,35 +310,42 @@ class BinaryOperatorNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
-        # TODO: split this into multiple functions
         if self.operator == Token(token_kinds.plus):
-            # TODO: Consider chosing intelligently which side to make code for
-            # first.
-            left = self.left_expr.make_code(il_code, symbol_table)
-            right = self.right_expr.make_code(il_code, symbol_table)
-
-            output = TempILValue(ctypes.integer)
-            il_code.add(il_commands.Add(output, left, right))
-            return output
+            return self.make_plus_code(il_code, symbol_table)
         elif self.operator == Token(token_kinds.star):
-            # TODO: Consider chosing intelligently which side to make code for
-            # first.
-            left = self.left_expr.make_code(il_code, symbol_table)
-            right = self.right_expr.make_code(il_code, symbol_table)
-
-            output = TempILValue(ctypes.integer)
-            il_code.add(il_commands.Mult(output, left, right))
-            return output
+            return self.make_times_code(il_code, symbol_table)
         elif self.operator == Token(token_kinds.equals):
-            if isinstance(self.left_expr, IdentifierNode):
-                right = self.right_expr.make_code(il_code, symbol_table)
-                left = symbol_table.lookup_tok(self.left_expr.identifier)
-                il_code.add(il_commands.Set(left, right))
-                return left
-            else:
-                descrip = "expression on left of '=' is not assignable"
-                raise CompilerError(descrip, self.operator.file_name,
-                                    self.operator.line_num)
+            return self.make_equals_code(il_code, symbol_table)
+
+    def make_plus_code(self, il_code, symbol_table):
+        """Make code if this is a + node."""
+        left = self.left_expr.make_code(il_code, symbol_table)
+        right = self.right_expr.make_code(il_code, symbol_table)
+
+        output = TempILValue(ctypes.integer)
+        il_code.add(il_commands.Add(output, left, right))
+        return output
+
+    def make_times_code(self, il_code, symbol_table):
+        """Make code if this is a * node."""
+        left = self.left_expr.make_code(il_code, symbol_table)
+        right = self.right_expr.make_code(il_code, symbol_table)
+
+        output = TempILValue(ctypes.integer)
+        il_code.add(il_commands.Mult(output, left, right))
+        return output
+
+    def make_equals_code(self, il_code, symbol_table):
+        """Make code if this is a = node."""
+        if isinstance(self.left_expr, IdentifierNode):
+            right = self.right_expr.make_code(il_code, symbol_table)
+            left = symbol_table.lookup_tok(self.left_expr.identifier)
+            il_code.add(il_commands.Set(left, right))
+            return left
+        else:
+            descrip = "expression on left of '=' is not assignable"
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
 
 
 class DeclarationNode(Node):
