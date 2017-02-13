@@ -65,6 +65,8 @@ def main():
         error_collector.show()
         return 1
 
+    return 0
+
 
 def get_arguments():
     """Get the command-line arguments.

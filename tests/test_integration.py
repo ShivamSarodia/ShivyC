@@ -8,6 +8,7 @@ one or more of the other test_*.py files.
 """
 
 import subprocess
+import shivyc
 import unittest
 
 
@@ -19,8 +20,11 @@ class IntegrationTests(unittest.TestCase):
         with open("tests/temp/test.c", "w") as f:
             f.write(code)
 
-        compiler_return = subprocess.call(["./shivyc.py", "tests/temp/test.c"])
-        self.assertEqual(compiler_return, 0)
+        class MockArguments:
+            file_name = "tests/temp/test.c"
+
+        shivyc.get_arguments = lambda: MockArguments()
+        self.assertEqual(shivyc.main(), 0)
         self.assertEqual(subprocess.call(["./out"]), value)
 
     def test_basic_return_main(self):
