@@ -102,6 +102,19 @@ class ILGenTests(TestUtils):
 
         self.assertEqual(il_code, expected_code)
 
+    def test_return_variable_division(self):
+        """Test returning a variable that is the division of two variables."""
+        source = "int main() { int a; int b; int c; c = a / b; return c; }"
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Div("t1", "a", "b"))
+        expected_code.add(il_commands.Set("c", "t1"))
+        expected_code.add(il_commands.Return("c"))
+        expected_code.add(il_commands.Return(0))
+
+        self.assertEqual(il_code, expected_code)
+
     def test_equal_return_value(self):
         """Test that 'a = b' returns the value of 'a'."""
         source = """

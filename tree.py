@@ -329,6 +329,8 @@ class BinaryOperatorNode(Node):
             return self.make_plus_code(il_code, symbol_table)
         elif self.operator == Token(token_kinds.star):
             return self.make_times_code(il_code, symbol_table)
+        elif self.operator == Token(token_kinds.slash):
+            return self.make_div_code(il_code, symbol_table)
         elif self.operator == Token(token_kinds.equals):
             return self.make_equals_code(il_code, symbol_table)
 
@@ -356,6 +358,19 @@ class BinaryOperatorNode(Node):
 
         output = TempILValue(ctypes.integer)
         il_code.add(il_commands.Mult(output, left_int, right_int))
+        return output
+
+    def make_div_code(self, il_code, symbol_table):
+        """Make code if this is a / node."""
+        left = self.left_expr.make_code(il_code, symbol_table)
+        right = self.right_expr.make_code(il_code, symbol_table)
+
+        # TODO: Only integer promote for types smaller than int
+        left_int = self.cast(left, ctypes.integer, il_code)
+        right_int = self.cast(right, ctypes.integer, il_code)
+
+        output = TempILValue(ctypes.integer)
+        il_code.add(il_commands.Div(output, left_int, right_int))
         return output
 
     def make_equals_code(self, il_code, symbol_table):

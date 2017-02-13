@@ -305,6 +305,24 @@ class ExpressionTests(ParserTestUtil):
                 tree.NumberNode(Token(token_kinds.number, "0")))))
         # yapf: enable
 
+    def test_div_sum_order_of_operations(self):  # noqa: D400, D403
+        """15 / 10 + 5 / 1"""
+        tokens = [Token(token_kinds.number, "15"), Token(token_kinds.slash),
+                  Token(token_kinds.number, "10"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "5"), Token(token_kinds.slash),
+                  Token(token_kinds.number, "1")]
+
+        self.assertExprParsesTo(tokens, tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "15")),
+                Token(token_kinds.slash),
+                tree.NumberNode(Token(token_kinds.number, "10"))),
+            Token(token_kinds.plus),
+            tree.BinaryOperatorNode(
+                tree.NumberNode(Token(token_kinds.number, "5")),
+                Token(token_kinds.slash),
+                tree.NumberNode(Token(token_kinds.number, "1")))))
+
     def test_equals_right_associative(self):  # noqa: D400, D403
         """a = b = 10"""
         tokens = [Token(token_kinds.identifier, "a"),

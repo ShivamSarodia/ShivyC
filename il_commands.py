@@ -5,8 +5,9 @@ interface. The implementation provides code that generates ASM for each IL
 command.
 
 For arithmetic commands like Add or Mult, the arguments and output must all be
-pre-cast to the same type. The Set command is exempt from this requirement, and
-can be used to cast.
+pre-cast to the same type. In addition, this type must be size `int` or greater
+per the C spec. The Set command is exempt from this requirement, and can be
+used to cast.
 
 """
 
@@ -121,6 +122,54 @@ class Mult(ILCommand):
         asm_code.add_command("mov", rax_asm, arg1_asm)
         # TODO: switch imul for unsigned types
         asm_code.add_command("imul", rax_asm, arg2_asm)
+        asm_code.add_command("mov", output_asm, rax_asm)
+
+
+class Div(ILCommand):
+    """DIV - divides arg1 and arg2, then saves to output."""
+
+    def __init__(self, output, arg1, arg2): # noqa D102
+        self.output = output
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+        self.assert_same_ctype([output, arg1, arg2])
+
+    def input_values(self): # noqa D102
+        return [self.arg1, self.arg2]
+
+    def output_values(self): # noqa D102
+        return [self.output]
+
+    def clobber_spots(self): # noqa D102
+        # RAX/RDX are used by the IDIV command, and RSI is used for moving a
+        # literal divisor into a register.
+        return [spots.RAX, spots.RDX, spots.RSI]
+
+    def make_asm(self, spotmap, asm_code): # noqa D102
+        ctype = self.arg1.ctype
+        arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
+        arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
+        output_asm = spotmap[self.output].asm_str(ctype.size)
+        rax_asm = spots.RAX.asm_str(ctype.size)
+
+        # If the divisor is a literal, we must move it to a register.
+        if spotmap[self.arg2].spot_type == Spot.LITERAL:
+            arg2_final_asm = spots.RSI.asm_str(ctype.size)
+            asm_code.add_command("mov", arg2_final_asm, arg2_asm)
+        else:
+            arg2_final_asm = arg2_asm
+
+        # Okay for now, because arg1 will always have cytpe integer. However,
+        # when arg1 can be bigger than integer, we need to split it between
+        # EAX and EDX.
+        asm_code.add_command("mov", rax_asm, arg1_asm)
+
+        # TODO: fix this for unsigned divide
+        asm_code.add_command("cdq")  # sign extend EAX into EDX
+        asm_code.add_command("idiv", arg2_final_asm)
+
+        # Again, okay for now because output has ctype integer.
         asm_code.add_command("mov", output_asm, rax_asm)
 
 

@@ -103,6 +103,22 @@ class IntegrationTests(unittest.TestCase):
 
         self.assertReturns(source, final % 256)
 
+    def test_division(self):
+        """Test a bunch of division."""
+        source = """
+        int main() {
+            int a; int b; int c;
+            a = 10; b = 20; c = 3;
+            return a/3 + b/3 + a/c + b/c + (a+b)/c + 20/3 + 20/c;
+        }
+        """
+        a = 10
+        b = 20
+        c = 3
+        ret = a//3 + b//3 + a//c + b//c + (a+b)//c + 20//3 + 20//c  # noqa: E226
+
+        self.assertReturns(source, ret % 256)
+
     def test_simple_variable_if(self):
         """Test a simple variable if-statement."""
         source = """
