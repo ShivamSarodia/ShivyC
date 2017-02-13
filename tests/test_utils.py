@@ -25,4 +25,4 @@ class TestUtils(unittest.TestCase):
     def assertNoIssues(self):
         """Assert that there are no issues in error collector."""
         for issue in error_collector.issues:
-            raise issue
+            raise issue  # pragma: no cover
