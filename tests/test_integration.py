@@ -162,3 +162,16 @@ class IntegrationTests(unittest.TestCase):
                  }
         """
         self.assertReturns(source, 230)
+
+    def test_arithmetic_casting(self):
+        """Test char/int casting in arithmetic operations."""
+        source = """
+            int main()
+            {
+               char a; char b; char c; char d;
+               a = 30; b = 40; c = 10;
+               d = (a * b) / c;
+               return d;
+            }
+        """
+        self.assertReturns(source, 120)
