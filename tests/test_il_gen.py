@@ -264,6 +264,29 @@ class ILGenTests(TestUtils):
                   "error: use of undeclared identifier 'e'"]
         self.assertIssues(issues)
 
+    def test_cast_for_math(self):
+        """Test chars are converted to ints before math."""
+        source = """
+                 int main() {
+                     char a; char b; a = 10; b = 20;
+                     return a + b;
+                 }
+        """
+        il_code = self.make_il_code(source)
+
+        expected_code = ILCode()
+        expected_code.add(il_commands.Set("a_char", 10))
+        expected_code.add(il_commands.Set("a", "a_char"))
+        expected_code.add(il_commands.Set("b_char", 20))
+        expected_code.add(il_commands.Set("b", "b_char"))
+        expected_code.add(il_commands.Set("a_int", "a"))
+        expected_code.add(il_commands.Set("b_int", "b"))
+        expected_code.add(il_commands.Add("sum", "a_int", "b_int"))
+        expected_code.add(il_commands.Return("sum"))
+        expected_code.add(il_commands.Return(0))
+
+        self.assertEqual(il_code, expected_code)
+
     def make_il_code(self, source):
         """Make IL code from the given source.
 

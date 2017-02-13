@@ -7,12 +7,14 @@ class CType:
     """Represents a C type, like `int` or `double` or a struct.
 
     size (int) - The result of sizeof on this type.
+    signed (bool) - Whether this type is signed.
 
     """
 
-    def __init__(self, size):
+    def __init__(self, size, signed):
         """Initialize type."""
         self.size = size
+        self.signed = signed
 
 
 class ILCode:

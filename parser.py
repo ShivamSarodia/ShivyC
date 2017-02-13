@@ -283,17 +283,34 @@ class Parser:
 
         Ex: int a, b = 5, *c;
 
-        Currently, only simple declarations of a single integer without an
-        intializer are supported.
+        Currently, only simple declarations of a single integer or char without
+        an intializer are supported.
 
         """
-        index = self._match_token(index, token_kinds.int_kw,
-                                  "expected type name", ParserError.GOT)
+        index = self._expect_type_name(index)
+        ctype_token = self.tokens[index - 1]
         index = self._match_token(index, token_kinds.identifier,
                                   "expected identifier", ParserError.AFTER)
         variable_name = self.tokens[index - 1]
         index = self._expect_semicolon(index)
-        return (tree.DeclarationNode(variable_name), index)
+
+        return (tree.DeclarationNode(variable_name, ctype_token), index)
+
+    def _expect_type_name(self, index):
+        """Expect a type name at self.tokens[index].
+
+        If one is found, return index+1. Otherwise, raise an appropriate
+        ParserError.
+
+        """
+        try:
+            return self._match_token(index, token_kinds.int_kw,
+                                     "expected type name", ParserError.GOT)
+        except ParserError as e:
+            self._log_error(e)
+
+        return self._match_token(index, token_kinds.char_kw,
+                                 "expected type name", ParserError.GOT)
 
     def _expect_semicolon(self, index):
         """Expect a semicolon at self.tokens[index].

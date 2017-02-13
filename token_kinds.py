@@ -9,6 +9,7 @@ symbol_kinds = []
 main = TokenKind("main", keyword_kinds)
 
 int_kw = TokenKind("int", keyword_kinds)
+char_kw = TokenKind("char", keyword_kinds)
 return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)
 

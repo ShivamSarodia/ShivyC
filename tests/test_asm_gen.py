@@ -318,3 +318,23 @@ class ASTGenTests(unittest.TestCase):
         expected.add_command("ret")
 
         self.assertEqual(asm_code.full_code(), expected.full_code())
+
+    def test_cast_char_int(self):
+        """Test chars are converted to ints when set."""
+        il_literal_10 = LiteralILValue(ctypes.integer, "10")
+        il_variable_1 = VariableILValue(ctypes.char, 4)
+
+        il_code = ILCode()
+        il_code.add(il_commands.Set(il_variable_1, il_literal_10))
+
+        asm_code = ASMCode()
+        ASMGen(il_code, asm_code).make_asm()
+
+        expected = ASMCode()
+        expected = ASMCode()
+        expected.add_command("push", "rbp")
+        expected.add_command("mov", "rbp", "rsp")
+        expected.add_command("sub", "rsp", "2")
+        expected.add_command("mov", "BYTE [rbp-1]", "10")
+        expected.add_command("mov", "al", "BYTE [rbp-1]")
+        expected.add_command("mov", "BYTE [rbp-2]", "al")

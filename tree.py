@@ -72,6 +72,22 @@ class Node:
             raise ValueError("malformed tree: expected token_kind '" + str(
                 kind) + "' but got '" + str(token.kind) + "'")
 
+    def cast(self, il_value, ctype, il_code):
+        """If necessary, emit code to cast given il_value to the given ctype.
+
+        Returns an IL value of given ctype, or raises a CompilerError if type
+        conversion cannot be done.
+
+        """
+        if il_value.ctype == ctype:
+            # Already correct type, no need to cast
+            return il_value
+        else:
+            # TODO: Raise error/warning on sketchy casts
+            new = TempILValue(ctype)
+            il_code.add(il_commands.Set(new, il_value))
+            return new
+
 
 class MainNode(Node):
     """General rule for the main function.
@@ -154,9 +170,8 @@ class ReturnNode(Node):
     def make_code(self, il_code, symbol_table):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
-
-        # TODO: raise a type error if the return value does not match
-        il_code.add(il_commands.Return(il_value))
+        il_code.add(il_commands.Return(
+            self.cast(il_value, ctypes.integer, il_code)))
 
 
 class NumberNode(Node):
@@ -322,8 +337,12 @@ class BinaryOperatorNode(Node):
         left = self.left_expr.make_code(il_code, symbol_table)
         right = self.right_expr.make_code(il_code, symbol_table)
 
+        # TODO: Only integer promote for types smaller than int
+        left_int = self.cast(left, ctypes.integer, il_code)
+        right_int = self.cast(right, ctypes.integer, il_code)
+
         output = TempILValue(ctypes.integer)
-        il_code.add(il_commands.Add(output, left, right))
+        il_code.add(il_commands.Add(output, left_int, right_int))
         return output
 
     def make_times_code(self, il_code, symbol_table):
@@ -331,8 +350,12 @@ class BinaryOperatorNode(Node):
         left = self.left_expr.make_code(il_code, symbol_table)
         right = self.right_expr.make_code(il_code, symbol_table)
 
+        # TODO: Only integer promote for types smaller than int
+        left_int = self.cast(left, ctypes.integer, il_code)
+        right_int = self.cast(right, ctypes.integer, il_code)
+
         output = TempILValue(ctypes.integer)
-        il_code.add(il_commands.Mult(output, left, right))
+        il_code.add(il_commands.Mult(output, left_int, right_int))
         return output
 
     def make_equals_code(self, il_code, symbol_table):
@@ -340,7 +363,9 @@ class BinaryOperatorNode(Node):
         if isinstance(self.left_expr, IdentifierNode):
             right = self.right_expr.make_code(il_code, symbol_table)
             left = symbol_table.lookup_tok(self.left_expr.identifier)
-            il_code.add(il_commands.Set(left, right))
+            right_cast = self.cast(right, left.ctype, il_code)
+
+            il_code.add(il_commands.Set(left, right_cast))
             return left
         else:
             descrip = "expression on left of '=' is not assignable"
@@ -353,23 +378,25 @@ class DeclarationNode(Node):
 
     For example:  int a = 3, *b, c[] = {3, 2, 5};
 
-    Currently, only supports declaration of a single integer variable with no
-    initializer.
+    Currently, only supports declaration of a single integer or char variable
+    with no initializer.
 
     variable_name (Token(identifier)) - The identifier representing the new
     variable name.
+    ctype_token(Token(int_kw or char_kw)) - The type of this variable.
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, variable_name):
+    def __init__(self, variable_name, ctype_token):
         """Initialize node."""
         super().__init__()
 
         self.assert_kind(variable_name, token_kinds.identifier)
 
         self.variable_name = variable_name
+        self.ctype_token = ctype_token
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
@@ -378,4 +405,9 @@ class DeclarationNode(Node):
         variable to the symbol table.
 
         """
-        symbol_table.add(self.variable_name.content, ctypes.integer)
+        if self.ctype_token.kind == token_kinds.int_kw:
+            ctype = ctypes.integer
+        elif self.ctype_token.kind == token_kinds.char_kw:
+            ctype = ctypes.char
+
+        symbol_table.add(self.variable_name.content, ctype)

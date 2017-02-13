@@ -2,4 +2,6 @@
 
 from il_gen import CType
 
-integer = CType(4)
+# In this implementation, char is signed by default.
+char = CType(1, True)
+integer = CType(4, True)

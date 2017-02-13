@@ -126,7 +126,8 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"))
+            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
+                                 Token(token_kinds.int_kw))
         ])  # yapf: disable
 
     def test_equals_in_main(self):  # noqa: D400, D403
@@ -363,14 +364,26 @@ class ExpressionTests(ParserTestUtil):
 class DeclarationTests(ParserTestUtil):
     """Tests declaration parsing."""
 
-    def test_basic_declaration(self):  # noqa: D400, D403
+    def test_basic_int_declaration(self):  # noqa: D400, D403
         """int var;"""
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"))
+            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
+                                 Token(token_kinds.int_kw))
         ])
+
+
+    def test_basic_char_declaration(self):  # noqa: D400, D403
+        """char var;"""
+        tokens = [Token(token_kinds.char_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.semicolon)]
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
+                                 Token(token_kinds.char_kw))
+        ])  # yapf: disable
 
 
 if __name__ == "__main__":

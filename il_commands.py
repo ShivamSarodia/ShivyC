@@ -4,6 +4,10 @@ Each IL command is represented by a class that inherits from the ILCommand
 interface. The implementation provides code that generates ASM for each IL
 command.
 
+For arithmetic commands like Add or Mult, the arguments and output must all be
+pre-cast to the same type. The Set command is exempt from this requirement, and
+can be used to cast.
+
 """
 
 import spots
@@ -43,6 +47,13 @@ class ILCommand:
         """Check equality by comparing types."""
         return type(other) == type(self)
 
+    def assert_same_ctype(self, il_values):
+        """Raise ValueError if all IL values do not have the same type."""
+        ctype = None
+        for il_value in il_values:
+            if ctype and ctype != il_value.ctype:
+                raise ValueError("different ctypes")
+
 
 class Add(ILCommand):
     """ADD - adds arg1 and arg2, then saves to output."""
@@ -51,6 +62,8 @@ class Add(ILCommand):
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
+
+        self.assert_same_ctype([output, arg1, arg2])
 
     def input_values(self): # noqa D102
         return [self.arg1, self.arg2]
@@ -63,11 +76,14 @@ class Add(ILCommand):
         return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
-        arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
-        arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
-        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
-        rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
+        ctype = self.arg1.ctype
+        arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
+        arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
+        output_asm = spotmap[self.output].asm_str(ctype.size)
+        rax_asm = spots.RAX.asm_str(ctype.size)
 
+        # We can just use "mov" without sign extending because these will be
+        # same size.
         asm_code.add_command("mov", rax_asm, arg1_asm)
         asm_code.add_command("add", rax_asm, arg2_asm)
         asm_code.add_command("mov", output_asm, rax_asm)
@@ -81,6 +97,8 @@ class Mult(ILCommand):
         self.arg1 = arg1
         self.arg2 = arg2
 
+        self.assert_same_ctype([output, arg1, arg2])
+
     def input_values(self): # noqa D102
         return [self.arg1, self.arg2]
 
@@ -92,12 +110,16 @@ class Mult(ILCommand):
         return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
-        arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
-        arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
-        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
-        rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
+        ctype = self.arg1.ctype
+        arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
+        arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
+        output_asm = spotmap[self.output].asm_str(ctype.size)
+        rax_asm = spots.RAX.asm_str(ctype.size)
 
+        # We can just use "mov" without sign extending because these will be
+        # same size.
         asm_code.add_command("mov", rax_asm, arg1_asm)
+        # TODO: switch imul for unsigned types
         asm_code.add_command("imul", rax_asm, arg2_asm)
         asm_code.add_command("mov", output_asm, rax_asm)
 
@@ -125,18 +147,33 @@ class Set(ILCommand):
 
         arg_asm = arg_spot.asm_str(self.arg.ctype.size)
         output_asm = output_spot.asm_str(self.output.ctype.size)
-        rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
-
-        # TODO: What to do if output is literal spot? Will this be caught
-        # before?
+        rax_asm = spots.RAX.asm_str(self.output.ctype.size)
 
         # Cannot move stack spot directly to another stack spot
         if (arg_spot.spot_type == Spot.STACK and
              output_spot.spot_type == Spot.STACK):
-            asm_code.add_command("mov", rax_asm, arg_asm)
+            if self.output.ctype.size == self.arg.ctype.size:
+                asm_code.add_command("mov", rax_asm, arg_asm)
+            elif self.output.ctype.size < self.arg.ctype.size:
+                asm_code.add_command("mov", rax_asm,
+                                     arg_spot.asm_str(self.output.ctype.size))
+            elif self.output.ctype.size > self.arg.ctype.size:
+                # TODO: make sure "self.output" should not be self.arg
+                mov = "movsx" if self.output.ctype.signed else "movzx"
+                asm_code.add_command(mov, rax_asm, arg_asm)
+
+            # Now we can just move because rax_asm has same size as output_asm
             asm_code.add_command("mov", output_asm, rax_asm)
         else:
-            asm_code.add_command("mov", output_asm, arg_asm)
+            if self.output.ctype.size == self.arg.ctype.size:
+                asm_code.add_command("mov", output_asm, arg_asm)
+            elif self.output.ctype.size < self.arg.ctype.size:
+                asm_code.add_command("mov", output_asm,
+                                     arg_spot.asm_str(self.output.ctype.size))
+            elif self.output.ctype.size > self.arg.ctype.size:
+                # TODO: make sure "self.output" should not be self.arg
+                mov = "movsx" if self.output.ctype.signed else "movzx"
+                asm_code.add_command(mov, output_asm, arg_asm)
 
 
 class Return(ILCommand):

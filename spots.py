@@ -43,11 +43,15 @@ class Spot:
         return (str) - ASM form of this spot.
 
         """
-        # This is kinda hacky, but since this function is so well-defined
+        # This is hella hacky, but since this function is so well-defined
         # it's OK for now. TODO: When more registers are supported, improve
         # this.
         if self.spot_type == self.REGISTER and size == 4:
             return "e" + self.detail[1] + self.detail[2]
+        elif self.spot_type == self.REGISTER and size == 1:
+            return self.detail[1] + "l"
+        elif self.spot_type == self.STACK and size == 1:
+            return "BYTE [rbp-{}]".format(str(abs(self.detail)))
         elif self.spot_type == self.STACK and size == 4:
             return "DWORD [rbp-{}]".format(str(abs(self.detail)))
         elif self.spot_type == self.LITERAL:

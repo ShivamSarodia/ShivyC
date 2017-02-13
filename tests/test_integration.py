@@ -130,3 +130,15 @@ class IntegrationTests(unittest.TestCase):
                  }
                 """
         self.assertReturns(source, 40)
+
+    def test_char_int_casting(self):
+        """Test casting char and int."""
+        source = """
+                 int main() {
+                   char a; int b;
+                   a = 10;
+                   b = 20;
+                   return a + b + a * b;
+                 }
+        """
+        self.assertReturns(source, 230)
