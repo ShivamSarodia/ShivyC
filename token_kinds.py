@@ -8,8 +8,13 @@ symbol_kinds = []
 # Until function definition is ready, we define `main` as a hardcoded keyword
 main = TokenKind("main", keyword_kinds)
 
-int_kw = TokenKind("int", keyword_kinds)
 char_kw = TokenKind("char", keyword_kinds)
+short_kw = TokenKind("short", keyword_kinds)
+int_kw = TokenKind("int", keyword_kinds)
+long_kw = TokenKind("long", keyword_kinds)
+signed_kw = TokenKind("signed", keyword_kinds)
+unsigned_kw = TokenKind("unsigned", keyword_kinds)
+
 return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)
 

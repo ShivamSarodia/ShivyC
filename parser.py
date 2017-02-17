@@ -285,17 +285,30 @@ class Parser:
         Ex: int a, b = 5, *c;
 
         Currently, only simple declarations of a single integer or char without
-        an intializer are supported.
+        an intializer are supported. Signed and unsigned declarations also
+        supported.
 
         """
+        # Parse a signed/unsigned declaration or lack thereof
+        signed = True
+        if self._next_token_is(index, token_kinds.signed_kw):
+            signed = True
+            index += 1
+        elif self._next_token_is(index, token_kinds.unsigned_kw):
+            signed = False
+            index += 1
+
+        # Parse the type name
         index = self._expect_type_name(index)
-        ctype_token = self.tokens[index - 1]
+        ctype_tok = self.tokens[index - 1]
+
+        # Parse the identifier name
         index = self._match_token(index, token_kinds.identifier,
                                   "expected identifier", ParserError.AFTER)
         variable_name = self.tokens[index - 1]
         index = self._expect_semicolon(index)
 
-        return (tree.DeclarationNode(variable_name, ctype_token), index)
+        return (tree.DeclarationNode(variable_name, ctype_tok, signed), index)
 
     def _expect_type_name(self, index):
         """Expect a type name at self.tokens[index].
@@ -304,14 +317,17 @@ class Parser:
         ParserError.
 
         """
-        try:
-            return self._match_token(index, token_kinds.int_kw,
-                                     "expected type name", ParserError.GOT)
-        except ParserError as e:
-            self._log_error(e)
+        type_tokens = [token_kinds.char_kw, token_kinds.int_kw,
+                       token_kinds.short_kw, token_kinds.long_kw]
 
-        return self._match_token(index, token_kinds.char_kw,
-                                 "expected type name", ParserError.GOT)
+        err = "expected type name"
+        for tok in type_tokens[:-1]:
+            try:
+                return self._match_token(index, tok, err, ParserError.GOT)
+            except ParserError as e:
+                self._log_error(e)
+
+        return self._match_token(index, type_tokens[-1], err, ParserError.GOT)
 
     def _expect_semicolon(self, index):
         """Expect a semicolon at self.tokens[index].
@@ -322,6 +338,10 @@ class Parser:
         """
         return self._match_token(index, token_kinds.semicolon,
                                  "expected semicolon", ParserError.AFTER)
+
+    def _next_token_is(self, index, kind):
+        """Return true iff the next token is of the given kind."""
+        return len(self.tokens) > index and self.tokens[index].kind == kind
 
     def _match_token(self, index, kind, message, message_type):
         """Raise ParserError if tokens[index] is not of the expected kind.

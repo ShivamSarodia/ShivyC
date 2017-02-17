@@ -198,6 +198,8 @@ class NumberNode(Node):
         returns a LiteralILValue that can be used in IL code by the caller.
 
         """
+        # TODO: Support a long integer, etc. We can be a smarter about the type
+        # we assign a number here, based on the size of the number etc.
         return LiteralILValue(ctypes.integer, str(self.number))
 
 
@@ -323,54 +325,73 @@ class BinaryOperatorNode(Node):
         self.operator = operator
         self.right_expr = right_expr
 
+    def _promo_type(self, type1, type2):
+        """Return the type these both should be promoted to for computation."""
+        # If an int can represent all values of the original type, the value is
+        # converted to an int; otherwise, it is converted to an unsigned
+        # int. These are called the integer promotions.
+
+        # All types of size < 4 can fit in int, so we promote directly to int
+        type1_promo = ctypes.integer if type1.size < 4 else type1
+        type2_promo = ctypes.integer if type2.size < 4 else type2
+
+        # If both operands have the same type, then no further conversion is
+        # needed.
+        if type1_promo == type2_promo:
+            return type1_promo
+
+        # Otherwise, if both operands have signed integer types or both have
+        # unsigned integer types, the operand with the type of lesser integer
+        # conversion rank is converted to the type of the operand with greater
+        # rank.
+        elif type1_promo.signed == type2_promo.signed:
+            return max([type1_promo, type2_promo], key=lambda t: t.size)
+
+        # Otherwise, if the operand that has unsigned integer type has rank
+        # greater or equal to the rank of the type of the other operand, then
+        # the operand with signed integer type is converted to the type of the
+        # operand with unsigned integer type.
+        elif not type1_promo.signed and type1_promo.size >= type2_promo.size:
+            return type1_promo
+        elif not type2_promo.signed and type2_promo.size >= type1_promo.size:
+            return type2_promo
+
+        # Otherwise, if the type of the operand with signed integer type can
+        # represent all of the values of the type of the operand with unsigned
+        # integer type, then the operand with unsigned integer type is
+        # converted to the type of the operand with signed integer type.
+        elif type1_promo.signed and type1_promo.size > type2_promo.size:
+            return type1_promo
+        elif type2_promo.signed and type2_promo.size > type1_promo.size:
+            return type2_promo
+
+        # Otherwise, both operands are converted to the unsigned integer type
+        # corresponding to the type of the operand with signed integer type.
+        elif type1_promo.signed:
+            return ctypes.to_unsigned(type1_promo)
+        elif type2_promo.signed:
+            return ctypes.to_unsigned(type2_promo)
+
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
-        if self.operator == Token(token_kinds.plus):
-            return self.make_plus_code(il_code, symbol_table)
-        elif self.operator == Token(token_kinds.star):
-            return self.make_times_code(il_code, symbol_table)
-        elif self.operator == Token(token_kinds.slash):
-            return self.make_div_code(il_code, symbol_table)
-        elif self.operator == Token(token_kinds.equals):
+        # If equals, call make_equals_code immediately.
+        if self.operator == Token(token_kinds.equals):
             return self.make_equals_code(il_code, symbol_table)
 
-    def make_plus_code(self, il_code, symbol_table):
-        """Make code if this is a + node."""
+        # Make code for both operands and cast if necessary.
         left = self.left_expr.make_code(il_code, symbol_table)
         right = self.right_expr.make_code(il_code, symbol_table)
 
-        # TODO: Only integer promote for types smaller than int
-        left_int = self.cast(left, ctypes.integer, il_code)
-        right_int = self.cast(right, ctypes.integer, il_code)
+        new_type = self._promo_type(left.ctype, right.ctype)
+        left_cast = self.cast(left, new_type, il_code)
+        right_cast = self.cast(right, new_type, il_code)
+        output = TempILValue(new_type)
 
-        output = TempILValue(ctypes.integer)
-        il_code.add(il_commands.Add(output, left_int, right_int))
-        return output
+        cmd_map = {token_kinds.plus: il_commands.Add,
+                   token_kinds.star: il_commands.Mult,
+                   token_kinds.slash: il_commands.Div}
 
-    def make_times_code(self, il_code, symbol_table):
-        """Make code if this is a * node."""
-        left = self.left_expr.make_code(il_code, symbol_table)
-        right = self.right_expr.make_code(il_code, symbol_table)
-
-        # TODO: Only integer promote for types smaller than int
-        left_int = self.cast(left, ctypes.integer, il_code)
-        right_int = self.cast(right, ctypes.integer, il_code)
-
-        output = TempILValue(ctypes.integer)
-        il_code.add(il_commands.Mult(output, left_int, right_int))
-        return output
-
-    def make_div_code(self, il_code, symbol_table):
-        """Make code if this is a / node."""
-        left = self.left_expr.make_code(il_code, symbol_table)
-        right = self.right_expr.make_code(il_code, symbol_table)
-
-        # TODO: Only integer promote for types smaller than int
-        left_int = self.cast(left, ctypes.integer, il_code)
-        right_int = self.cast(right, ctypes.integer, il_code)
-
-        output = TempILValue(ctypes.integer)
-        il_code.add(il_commands.Div(output, left_int, right_int))
+        il_code.add(cmd_map[self.operator.kind](output, left_cast, right_cast))
         return output
 
     def make_equals_code(self, il_code, symbol_table):
@@ -399,12 +420,13 @@ class DeclarationNode(Node):
     variable_name (Token(identifier)) - The identifier representing the new
     variable name.
     ctype_token(Token(int_kw or char_kw)) - The type of this variable.
+    signed (bool) - Whether this variable is signed or unsigned.
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, variable_name, ctype_token):
+    def __init__(self, variable_name, ctype_token, signed):
         """Initialize node."""
         super().__init__()
 
@@ -412,6 +434,7 @@ class DeclarationNode(Node):
 
         self.variable_name = variable_name
         self.ctype_token = ctype_token
+        self.signed = signed
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
@@ -420,9 +443,14 @@ class DeclarationNode(Node):
         variable to the symbol table.
 
         """
-        if self.ctype_token.kind == token_kinds.int_kw:
-            ctype = ctypes.integer
-        elif self.ctype_token.kind == token_kinds.char_kw:
-            ctype = ctypes.char
+        type_map = {(token_kinds.char_kw, True): ctypes.char,
+                    (token_kinds.char_kw, False): ctypes.unsig_char,
+                    (token_kinds.short_kw, True): ctypes.short,
+                    (token_kinds.short_kw, False): ctypes.unsig_short,
+                    (token_kinds.int_kw, True): ctypes.integer,
+                    (token_kinds.int_kw, False): ctypes.unsig_int,
+                    (token_kinds.long_kw, True): ctypes.longint,
+                    (token_kinds.long_kw, False): ctypes.unsig_longint}
 
+        ctype = type_map[(self.ctype_token.kind, self.signed)]
         symbol_table.add(self.variable_name.content, ctype)

@@ -43,21 +43,25 @@ class Spot:
         return (str) - ASM form of this spot.
 
         """
-        # This is hella hacky, but since this function is so well-defined
-        # it's OK for now. TODO: When more registers are supported, improve
-        # this.
-        if self.spot_type == self.REGISTER and size == 4:
-            return "e" + self.detail[1] + self.detail[2]
-        elif self.spot_type == self.REGISTER and size == 1:
-            return self.detail[1] + "l"
-        elif self.spot_type == self.STACK and size == 1:
-            return "BYTE [rbp-{}]".format(str(abs(self.detail)))
-        elif self.spot_type == self.STACK and size == 4:
-            return "DWORD [rbp-{}]".format(str(abs(self.detail)))
+        spot_map = {"rax": ["rax", "eax", "ax", "al"],
+                    "rsi": ["rsi", "esi", "si", "sil"],
+                    "rdx": ["rdx", "edx", "dx", "dl"]}
+
+        if self.spot_type == self.REGISTER:
+            if size == 1: return spot_map[self.detail][3]
+            elif size == 2: return spot_map[self.detail][2]
+            elif size == 4: return spot_map[self.detail][1]
+            elif size == 8: return spot_map[self.detail][0]
+        elif self.spot_type == self.STACK:
+            if size == 1: size_desc = "BYTE"
+            elif size == 2: size_desc = "WORD"
+            elif size == 4: size_desc = "DWORD"
+            elif size == 8: size_desc = "QWORD"
+            return (size_desc + " [rbp-{}]").format(str(abs(self.detail)))
         elif self.spot_type == self.LITERAL:
             return self.detail
-        else:
-            raise NotImplementedError("Unsupported spot_type/size combo")
+
+        raise NotImplementedError("Unsupported spot_type/size combo")
 
     def __eq__(self, other):
         """Test equality by comparing type and detail."""

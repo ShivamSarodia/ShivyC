@@ -108,7 +108,7 @@ class Mult(ILCommand):
 
     def clobber_spots(self): # noqa D102
         # Current implementation lazily clobbers RAX always.
-        return [spots.RAX]
+        return [spots.RAX, spots.RDX, spots.RSI]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         ctype = self.arg1.ctype
@@ -117,11 +117,20 @@ class Mult(ILCommand):
         output_asm = spotmap[self.output].asm_str(ctype.size)
         rax_asm = spots.RAX.asm_str(ctype.size)
 
-        # We can just use "mov" without sign extending because these will be
-        # same size.
         asm_code.add_command("mov", rax_asm, arg1_asm)
-        # TODO: switch imul for unsigned types
-        asm_code.add_command("imul", rax_asm, arg2_asm)
+
+        if ctype.signed:
+            # If ctype is signed, then use signed multiplication
+            asm_code.add_command("imul", rax_asm, arg2_asm)
+        elif spotmap[self.arg2].spot_type == Spot.LITERAL:
+            # If ctype is unsigned and literal, move to register and multiply
+            arg2_final_asm = spots.RSI.asm_str(ctype.size)
+            asm_code.add_command("mov", arg2_final_asm, arg2_asm)
+            asm_code.add_command("mul", arg2_final_asm)
+        else:
+            # If ctype is unsigned and not literal, just multiply
+            asm_code.add_command("mul", arg2_asm)
+
         asm_code.add_command("mov", output_asm, rax_asm)
 
 
@@ -160,16 +169,20 @@ class Div(ILCommand):
         else:
             arg2_final_asm = arg2_asm
 
-        # Okay for now, because arg1 will always have cytpe integer. However,
-        # when arg1 can be bigger than integer, we need to split it between
-        # EAX and EDX.
         asm_code.add_command("mov", rax_asm, arg1_asm)
 
-        # TODO: fix this for unsigned divide
-        asm_code.add_command("cdq")  # sign extend EAX into EDX
-        asm_code.add_command("idiv", arg2_final_asm)
+        if ctype.signed:
+            if ctype.size == 4:
+                asm_code.add_command("cdq")  # sign extend EAX into EDX
+            elif ctype.size == 8:
+                asm_code.add_command("cqo")  # sign extend RAX into RDX
+            asm_code.add_command("idiv", arg2_final_asm)
+        else:
+            # zero out RDX register
+            rdx_asm = spots.RDX.asm_str(ctype.size)
+            asm_code.add_command("xor", rdx_asm, rdx_asm)
+            asm_code.add_command("div", arg2_final_asm)
 
-        # Again, okay for now because output has ctype integer.
         asm_code.add_command("mov", output_asm, rax_asm)
 
 
@@ -208,9 +221,13 @@ class Set(ILCommand):
             asm_code.add_command("mov", temp,
                                  arg_spot.asm_str(self.output.ctype.size))
         elif self.output.ctype.size > self.arg.ctype.size:
-            # TODO: make sure "self.output" below should be replaced with
-            # self.arg
-            mov = "movsx" if self.output.ctype.signed else "movzx"
+            if arg_spot.spot_type == Spot.LITERAL:
+                mov = "mov"
+            elif self.arg.ctype.signed:
+                mov = "movsx"
+            else:
+                mov = "movzx"
+
             asm_code.add_command(mov, temp,
                                  arg_spot.asm_str(self.arg.ctype.size))
 
@@ -223,6 +240,7 @@ class Return(ILCommand):
     """RETURN - returns the given value from function."""
 
     def __init__(self, arg): # noqa D102
+        # arg must already be cast to return type
         self.arg = arg
 
     def input_values(self): # noqa D102
