@@ -399,9 +399,8 @@ class BinaryOperatorNode(Node):
         if isinstance(self.left_expr, IdentifierNode):
             right = self.right_expr.make_code(il_code, symbol_table)
             left = symbol_table.lookup_tok(self.left_expr.identifier)
-            right_cast = self.cast(right, left.ctype, il_code)
 
-            il_code.add(il_commands.Set(left, right_cast))
+            il_code.add(il_commands.Set(left, right))
             return left
         else:
             descrip = "expression on left of '=' is not assignable"

@@ -288,9 +288,7 @@ class ILGenTests(TestUtils):
         il_code = self.make_il_code(source)
 
         expected_code = ILCode()
-        expected_code.add(il_commands.Set("a_char", 10))
         expected_code.add(il_commands.Set("a", "a_char"))
-        expected_code.add(il_commands.Set("b_char", 20))
         expected_code.add(il_commands.Set("b", "b_char"))
         expected_code.add(il_commands.Set("a_int", "a"))
         expected_code.add(il_commands.Set("b_int", "b"))
