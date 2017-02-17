@@ -57,7 +57,12 @@ class ILCommand:
 
 
 class Add(ILCommand):
-    """ADD - adds arg1 and arg2, then saves to output."""
+    """ADD - adds arg1 and arg2, then saves to output.
+
+    IL values output, arg1, arg2 must all have the same type. No type
+    conversion or promotion is done here.
+
+    """
 
     def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
@@ -91,7 +96,12 @@ class Add(ILCommand):
 
 
 class Mult(ILCommand):
-    """MULT - multiplies arg1 and arg2, then saves to output."""
+    """MULT - multiplies arg1 and arg2, then saves to output.
+
+    IL values output, arg1, arg2 must all have the same type. No type
+    conversion or promotion is done here.
+
+    """
 
     def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
@@ -135,7 +145,12 @@ class Mult(ILCommand):
 
 
 class Div(ILCommand):
-    """DIV - divides arg1 and arg2, then saves to output."""
+    """DIV - divides arg1 and arg2, then saves to output.
+
+    IL values output, arg1, arg2 must all have the same type of size at least
+    int. No type conversion or promotion is done here.
+
+    """
 
     def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
@@ -187,7 +202,12 @@ class Div(ILCommand):
 
 
 class Set(ILCommand):
-    """SET - sets output IL value to arg IL value."""
+    """SET - sets output IL value to arg IL value.
+
+    The output IL value and arg IL value need not have the same type. The SET
+    command will generate code to convert them as necessary.
+
+    """
 
     def __init__(self, output, arg): # noqa D102
         self.output = output
@@ -237,7 +257,11 @@ class Set(ILCommand):
 
 
 class Return(ILCommand):
-    """RETURN - returns the given value from function."""
+    """RETURN - returns the given value from function.
+
+    For now, arg must have type int.
+
+    """
 
     def __init__(self, arg): # noqa D102
         # arg must already be cast to return type
