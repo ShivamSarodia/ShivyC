@@ -442,7 +442,8 @@ class DeclarationNode(Node):
         variable to the symbol table.
 
         """
-        type_map = {(token_kinds.char_kw, True): ctypes.char,
+        type_map = {(token_kinds.bool_kw, True): ctypes.bool_t,
+                    (token_kinds.char_kw, True): ctypes.char,
                     (token_kinds.char_kw, False): ctypes.unsig_char,
                     (token_kinds.short_kw, True): ctypes.short,
                     (token_kinds.short_kw, False): ctypes.unsig_short,

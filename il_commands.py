@@ -11,6 +11,7 @@ used to cast.
 
 """
 
+import ctypes
 import spots
 from asm_gen import ASMCode
 from spots import Spot
@@ -224,36 +225,64 @@ class Set(ILCommand):
         return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
-        arg_spot = spotmap[self.arg]
-        output_spot = spotmap[self.output]
-
-        output_asm = output_spot.asm_str(self.output.ctype.size)
-
-        both_stack = (arg_spot.spot_type == Spot.STACK and
-                      output_spot.spot_type == Spot.STACK)
-
-        if both_stack:
-            temp = spots.RAX.asm_str(self.output.ctype.size)
+        if self.output.ctype == ctypes.bool_t:
+            self._set_bool(spotmap, asm_code)
         else:
-            temp = output_asm
+            arg_spot = spotmap[self.arg]
+            output_spot = spotmap[self.output]
+            output_asm = output_spot.asm_str(self.output.ctype.size)
 
-        if self.output.ctype.size <= self.arg.ctype.size:
-            asm_code.add_command("mov", temp,
-                                 arg_spot.asm_str(self.output.ctype.size))
-        elif self.output.ctype.size > self.arg.ctype.size:
-            if arg_spot.spot_type == Spot.LITERAL:
-                mov = "mov"
-            elif self.arg.ctype.signed:
-                mov = "movsx"
+            both_stack = (arg_spot.spot_type == Spot.STACK and
+                          output_spot.spot_type == Spot.STACK)
+
+            if both_stack:
+                temp = spots.RAX.asm_str(self.output.ctype.size)
             else:
-                mov = "movzx"
+                temp = output_asm
 
-            asm_code.add_command(mov, temp,
-                                 arg_spot.asm_str(self.arg.ctype.size))
+            if self.output.ctype.size <= self.arg.ctype.size:
+                asm_code.add_command("mov", temp,
+                                     arg_spot.asm_str(self.output.ctype.size))
+            elif self.output.ctype.size > self.arg.ctype.size:
+                if arg_spot.spot_type == Spot.LITERAL:
+                    mov = "mov"
+                elif self.arg.ctype.signed:
+                    mov = "movsx"
+                else:
+                    mov = "movzx"
 
-        if both_stack:
-            # We can move because rax_asm has same size as output_asm
-            asm_code.add_command("mov", output_asm, temp)
+                asm_code.add_command(mov, temp,
+                                     arg_spot.asm_str(self.arg.ctype.size))
+
+            if both_stack:
+                # We can move because rax_asm has same size as output_asm
+                asm_code.add_command("mov", output_asm, temp)
+
+    bool_label_num = 0
+
+    def _set_bool(self, spotmap, asm_code):
+        """Emit code for SET command if arg is boolean type."""
+        # When any scalar value is converted to _Bool, the result is 0 if the
+        # value compares equal to 0; otherwise, the result is 1
+        arg_asm_old = spotmap[self.arg].asm_str(self.arg.ctype.size)
+        if spotmap[self.arg].spot_type == Spot.LITERAL:
+            rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
+            asm_code.add_command("mov", rax_asm, arg_asm_old)
+            arg_asm = rax_asm
+        else:
+            arg_asm = arg_asm_old
+
+        # TODO: This is kinda hacky
+        label = "__shivyc_label_SET_bool" + str(self.bool_label_num)
+
+        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+        asm_code.add_command("mov", output_asm, "0")
+        asm_code.add_command("cmp", arg_asm, "0")
+        asm_code.add_command("je", label)
+        asm_code.add_command("mov", output_asm, "1")
+        asm_code.add_label(label)
+
+        self.bool_label_num += 1
 
 
 class Return(ILCommand):
@@ -320,15 +349,16 @@ class JumpZero(ILCommand):
         return []
 
     def clobber_spots(self): # noqa D102
-        return []
+        return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
-        cond_asm = spotmap[self.cond].asm_str(self.cond.ctype.size)
         if spotmap[self.cond].spot_type == Spot.LITERAL:
-            # Must do manual comparison in this case.
-            # TODO: check if the literal is "00" or something like that.
-            if cond_asm == "0":
-                asm_code.add_command("jmp", ASMCode.to_label(self.label))
+            cond_asm_old = spotmap[self.cond].asm_str(self.cond.ctype.size)
+            rax_asm = spots.RAX.asm_str(self.cond.ctype.size)
+            asm_code.add_command("mov", rax_asm, cond_asm_old)
+            cond_asm = rax_asm
         else:
-            asm_code.add_command("cmp", cond_asm, "0")
-            asm_code.add_command("je", ASMCode.to_label(self.label))
+            cond_asm = spotmap[self.cond].asm_str(self.cond.ctype.size)
+
+        asm_code.add_command("cmp", cond_asm, "0")
+        asm_code.add_command("je", ASMCode.to_label(self.label))

@@ -317,8 +317,9 @@ class Parser:
         ParserError.
 
         """
-        type_tokens = [token_kinds.char_kw, token_kinds.int_kw,
-                       token_kinds.short_kw, token_kinds.long_kw]
+        type_tokens = [token_kinds.bool_kw, token_kinds.char_kw,
+                       token_kinds.int_kw, token_kinds.short_kw,
+                       token_kinds.long_kw]
 
         err = "expected type name"
         for tok in type_tokens[:-1]:

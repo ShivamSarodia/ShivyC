@@ -2,6 +2,10 @@
 
 from il_gen import CType
 
+# In our implementation, we have 1 represent true and 0 represent false. We
+# maintain this convention so that true boolean values always comare equal.
+bool_t = CType(1, False)
+
 char = CType(1, True)
 unsig_char = CType(1, False)
 
