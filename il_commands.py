@@ -236,8 +236,10 @@ class EqualCmp(ILCommand):
 
         asm_code.add_command("mov", output_asm, "1")
 
-        if (spotmap[self.arg1].spot_type == Spot.LITERAL and
-              spotmap[self.arg2].spot_type == Spot.LITERAL):
+        if ((spotmap[self.arg1].spot_type == Spot.LITERAL and
+             spotmap[self.arg2].spot_type == Spot.LITERAL) or
+            (spotmap[self.arg1].spot_type == Spot.STACK and
+             spotmap[self.arg2].spot_type == Spot.STACK)):
             rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
             asm_code.add_command("mov", rax_asm, arg1_asm)
             arg1_asm = rax_asm
