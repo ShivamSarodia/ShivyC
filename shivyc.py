@@ -88,8 +88,13 @@ def get_code_lines(arguments):
     """Open the file(s) in arguments and return lines of code."""
     try:
         with open(arguments.file_name) as c_file:
-            return [(line_text.strip(), arguments.file_name, line_num + 1)
-                    for line_num, line_text in enumerate(c_file)]
+            code_lines = []
+            for line_num, line_text in enumerate(c_file):
+                line = line_text.strip()
+                code_lines.append((line.split("//")[0],
+                                   arguments.file_name,
+                                   line_num + 1))
+            return code_lines
     except IOError:
         descrip = "could not read file: '{}'"
         error_collector.add(CompilerError(descrip.format(arguments.file_name)))

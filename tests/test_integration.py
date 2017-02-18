@@ -31,6 +31,17 @@ class IntegrationTests(unittest.TestCase):
         """Test returning single literal."""
         self.assertReturns("int main() { return 15; }", 15)
 
+    def test_basic_comment(self):
+        """Test a comment in the code.."""
+        source = """
+        int main() {
+            // testing this to work
+            return 0; // testing comment here
+            // testing comment
+        }
+        """
+        self.assertReturns(source, 0)
+
     def test_chain_equals(self):
         """Test a long, complex chain of equality."""
         source = """
