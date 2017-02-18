@@ -378,6 +378,21 @@ class ExpressionTests(ParserTestUtil):
             Token(token_kinds.plus),
             tree.NumberNode(Token(token_kinds.number, "20"))))  # yapf: disable
 
+    def test_two_equals(self):  # noqa: D400, D403
+        """a == b + 10"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.twoequals),
+                  Token(token_kinds.identifier, "b"), Token(token_kinds.plus),
+                  Token(token_kinds.number, "10")]
+
+        self.assertExprParsesTo(tokens, tree.BinaryOperatorNode(
+            tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+            Token(token_kinds.twoequals),
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "b")),
+                Token(token_kinds.plus),
+                tree.NumberNode(Token(token_kinds.number, "10")))))
+
 
 class DeclarationTests(ParserTestUtil):
     """Tests declaration parsing."""
@@ -447,7 +462,6 @@ class DeclarationTests(ParserTestUtil):
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
                                  Token(token_kinds.char_kw), True)
         ])  # yapf: disable
-
 
 if __name__ == "__main__":
     unittest.main()

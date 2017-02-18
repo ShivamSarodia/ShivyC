@@ -385,11 +385,16 @@ class BinaryOperatorNode(Node):
         new_type = self._promo_type(left.ctype, right.ctype)
         left_cast = self.cast(left, new_type, il_code)
         right_cast = self.cast(right, new_type, il_code)
-        output = TempILValue(new_type)
 
         cmd_map = {token_kinds.plus: il_commands.Add,
                    token_kinds.star: il_commands.Mult,
-                   token_kinds.slash: il_commands.Div}
+                   token_kinds.slash: il_commands.Div,
+                   token_kinds.twoequals: il_commands.EqualCmp}
+
+        if cmd_map[self.operator.kind] == il_commands.EqualCmp:
+            output = TempILValue(ctypes.integer)
+        else:
+            output = TempILValue(new_type)
 
         il_code.add(cmd_map[self.operator.kind](output, left_cast, right_cast))
         return output

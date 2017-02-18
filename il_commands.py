@@ -202,6 +202,55 @@ class Div(ILCommand):
         asm_code.add_command("mov", output_asm, rax_asm)
 
 
+class EqualCmp(ILCommand):
+    """EqualCmp - checks whether arg1 and arg2 are equal.
+
+    IL value output must have int type. arg1, arg2 must all have the same
+    type. No type conversion or promotion is done here.
+
+    """
+
+    def __init__(self, output, arg1, arg2): # noqa D102
+        self.output = output
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+        self.assert_same_ctype([arg1, arg2])
+
+    def input_values(self): # noqa D102
+        return [self.arg1, self.arg2]
+
+    def output_values(self): # noqa D102
+        return [self.output]
+
+    def clobber_spots(self): # noqa D102
+        return []
+
+    label_prefix = "__shivyc_label_equalcmp"
+    label_num = 0
+
+    def make_asm(self, spotmap, asm_code): # noqa D102
+        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+        arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
+        arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
+
+        asm_code.add_command("mov", output_asm, "1")
+
+        if (spotmap[self.arg1].spot_type == Spot.LITERAL and
+              spotmap[self.arg2].spot_type == Spot.LITERAL):
+            rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
+            asm_code.add_command("mov", rax_asm, arg1_asm)
+            arg1_asm = rax_asm
+
+        label = self.label_prefix + str(self.label_num)
+        asm_code.add_command("cmp", arg1_asm, arg2_asm)
+        asm_code.add_command("je", label)
+        asm_code.add_command("mov", output_asm, "0")
+        asm_code.add_label(label)
+
+        EqualCmp.label_num += 1
+
+
 class Set(ILCommand):
     """SET - sets output IL value to arg IL value.
 
@@ -258,7 +307,8 @@ class Set(ILCommand):
                 # We can move because rax_asm has same size as output_asm
                 asm_code.add_command("mov", output_asm, temp)
 
-    bool_label_num = 0
+    label_prefix = "__shivyc_label_boolset"
+    label_num = 0
 
     def _set_bool(self, spotmap, asm_code):
         """Emit code for SET command if arg is boolean type."""
@@ -272,9 +322,7 @@ class Set(ILCommand):
         else:
             arg_asm = arg_asm_old
 
-        # TODO: This is kinda hacky
-        label = "__shivyc_label_SET_bool" + str(self.bool_label_num)
-
+        label = self.label_prefix + str(self.label_num)
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
         asm_code.add_command("mov", output_asm, "0")
         asm_code.add_command("cmp", arg_asm, "0")
@@ -282,7 +330,7 @@ class Set(ILCommand):
         asm_code.add_command("mov", output_asm, "1")
         asm_code.add_label(label)
 
-        self.bool_label_num += 1
+        Set.label_num += 1
 
 
 class Return(ILCommand):

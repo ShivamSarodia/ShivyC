@@ -188,6 +188,7 @@ class Parser:
         binary_operators = {token_kinds.plus: 11,
                             token_kinds.star: 12,
                             token_kinds.slash: 12,
+                            token_kinds.twoequals: 8,
                             token_kinds.equals: 1}
 
         # The set of assignment_tokens (because these are right-associative)

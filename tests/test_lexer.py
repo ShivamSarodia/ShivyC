@@ -56,6 +56,22 @@ class LexerConcreteTests(TestUtils):
              Token(token_kinds.plus),
              Token(token_kinds.identifier, "ident2")])
 
+    def test_single_equals(self):
+        """Test tokenizing single equals."""
+        self.assertEqual(
+            Lexer().tokenize_line("a = 10"),
+            [Token(token_kinds.identifier, "a"),
+             Token(token_kinds.equals),
+             Token(token_kinds.number, "10")])
+
+    def test_double_equals(self):
+        """Test tokenizing double equals."""
+        self.assertEqual(
+            Lexer().tokenize_line("a == 10"),
+            [Token(token_kinds.identifier, "a"),
+             Token(token_kinds.twoequals),
+             Token(token_kinds.number, "10")])
+
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""
         Lexer().tokenize_line("1identifier")
