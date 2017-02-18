@@ -202,8 +202,8 @@ class Div(ILCommand):
         asm_code.add_command("mov", output_asm, rax_asm)
 
 
-class EqualCmp(ILCommand):
-    """EqualCmp - checks whether arg1 and arg2 are equal.
+class _GeneralEqualCmp(ILCommand):
+    """_GeneralEqualCmp - base class for EqualCmp and NotEqualCmp.
 
     IL value output must have int type. arg1, arg2 must all have the same
     type. No type conversion or promotion is done here.
@@ -234,7 +234,7 @@ class EqualCmp(ILCommand):
         arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
 
-        asm_code.add_command("mov", output_asm, "1")
+        asm_code.add_command("mov", output_asm, self.equal_value)
 
         if ((spotmap[self.arg1].spot_type == Spot.LITERAL and
              spotmap[self.arg2].spot_type == Spot.LITERAL) or
@@ -247,10 +247,34 @@ class EqualCmp(ILCommand):
         label = self.label_prefix + str(self.label_num)
         asm_code.add_command("cmp", arg1_asm, arg2_asm)
         asm_code.add_command("je", label)
-        asm_code.add_command("mov", output_asm, "0")
+        asm_code.add_command("mov", output_asm, self.not_equal_value)
         asm_code.add_label(label)
 
-        EqualCmp.label_num += 1
+        _GeneralEqualCmp.label_num += 1
+
+
+class NotEqualCmp(_GeneralEqualCmp):
+    """NotEqualCmp - checks whether arg1 and arg2 are not equal.
+
+    IL value output must have int type. arg1, arg2 must all have the same
+    type. No type conversion or promotion is done here.
+
+    """
+
+    equal_value = "0"
+    not_equal_value = "1"
+
+
+class EqualCmp(_GeneralEqualCmp):
+    """EqualCmp - checks whether arg1 and arg2 are equal.
+
+    IL value output must have int type. arg1, arg2 must all have the same
+    type. No type conversion or promotion is done here.
+
+    """
+
+    equal_value = "1"
+    not_equal_value = "0"
 
 
 class Set(ILCommand):

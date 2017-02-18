@@ -24,6 +24,7 @@ star = TokenKind("*", symbol_kinds)
 slash = TokenKind("/", symbol_kinds)
 equals = TokenKind("=", symbol_kinds)
 twoequals = TokenKind("==", symbol_kinds)
+notequal = TokenKind("!=", symbol_kinds)
 
 open_paren = TokenKind("(", symbol_kinds)
 close_paren = TokenKind(")", symbol_kinds)

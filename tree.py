@@ -386,12 +386,18 @@ class BinaryOperatorNode(Node):
         left_cast = self.cast(left, new_type, il_code)
         right_cast = self.cast(right, new_type, il_code)
 
+        # Mapping from a token_kind to the ILCommand it corresponds to.
         cmd_map = {token_kinds.plus: il_commands.Add,
                    token_kinds.star: il_commands.Mult,
                    token_kinds.slash: il_commands.Div,
-                   token_kinds.twoequals: il_commands.EqualCmp}
+                   token_kinds.twoequals: il_commands.EqualCmp,
+                   token_kinds.notequal: il_commands.NotEqualCmp}
 
-        if cmd_map[self.operator.kind] == il_commands.EqualCmp:
+        # Commands that output an ILValue of integer type rather than of the
+        # input type.
+        cmp_cmds = {il_commands.EqualCmp, il_commands.NotEqualCmp}
+
+        if cmd_map[self.operator.kind] in cmp_cmds:
             output = TempILValue(ctypes.integer)
         else:
             output = TempILValue(new_type)

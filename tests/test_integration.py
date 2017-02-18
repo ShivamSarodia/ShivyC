@@ -162,6 +162,22 @@ class IntegrationTests(unittest.TestCase):
                 """
         self.assertReturns(source, 40)
 
+    def test_not_equal_if(self):
+        """Test not equal if-statement."""
+        source = """
+                 int main() {
+                     int a; int b;
+                     a = 3;
+                     if(a != 4) {
+                         if(a != 3) {
+                            return 1;
+                         }
+                         return 0;
+                     }
+                 }
+        """
+        self.assertReturns(source, 0)
+
     def test_char_int_casting(self):
         """Test casting char and int."""
         source = """
