@@ -34,4 +34,4 @@ ShivyC has so far been an entirely individual project. That said, pull requests 
 
 ## References
 - C11 Specification - http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-- x86_64 ABI - http://www.x86-64.org/documentation/abi.pdf
+- x86_64 ABI - http://web.archive.org/web/20160801075139/http://www.x86-64.org/documentation/abi.pdf
