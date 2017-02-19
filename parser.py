@@ -286,7 +286,7 @@ class Parser:
 
         Ex: int a, b = 5, *c;
 
-        Currently, only simple declarations of a single integer or char without
+        Currently, only simple declarations of a single arithmetic type without
         an intializer are supported. Signed and unsigned declarations also
         supported.
 
