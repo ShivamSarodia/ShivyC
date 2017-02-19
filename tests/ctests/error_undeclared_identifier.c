@@ -12,4 +12,12 @@ int main() {
   a = d;
   // Issue: 14: error: use of undeclared identifier 'd'
   a = d + d;
+
+  {
+    int e;
+    e;
+  }
+
+  // Issue: 22: error: use of undeclared identifier 'e'
+  e;
 }

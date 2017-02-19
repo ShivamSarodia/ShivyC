@@ -143,11 +143,13 @@ class CompoundNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make IL code for every block item, in order."""
+        symbol_table.new_scope()
         for block_item in self.block_items:
             try:
                 block_item.make_code(il_code, symbol_table)
             except CompilerError as e:
                 error_collector.add(e)
+        symbol_table.end_scope()
 
 
 class ReturnNode(Node):

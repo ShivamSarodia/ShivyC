@@ -161,7 +161,15 @@ class SymbolTable:
 
     def __init__(self):
         """Initialize symbol table."""
-        self.table = dict()
+        self.tables = [dict()]
+
+    def new_scope(self):
+        """Initialize a new scope for the symbol table."""
+        self.tables.append(dict())
+
+    def end_scope(self):
+        """End the most recently started scope."""
+        self.tables.pop()
 
     def lookup(self, name):
         """Look up the identifier with the given name.
@@ -172,10 +180,8 @@ class SymbolTable:
         name (str) - Identifier name to search for.
 
         """
-        if name in self.table:
-            return self.table[name]
-        else:
-            return None
+        for table in self.tables:
+            if name in table: return table[name]
 
     def lookup_tok(self, identifier):
         """Look up the given identifier.
@@ -202,9 +208,9 @@ class SymbolTable:
         ctype (CType) - C type of the identifier we're adding.
 
         """
-        if name not in self.table:
+        if name not in self.tables[-1]:
             # TODO: use real offsets
-            self.table[name] = VariableILValue(ctype, 0)
+            self.tables[-1][name] = VariableILValue(ctype, 0)
         else:
             # TODO: raise a real exception here
             raise NotImplementedError("already declared")
