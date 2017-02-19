@@ -1,7 +1,21 @@
 """Integration test driver for the compiler.
 
-This module defines a metaclass which generates test cases from files
-that match "/tests/ctests/*.c".
+This module defines a metaclass which generates test cases from files on disk,
+and a test class based off that metaclass. For each file that matches
+"tests/ctests/*.c", a test function is generated.
+
+If the C file contains a line of the form:
+
+// Return: ###
+
+Then, the test expects the main() in that test file to return the value
+"###". If no such line exists, the default expected return value is 0.
+
+If the C file contains line(s) of the form:
+// Issue: ____
+
+Then, the test expects compiliation to fail with an error or warning whose
+message contains the string "____".
 
 """
 
