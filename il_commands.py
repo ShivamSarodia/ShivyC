@@ -13,7 +13,6 @@ used to cast.
 
 import ctypes
 import spots
-from asm_gen import ASMCode
 from spots import Spot
 
 
@@ -226,9 +225,6 @@ class _GeneralEqualCmp(ILCommand):
     def clobber_spots(self): # noqa D102
         return []
 
-    label_prefix = "__shivyc_label_equalcmp"
-    label_num = 0
-
     def make_asm(self, spotmap, asm_code): # noqa D102
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
         arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
@@ -244,13 +240,11 @@ class _GeneralEqualCmp(ILCommand):
             asm_code.add_command("mov", rax_asm, arg1_asm)
             arg1_asm = rax_asm
 
-        label = self.label_prefix + str(self.label_num)
+        label = asm_code.get_label()
         asm_code.add_command("cmp", arg1_asm, arg2_asm)
         asm_code.add_command("je", label)
         asm_code.add_command("mov", output_asm, self.not_equal_value)
         asm_code.add_label(label)
-
-        _GeneralEqualCmp.label_num += 1
 
 
 class NotEqualCmp(_GeneralEqualCmp):
@@ -333,9 +327,6 @@ class Set(ILCommand):
                 # We can move because rax_asm has same size as output_asm
                 asm_code.add_command("mov", output_asm, temp)
 
-    label_prefix = "__shivyc_label_boolset"
-    label_num = 0
-
     def _set_bool(self, spotmap, asm_code):
         """Emit code for SET command if arg is boolean type."""
         # When any scalar value is converted to _Bool, the result is 0 if the
@@ -348,15 +339,13 @@ class Set(ILCommand):
         else:
             arg_asm = arg_asm_old
 
-        label = self.label_prefix + str(self.label_num)
+        label = asm_code.get_label()
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
         asm_code.add_command("mov", output_asm, "0")
         asm_code.add_command("cmp", arg_asm, "0")
         asm_code.add_command("je", label)
         asm_code.add_command("mov", output_asm, "1")
         asm_code.add_label(label)
-
-        Set.label_num += 1
 
 
 class Return(ILCommand):
@@ -393,7 +382,7 @@ class Label(ILCommand):
     """Label - Analogous to an ASM label."""
 
     def __init__(self, label): # noqa D102
-        """The label argument is an integer identifier unique to this label."""
+        """The label argument is an string label name unique to this label."""
         self.label = label
 
     def input_values(self): # noqa D102
@@ -406,7 +395,7 @@ class Label(ILCommand):
         return []
 
     def make_asm(self, spotmap, asm_code): # noqa D102
-        asm_code.add_label(ASMCode.to_label(self.label))
+        asm_code.add_label(self.label)
 
 
 class JumpZero(ILCommand):
@@ -435,4 +424,4 @@ class JumpZero(ILCommand):
             cond_asm = spotmap[self.cond].asm_str(self.cond.ctype.size)
 
         asm_code.add_command("cmp", cond_asm, "0")
-        asm_code.add_command("je", ASMCode.to_label(self.label))
+        asm_code.add_command("je", self.label)

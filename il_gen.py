@@ -39,9 +39,14 @@ class ILCode:
         self.commands.append(command)
 
     def get_label(self):
-        """Return a unique label identifier."""
-        self.label_num += 1
-        return self.label_num
+        """Return a unique label identifier string."""
+        # Kind of hacky. Ideally, we would return labels here that were unique
+        # to the ILCode, and then when generating the ASM code, assign each
+        # ILCode label to an ASM code label.
+
+        # Import is here to prevent circular import.
+        from asm_gen import ASMCode
+        return ASMCode.get_label()
 
     def __iter__(self):
         """Return the lines of code in order when iterating through ILCode.

@@ -27,10 +27,13 @@ class ASMCode:
         """
         self.lines.append((command, arg1, arg2))
 
+    label_num = 0
+
     @staticmethod
-    def to_label(label):
-        """Given a label integer, produce the full label name."""
-        return "__shivyc_label" + str(label)
+    def get_label():
+        """Return a unique label string."""
+        ASMCode.label_num += 1
+        return "__shivyc_label" + str(ASMCode.label_num)
 
     def add_label(self, label):
         """Add a label to the code.
