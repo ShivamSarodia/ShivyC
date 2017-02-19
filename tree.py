@@ -466,4 +466,4 @@ class DeclarationNode(Node):
                     (token_kinds.long_kw, False): ctypes.unsig_longint}
 
         ctype = type_map[(self.ctype_token.kind, self.signed)]
-        symbol_table.add(self.variable_name.content, ctype)
+        symbol_table.add(self.variable_name, ctype)

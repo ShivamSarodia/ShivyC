@@ -198,15 +198,18 @@ class SymbolTable:
                                 identifier.file_name,
                                 identifier.line_num)
 
-    def add(self, name, ctype):
+    def add(self, identifier, ctype):
         """Add an identifier with the given name and type to the symbol table.
 
         name (str) - Identifier name to add.
         ctype (CType) - C type of the identifier we're adding.
 
         """
+        name = identifier.content
         if name not in self.tables[-1]:
             self.tables[-1][name] = VariableILValue(ctype)
         else:
-            # TODO: raise a real exception here
-            raise NotImplementedError("already declared")
+            descrip = "redefinition of '{}'"
+            raise CompilerError(descrip.format(name),
+                                identifier.file_name,
+                                identifier.line_num)
