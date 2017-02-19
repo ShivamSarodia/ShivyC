@@ -143,12 +143,9 @@ class VariableILValue(ILValue):
 
     """
 
-    # TODO: why does this have an offset? shouldn't offset be ASM specific?
-
-    def __init__(self, ctype, offset):
+    def __init__(self, ctype):
         """Initialize variable IL value."""
         super().__init__(ILValue.VARIABLE, ctype)
-        self.offset = offset
 
 
 class SymbolTable:
@@ -209,8 +206,7 @@ class SymbolTable:
 
         """
         if name not in self.tables[-1]:
-            # TODO: use real offsets
-            self.tables[-1][name] = VariableILValue(ctype, 0)
+            self.tables[-1][name] = VariableILValue(ctype)
         else:
             # TODO: raise a real exception here
             raise NotImplementedError("already declared")
