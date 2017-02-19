@@ -1,204 +1,78 @@
-"""Integration tests for the compiler.
+"""Integration test driver for the compiler.
 
-Tests the entire pipeline, from C source to executable. These tests should
-focus on verifying that the generated ASM code behaves as expected. Ideally,
-for every feature tested here (except stress tests), we'll also have tests in
-one or more of the other test_*.py files.
+This module defines a metaclass which generates test cases from files
+that match "/tests/ctests/*.c".
 
 """
 
+from errors import error_collector
+import glob
 import subprocess
 import shivyc
 import unittest
 
 
-class IntegrationTests(unittest.TestCase):
-    """Integration tests for the compiler."""
+class MetaIntegrationTests(type):
+    """Metaclass for creating integration tests."""
 
-    def assertReturns(self, code, value):
-        """Assert that the code returns the given value."""
-        with open("tests/temp/test.c", "w") as f:
-            f.write(code)
+    def __new__(meta, name, bases, dct):
+        """Create a class with the desired functions."""
+        # Dictionary mapping test names to issues they are expected to raise.
 
-        class MockArguments:
-            file_name = "tests/temp/test.c"
+        def generate_test(test_file_name):
+            def test_function(self):
+                # Read test parameters from test file
+                with open(test_file_name) as f:
+                    ret_val = 0
+                    issues = []
 
-        shivyc.get_arguments = lambda: MockArguments()
-        self.assertEqual(shivyc.main(), 0)
-        self.assertEqual(subprocess.call(["./out"]), value)
+                    for line in f.readlines():
+                        ret_mark = "// Return:"
+                        issue_mark = "// Issue:"
 
-    def test_basic_return_main(self):
-        """Test returning single literal."""
-        self.assertReturns("int main() { return 15; }", 15)
+                        if line.strip().startswith(ret_mark):
+                            ret_val = int(line.split(ret_mark)[-1])
+                        elif line.strip().startswith(issue_mark):
+                            issues.append(line.split(issue_mark)[-1])
 
-    def test_basic_comment(self):
-        """Test a comment in the code.."""
-        source = """
-        int main() {
-            // testing this to work
-            return 0; // testing comment here
-            // testing comment
-        }
-        """
-        self.assertReturns(source, 0)
+                # Mock out arguments to ShivyC call
+                class MockArguments: file_name = test_file_name
+                shivyc.get_arguments = lambda: MockArguments()
 
-    def test_chain_equals(self):
-        """Test a long, complex chain of equality."""
-        source = """
-        int main() {
-            int a; int b; int c; int d; int e; int f; int g; int h;
-            a = b = 10;
-            b = c;
-            c = d;
-            d = e;
-            e = 20;
-            f = e;
-            g = h = f;
-            return g;
-        }
-        """
-        self.assertReturns(source, 20)
+                # Mock out error collector functions
+                error_collector.show = lambda: True
 
-    def test_simple_addition(self):
-        """Test a simple addition of variables."""
-        source = """
-        int main() {
-            int a; int b;
-            a = 5; b = 10;
-            return a + b;
-        }
-        """
-        self.assertReturns(source, 15)
+                shivyc.main()
 
-    def test_complex_addition(self):
-        """Test complex addition of variables."""
-        source = """
-        int main() {
-            int a; int b; int c; int d;
-            a = 5; b = 10;
-            c = a + b + (a + b);
-            d = c + c + 3;
-            return d;
-        }
-        """
-        self.assertReturns(source, 63)
+                if not issues:
+                    self.assertEqual(error_collector.issues, [])
+                    self.assertEqual(subprocess.call(["./out"]), ret_val)
+                else:
+                    self.assertEqual(len(issues), len(error_collector.issues))
+                    for issue, actual in zip(issues, error_collector.issues):
+                        self.assertIn(issue.strip(), str(actual))
 
-    def test_simple_multiplcation(self):
-        """Test simple multiplication of variables."""
-        source = """
-        int main() {
-            int a; int b;
-            a = 5; b = 10;
-            return a * b;
-        }
-        """
-        self.assertReturns(source, 50)
+            return test_function
 
-    def test_complex_math(self):
-        """Test complex multiplication of variables."""
-        source = """
-        int main() {
-            int a; int b; int c; int d;
-            a = 5; b = 10;
-            c = b + a * b + 10 * a + 10 * 3;
-            d = c * b + a;
-            return d * c;
-        }
-        """
+        test_file_names = glob.glob("tests/ctests/*.c")
+        for test_file_name in test_file_names:
+            short_name = test_file_name.split("/")[-1][:-2]
+            test_func_name = "test_" + short_name
+            dct[test_func_name] = generate_test(test_file_name)
 
-        a = 5
-        b = 10
-        c = b + a * b + 10 * a + 10 * 3
-        d = c * b + a
-        final = d * c
+        return super().__new__(meta, name, bases, dct)
 
-        self.assertReturns(source, final % 256)
 
-    def test_division(self):
-        """Test a bunch of division."""
-        source = """
-        int main() {
-            int a; int b; int c;
-            a = 10; b = 20; c = 3;
-            return a/3 + b/3 + a/c + b/c + (a+b)/c + 20/3 + 20/c;
-        }
-        """
-        a = 10
-        b = 20
-        c = 3
-        ret = a//3 + b//3 + a//c + b//c + (a+b)//c + 20//3 + 20//c  # noqa: E226
+class IntegrationTests(unittest.TestCase, metaclass=MetaIntegrationTests):
+    """Integration tests for the compiler.
 
-        self.assertReturns(source, ret % 256)
+    All these tests are generated by the metaclass above.
 
-    def test_simple_variable_if(self):
-        """Test a simple variable if-statement."""
-        source = """
-        int main() {
-             int a; int b; int c;
-             a = b = c = 10;
-             if(a) return 10;
-             return 20;
-        }
-        """
-        self.assertReturns(source, 10)
+    """
 
-    def test_complex_if(self):
-        """Test a complex if-statement."""
-        source = """
-                 int main() {
-                   int a; int b; int c;
-                   a = b = c = 10;
-                   if(a) {
-                     if(b) {
-                       if(c * 0) {
-                         a = 0;
-                       }
-                       a = a + a;
-                     }
-                     b = b + a;
-                   }
-                   return b + c;
-                 }
-                """
-        self.assertReturns(source, 40)
+    def setUp(self):
+        """Clear error collector before each test."""
+        error_collector.clear()
 
-    def test_not_equal_if(self):
-        """Test not equal if-statement."""
-        source = """
-                 int main() {
-                     int a; int b;
-                     a = 3;
-                     if(a != 4) {
-                         if(a != 3) {
-                            return 1;
-                         }
-                         return 0;
-                     }
-                 }
-        """
-        self.assertReturns(source, 0)
-
-    def test_char_int_casting(self):
-        """Test casting char and int."""
-        source = """
-                 int main() {
-                   char a; int b;
-                   a = 10;
-                   b = 20;
-                   return a + b + a * b;
-                 }
-        """
-        self.assertReturns(source, 230)
-
-    def test_arithmetic_casting(self):
-        """Test char/int casting in arithmetic operations."""
-        source = """
-            int main()
-            {
-               char a; char b; char c; char d;
-               a = 30; b = 40; c = 10;
-               d = (a * b) / c;
-               return d;
-            }
-        """
-        self.assertReturns(source, 120)
+if __name__ == "__main__":
+    unittest.main()

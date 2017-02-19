@@ -9,7 +9,7 @@ from tokens import Token
 from tests.test_utils import TestUtils
 
 
-class LexerConcreteTests(TestUtils):
+class LexerTests(TestUtils):
     """Tests the lexer on the actual token kinds (see token_kinds.py)."""
 
     def setUp(self):
