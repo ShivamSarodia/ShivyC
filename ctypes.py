@@ -1,22 +1,22 @@
 """All of the C types recognized by the compiler."""
 
-from il_gen import CType
+from il_gen import IntegerCType
 
 # In our implementation, we have 1 represent true and 0 represent false. We
 # maintain this convention so that true boolean values always comare equal.
-bool_t = CType(1, False)
+bool_t = IntegerCType(1, False)
 
-char = CType(1, True)
-unsig_char = CType(1, False)
+char = IntegerCType(1, True)
+unsig_char = IntegerCType(1, False)
 
-short = CType(2, True)
-unsig_short = CType(2, False)
+short = IntegerCType(2, True)
+unsig_short = IntegerCType(2, False)
 
-integer = CType(4, True)
-unsig_int = CType(4, False)
+integer = IntegerCType(4, True)
+unsig_int = IntegerCType(4, False)
 
-longint = CType(8, True)
-unsig_longint = CType(8, False)
+longint = IntegerCType(8, True)
+unsig_longint = IntegerCType(8, False)
 
 
 # When adding new types, update this function!

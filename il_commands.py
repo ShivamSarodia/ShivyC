@@ -13,6 +13,7 @@ used to cast.
 
 import ctypes
 import spots
+from il_gen import CType
 from spots import Spot
 
 
@@ -425,3 +426,53 @@ class JumpZero(ILCommand):
 
         asm_code.add_command("cmp", cond_asm, "0")
         asm_code.add_command("je", self.label)
+
+
+class Call(ILCommand):
+    """Call a given function.
+
+    func - Name of the function to call as a function IL value
+    args - Arguments of the function, in left-to-right order. Must match the
+    parameter types the function expects.
+    ret - IL value to save the return value. Must match the function return
+    value.
+
+    """
+
+    def __init__(self, func, args, ret): # noqa D102
+        self.func = func
+        self.args = args
+        self.ret = ret
+
+    def input_values(self): # noqa D102
+        return self.args
+
+    def output_values(self): # noqa D102
+        return [self.ret]
+
+    def clobber_spots(self): # noqa D102
+        # TODO: TBH, this clobbers a ton of them...
+        return []
+
+    def make_asm(self, spotmap, asm_code): # noqa D102
+        # Registers ordered from first to last for arguments.
+        regs = [spots.RDI, spots.RSI, spots.RDX]
+
+        # Reverse the registers to go from last to first, so we can pop() out
+        # registers.
+        regs.reverse()
+        for arg in self.args:
+            if arg.ctype.type_type != CType.INTEGER:
+                raise NotImplementedError("only integer arguments supported")
+            elif not regs:
+                raise NotImplementedError("too many arguments")
+
+            reg = regs.pop()
+            asm_code.add_command("mov", reg.asm_str(arg.ctype.size),
+                                 spotmap[arg].asm_str(arg.ctype.size))
+
+        asm_code.add_command("call", self.func.name)
+
+        ret_asm = spotmap[self.ret].asm_str(self.func.ctype.ret.size)
+        rax_asm = spots.RAX.asm_str(self.func.ctype.ret.size)
+        asm_code.add_command("mov", ret_asm, rax_asm)

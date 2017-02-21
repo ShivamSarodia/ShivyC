@@ -18,10 +18,13 @@ class Spot:
     # Stack spot. The `detail` attribute is an integer representing the offset
     # from rbp, usually negative.
     STACK = 2
+    # Data spot. The `detail` attribute is the name of the value in data, like
+    # function name or static variable name.
+    DATA = 3
     # A literal value. This is a bit of a hack, since a literal value isn't
     # /really/ a storage spot. The detail attribute is a string representation
     # of the value of this literal.
-    LITERAL = 3
+    LITERAL = 4
 
     def __init__(self, spot_type, detail):
         """Initialize a spot."""
@@ -43,21 +46,30 @@ class Spot:
         return (str) - ASM form of this spot.
 
         """
+        # TODO: Do I need rex prefix on any of the 8-bit?
         spot_map = {"rax": ["rax", "eax", "ax", "al"],
                     "rsi": ["rsi", "esi", "si", "sil"],
-                    "rdx": ["rdx", "edx", "dx", "dl"]}
+                    "rdx": ["rdx", "edx", "dx", "dl"],
+                    "rdi": ["rdi", "edi", "di", "dil"]}
 
         if self.spot_type == self.REGISTER:
             if size == 1: return spot_map[self.detail][3]
             elif size == 2: return spot_map[self.detail][2]
             elif size == 4: return spot_map[self.detail][1]
             elif size == 8: return spot_map[self.detail][0]
-        elif self.spot_type == self.STACK:
+        elif self.spot_type == self.STACK or self.spot_type == self.DATA:
             if size == 1: size_desc = "BYTE"
             elif size == 2: size_desc = "WORD"
             elif size == 4: size_desc = "DWORD"
             elif size == 8: size_desc = "QWORD"
-            return (size_desc + " [rbp-{}]").format(str(abs(self.detail)))
+
+            if self.spot_type == self.STACK:
+                addr = "rbp-" + str(abs(self.detail))
+            else:
+                addr = self.detail
+
+            return size_desc + " [{}]".format(addr)
+
         elif self.spot_type == self.LITERAL:
             return self.detail
 
@@ -74,3 +86,4 @@ class Spot:
 RAX = Spot(Spot.REGISTER, "rax")
 RSI = Spot(Spot.REGISTER, "rsi")
 RDX = Spot(Spot.REGISTER, "rdx")
+RDI = Spot(Spot.REGISTER, "rdi")

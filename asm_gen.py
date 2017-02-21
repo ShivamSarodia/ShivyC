@@ -16,6 +16,7 @@ class ASMCode:
     def __init__(self):
         """Initialize ASMCode."""
         self.lines = []
+        self.externs = []
 
     def add_command(self, command, arg1=None, arg2=None):
         """Add a command to the code.
@@ -43,6 +44,14 @@ class ASMCode:
         """
         self.lines.append(label)
 
+    def add_extern(self, name):
+        """Add an external name to the code.
+
+        name (str) - The name to add.
+
+        """
+        self.externs.append("extern " + name)
+
     def full_code(self):  # noqa: D202
         """Produce the full assembly code.
 
@@ -68,7 +77,7 @@ class ASMCode:
                 return line_str
 
         # This code starts every asm program so far, so we put it here.
-        header = ["global main", "", "main:"]
+        header = self.externs + ["global main", "", "main:"]
 
         return "\n".join(header + [to_string(line) for line in self.lines])
 
@@ -100,9 +109,14 @@ class ASMGen:
         for value in all_values:
             if value.value_type == ILValue.LITERAL:
                 spotmap[value] = Spot(Spot.LITERAL, value.value)
+            elif value.value_type == ILValue.VARIABLE and not value.stack:
+                spotmap[value] = Spot(Spot.DATA, value.name)
             else:
                 offset += value.ctype.size
                 spotmap[value] = Spot(Spot.STACK, -offset)
+
+        for extern in self.il_code.externs:
+            self.asm_code.add_extern(extern)
 
         # Back up rbp and move rsp
         self.asm_code.add_command("push", "rbp")

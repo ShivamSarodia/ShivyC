@@ -173,6 +173,57 @@ class Parser:
         index = self._expect_semicolon(index)
         return (tree.ExprStatementNode(node), index)
 
+    def match_function_call(self, stack):
+        """Check if top of stack is a function call.
+
+        On success, returns tuple (function name, [arguments]). On failure,
+        returns None. The function name and arguments are each of type
+        StackItem.
+
+        """
+        if len(stack) < 3: return None
+
+        i = -1
+        args = []
+
+        # Expect top of stack to be `)`
+        if (not isinstance(stack[i].item, Token) or
+              stack[i].item.kind != token_kinds.close_paren):
+            return None
+
+        i -= 1
+
+        # If next elements match ['EXPR', '('], we have a function with no
+        # arguments.
+        if (isinstance(stack[i].item, Token) and
+            stack[i].item.kind == token_kinds.open_paren and
+              isinstance(stack[i - 1].item, tree.Node)):
+            return (stack[i - 1], args[::-1])
+
+        while True:
+            try:
+                # Next element must be an expression.
+                if isinstance(stack[i].item, tree.Node):
+                    args.append(stack[i])
+                else:
+                    return None
+
+                i -= 1
+
+                # Next elements can be either a comma or ['EXPR', '(']
+                if (isinstance(stack[i].item, Token) and
+                      stack[i].item.kind == token_kinds.comma):
+                    i -= 1
+                elif (isinstance(stack[i].item, Token) and
+                      stack[i].item.kind == token_kinds.open_paren and
+                      isinstance(stack[i - 1].item, tree.Node)):
+                    return (stack[i - 1], args[::-1])
+                else:
+                    return None
+
+            except KeyError:
+                return None
+
     def parse_expression(self, index):
         """Parse an expression.
 
@@ -216,19 +267,6 @@ class Parser:
                   stack[-1].item.kind == token_kinds.identifier):
                 stack[-1] = StackItem(tree.IdentifierNode(stack[-1].item), 1)
 
-            # If the top of the stack matches ( expr ), reduce it to a
-            # ParenExpr node
-            elif (len(stack) >= 3 and isinstance(stack[-1].item, Token) and
-                  stack[-1].item.kind == token_kinds.close_paren and
-                  isinstance(stack[-2].item, tree.Node) and
-                  isinstance(stack[-3].item, Token) and
-                  stack[-3].item.kind == token_kinds.open_paren):
-                expr = stack[-2]
-
-                del stack[-3:]
-                stack.append(
-                    StackItem(tree.ParenExprNode(expr.item), expr.length + 2))
-
             # If the top of the stack matches a binary operator, reduce it to
             # an expression node.
             elif (len(stack) >= 3 and isinstance(stack[-1].item, tree.Node) and
@@ -236,11 +274,18 @@ class Parser:
                   stack[-2].item.kind in binary_operators.keys() and
                   isinstance(stack[-3].item, tree.Node)
 
-                  # Make sure next token is not higher precedence
+                  # Make sure next token is not a higher precedence binary
+                  # operator.
                   and not (i < len(self.tokens) and
                            self.tokens[i].kind in binary_operators.keys() and
                            (binary_operators[self.tokens[i].kind] >
                             binary_operators[stack[-2].item.kind]))
+
+                  # Make sure next token is not beginning a function call,
+                  # because function call has higher precedence than all binary
+                  # operators.
+                  and not (i < len(self.tokens) and
+                           self.tokens[i].kind == token_kinds.open_paren)
 
                   # Make sure this and next token are not both assignment
                   # tokens, because assignment tokens are right associative.
@@ -258,17 +303,56 @@ class Parser:
                         tree.BinaryOperatorNode(left_expr.item, operator.item,
                                                 right_expr.item), left_expr.
                         length + operator.length + right_expr.length))
+
+            # If the top of the stack matches an identifier followed by a pair
+            # of parentheses, reduce it to a function call node.
+            elif self.match_function_call(stack):
+                func, args = self.match_function_call(stack)
+
+                # Compute number of tokens to delete
+                if not args: num_delete = 3
+                else: num_delete = 2 + 2 * len(args)
+
+                # Compute size
+                size = sum(el.length for el in stack[-num_delete:])
+
+                arg_items = list(map(lambda x: x.item, args))
+
+                del stack[-num_delete:]
+                stack.append(
+                    StackItem(tree.FunctionCallNode(func.item, arg_items),
+                              size))
+
+            # If the top of the stack matches ( expr ), reduce it to a
+            # ParenExpr node. This check must be after function call parsing,
+            # because otherwise f(5) would get reduced prematurely.
+            elif (len(stack) >= 3 and isinstance(stack[-1].item, Token) and
+                  stack[-1].item.kind == token_kinds.close_paren and
+                  isinstance(stack[-2].item, tree.Node) and
+                  isinstance(stack[-3].item, Token) and
+                  stack[-3].item.kind == token_kinds.open_paren):
+                expr = stack[-2]
+
+                del stack[-3:]
+                stack.append(
+                    StackItem(tree.ParenExprNode(expr.item), expr.length + 2))
+
             else:
                 # If we're at the end of the token list, or we've reached a
                 # token that can never appear in an expression, stop reading.
                 # Note we must update this every time the parser is expanded to
                 # accept more identifiers.
+
+                # Printing stack here is helpful for debugging.
+                # print(stack)
+
                 if i == len(self.tokens):
                     break
                 elif (self.tokens[i].kind != token_kinds.number and
                       self.tokens[i].kind != token_kinds.identifier and
                       self.tokens[i].kind != token_kinds.open_paren and
                       self.tokens[i].kind != token_kinds.close_paren and
+                      self.tokens[i].kind != token_kinds.comma and
                       self.tokens[i].kind not in binary_operators.keys()):
                     break
 

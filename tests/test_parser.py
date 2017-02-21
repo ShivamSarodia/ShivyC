@@ -393,6 +393,113 @@ class ExpressionTests(ParserTestUtil):
                 Token(token_kinds.plus),
                 tree.NumberNode(Token(token_kinds.number, "10")))))
 
+    def test_function_call(self):  # noqa: D400, D403
+        """a + f() + b"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "f"),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "b")]
+
+        t = tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                Token(token_kinds.plus),
+                tree.FunctionCallNode(
+                    tree.IdentifierNode(Token(token_kinds.identifier, "f")),
+                    [])
+            ),
+            Token(token_kinds.plus),
+            tree.IdentifierNode(Token(token_kinds.identifier, "b")))
+
+        self.assertExprParsesTo(tokens, t)
+
+    def test_arg_function_call(self):  # noqa: D400, D403
+        """a + f(c) + b"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "f"),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.identifier, "c"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "b")]
+
+        t = tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                Token(token_kinds.plus),
+                tree.FunctionCallNode(
+                    tree.IdentifierNode(Token(token_kinds.identifier, "f")),
+                    [tree.IdentifierNode(Token(token_kinds.identifier, "c"))])
+            ),
+            Token(token_kinds.plus),
+            tree.IdentifierNode(Token(token_kinds.identifier, "b")))
+
+        self.assertExprParsesTo(tokens, t)
+
+    def test_two_args_function_call(self):  # noqa: D400, D403
+        """a + f(c, d) + b"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "f"),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.identifier, "c"),
+                  Token(token_kinds.comma),
+                  Token(token_kinds.identifier, "d"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "b")]
+
+        t = tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                Token(token_kinds.plus),
+                tree.FunctionCallNode(
+                    tree.IdentifierNode(Token(token_kinds.identifier, "f")),
+                    [tree.IdentifierNode(Token(token_kinds.identifier, "c")),
+                     tree.IdentifierNode(Token(token_kinds.identifier, "d"))])
+            ),
+            Token(token_kinds.plus),
+            tree.IdentifierNode(Token(token_kinds.identifier, "b")))
+
+        self.assertExprParsesTo(tokens, t)
+
+    def test_many_args_function_call(self):  # noqa: D400, D403
+        """a + f(c, d, e, g) + b"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "f"),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.identifier, "c"),
+                  Token(token_kinds.comma),
+                  Token(token_kinds.identifier, "d"),
+                  Token(token_kinds.comma),
+                  Token(token_kinds.identifier, "e"),
+                  Token(token_kinds.comma),
+                  Token(token_kinds.identifier, "g"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.identifier, "b")]
+
+        t = tree.BinaryOperatorNode(
+            tree.BinaryOperatorNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                Token(token_kinds.plus),
+                tree.FunctionCallNode(
+                    tree.IdentifierNode(Token(token_kinds.identifier, "f")),
+                    [tree.IdentifierNode(Token(token_kinds.identifier, "c")),
+                     tree.IdentifierNode(Token(token_kinds.identifier, "d")),
+                     tree.IdentifierNode(Token(token_kinds.identifier, "e")),
+                     tree.IdentifierNode(Token(token_kinds.identifier, "g"))])
+            ),
+            Token(token_kinds.plus),
+            tree.IdentifierNode(Token(token_kinds.identifier, "b")))
+
+        self.assertExprParsesTo(tokens, t)
+
 
 class DeclarationTests(ParserTestUtil):
     """Tests declaration parsing."""

@@ -9,8 +9,8 @@ import ctypes
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import TempILValue
-from il_gen import LiteralILValue
+from il_gen import CType, LiteralILValue, TempILValue, VariableILValue
+from il_gen import FunctionCType
 from tokens import Token
 
 
@@ -421,6 +421,82 @@ class BinaryOperatorNode(Node):
                                 self.operator.line_num)
 
 
+class FunctionCallNode(Node):
+    """Expression produced by calling a function.
+
+    For example:     f(3, 4, 5)     (&f)()
+
+    Currently does not support function pointers.
+
+    func (expression) - Expression node describing the function to call. Often
+    just an identifier.
+
+    args (List(expression)) - List of expression nodes of each argument to the
+    function, from left to right order.
+
+    """
+
+    symbol = Node.EXPRESSION
+
+    def __init__(self, func, args):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(func, Node.EXPRESSION)
+        for arg in args:
+            self.assert_symbol(arg, Node.EXPRESSION)
+
+        self.func = func
+        self.args = args
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for this function call."""
+        if isinstance(self.func, IdentifierNode):
+            try:
+                il_func = self.func.make_code(il_code, symbol_table)
+            except CompilerError:
+                # If function not found, generate a default one and mark as
+                # extern.
+                il_func = VariableILValue(FunctionCType(None, ctypes.integer),
+                                          False,
+                                          self.func.identifier.content)
+                il_code.add_extern(self.func.identifier.content)
+
+                # Log a warning
+                descrip = "implicit declaration of function '{}'"
+                error_collector.add(
+                    CompilerError(descrip.format(self.func.identifier.content),
+                                  self.func.identifier.file_name,
+                                  self.func.identifier.line_num,
+                                  warning=True))
+
+            if il_func.ctype.type_type != CType.FUNCTION:
+                descrip = "called object is not a function '{}'"
+                raise CompilerError(
+                    descrip.format(self.func.identifier.content),
+                    self.func.identifier.file_name,
+                    self.func.identifier.line_num)
+
+            # If the function has a specified argument list, verify it matches
+            # with given arguments and cast if necessary.
+            if il_func.ctype.args:
+                raise NotImplementedError("functions with arguments")
+            else:
+                # Function has unspecified argument list, so cast everything to
+                # integer.
+                def c(arg):
+                    return self.cast(arg.make_code(il_code, symbol_table),
+                                     ctypes.integer, il_code)
+                cast_args = list(map(c, self.args))
+
+            output = TempILValue(il_func.ctype.ret)
+            il_code.add(il_commands.Call(il_func, cast_args, output))
+
+            return output
+        else:
+            raise NotImplementedError("fancy function call")
+
+
 class DeclarationNode(Node):
     """Line of a general variable declaration(s).
 
@@ -466,4 +542,4 @@ class DeclarationNode(Node):
                     (token_kinds.long_kw, False): ctypes.unsig_longint}
 
         ctype = type_map[(self.ctype_token.kind, self.signed)]
-        symbol_table.add(self.variable_name, ctype)
+        symbol_table.add(self.variable_name, ctype, True)

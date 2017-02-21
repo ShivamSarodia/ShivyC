@@ -7,14 +7,48 @@ class CType:
     """Represents a C type, like `int` or `double` or a struct.
 
     size (int) - The result of sizeof on this type.
+
+    """
+
+    # Integer CType
+    INTEGER = 0
+    # Function CTYPE
+    FUNCTION = 1
+
+    def __init__(self, size, type_type):
+        """Initialize type."""
+        self.size = size
+        self.type_type = type_type
+
+
+class IntegerCType(CType):
+    """Represents an integer C type, like 'unsigned long' or 'bool'.
+
+    size (int) - The result of sizeof on this type.
     signed (bool) - Whether this type is signed.
 
     """
 
     def __init__(self, size, signed):
         """Initialize type."""
-        self.size = size
         self.signed = signed
+        super().__init__(size, CType.INTEGER)
+
+
+class FunctionCType(CType):
+    """Represents a function C type.
+
+    args (List(CType)) - List of the argument ctypes, from left to right, or
+    None if unspecified.
+    ret (CType) - Return value of the function.
+
+    """
+
+    def __init__(self, args, ret):
+        """Initialize type."""
+        self.args = args
+        self.ret = ret
+        super().__init__(1, CType.FUNCTION)
 
 
 class ILCode:
@@ -29,6 +63,7 @@ class ILCode:
         """Initialize IL code."""
         self.commands = []
         self.label_num = 0
+        self.externs = []
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -37,6 +72,15 @@ class ILCode:
 
         """
         self.commands.append(command)
+
+    def add_extern(self, name):
+        """Add a new extern name to the IL code. Passed on to generating ASM.
+
+        name (str) - name to be added as extern
+
+        """
+        if name not in self.externs:
+            self.externs.append(name)
 
     def get_label(self):
         """Return a unique label identifier string."""
@@ -89,7 +133,8 @@ class ILValue:
     TEMP = 1
     # Literal value. These are literal values that are known at compile time.
     LITERAL = 2
-    # Variable value. These represent variables in the original C code.
+    # Variable value. These represent variables in the original C code,
+    # including functions.
     VARIABLE = 3
 
     def __init__(self, value_type, ctype):
@@ -137,14 +182,19 @@ class LiteralILValue(ILValue):
 
 
 class VariableILValue(ILValue):
-    """ILValue that represents a variable.
+    """ILValue that represents a variable, including a function..
 
-    offset (int) - Memory offset of this variable, usually positive.
+    stack (bool) - If true, allocate space on the stack for this variable. True
+    for locals, false for function definitions or static variables.
+    name (str) - If not a stack variable, provides a name for where variable is
+    stored.
 
     """
 
-    def __init__(self, ctype):
+    def __init__(self, ctype, stack, name):
         """Initialize variable IL value."""
+        self.name = name
+        self.stack = stack
         super().__init__(ILValue.VARIABLE, ctype)
 
 
@@ -198,16 +248,17 @@ class SymbolTable:
                                 identifier.file_name,
                                 identifier.line_num)
 
-    def add(self, identifier, ctype):
+    def add(self, identifier, ctype, stack):
         """Add an identifier with the given name and type to the symbol table.
 
         name (str) - Identifier name to add.
         ctype (CType) - C type of the identifier we're adding.
+        stack (bool) - Whether this variable needs stack space.
 
         """
         name = identifier.content
         if name not in self.tables[-1]:
-            self.tables[-1][name] = VariableILValue(ctype)
+            self.tables[-1][name] = VariableILValue(ctype, stack, name)
         else:
             descrip = "redefinition of '{}'"
             raise CompilerError(descrip.format(name),

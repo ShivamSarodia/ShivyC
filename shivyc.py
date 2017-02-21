@@ -65,6 +65,7 @@ def main():
         error_collector.show()
         return 1
 
+    error_collector.show()
     return 0
 
 
