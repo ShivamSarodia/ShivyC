@@ -37,7 +37,7 @@ class Node:
         """Check whether all children of this node are equal."""
         if type(other) is type(self):
             return self.__dict__ == other.__dict__
-        return False
+        return False  # pragma: no cover
 
     def assert_symbol(self, node, symbol_name):
         """Check whether the provided node is of the given symbol.
@@ -47,8 +47,9 @@ class Node:
 
         """
         if node.symbol != symbol_name:
-            raise ValueError("malformed tree: expected symbol '" + str(
-                symbol_name) + "' but got '" + str(node.symbol) + "'")
+            raise ValueError("malformed tree: expected symbol '" +
+                             str(symbol_name) + "' but got '" +
+                             str(node.symbol) + "'")  # pragma: no cover
 
     def assert_symbols(self, node, symbol_names):
         """Check whether the provided node is one of the given symbols.
@@ -58,8 +59,8 @@ class Node:
 
         """
         if node.symbol not in symbol_names:
-            raise ValueError("malformed tree: unexpected symbol '" + str(
-                node.symbol) + "'")
+            raise ValueError("malformed tree: unexpected symbol '" +
+                             str(node.symbol) + "'")  # pragma: no cover
 
     def assert_kind(self, token, kind):
         """Check whether the provided token is of the given token kind.
@@ -69,8 +70,9 @@ class Node:
 
         """
         if token.kind != kind:
-            raise ValueError("malformed tree: expected token_kind '" + str(
-                kind) + "' but got '" + str(token.kind) + "'")
+            raise ValueError("malformed tree: expected token_kind '" +
+                             str(kind) + "' but got '" +
+                             str(token.kind) + "'")  # pragma: no cover
 
     def cast(self, il_value, ctype, il_code):
         """If necessary, emit code to cast given il_value to the given ctype.
