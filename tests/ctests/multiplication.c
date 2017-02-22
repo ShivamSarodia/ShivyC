@@ -16,5 +16,17 @@ int main() {
   f = f * f;
 
   if(f != 2073600) return 1;
+
+  unsigned int g;
+  unsigned int h;
+  unsigned int i;
+  g = 5;
+  h = g * 10; // 50
+  i = g * h; // 250
+
+  if(i != 250) return 2;
+
+  if(i / g != h) return 3;
+
   return 0;
 }

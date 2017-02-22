@@ -28,10 +28,6 @@ class ILCommand:
         """Return list of values modified by this command."""
         raise NotImplementedError
 
-    def clobber_spots(self):
-        """Return list of spots that are clobbered by this command."""
-        raise NotImplementedError
-
     def make_asm(self, spotmap, asm_code):
         """Generate assembly code for this command.
 
@@ -45,16 +41,12 @@ class ILCommand:
         """
         raise NotImplementedError
 
-    def __eq__(self, other):
-        """Check equality by comparing types."""
-        return type(other) == type(self)
-
     def assert_same_ctype(self, il_values):
         """Raise ValueError if all IL values do not have the same type."""
         ctype = None
         for il_value in il_values:
             if ctype and ctype != il_value.ctype:
-                raise ValueError("different ctypes")
+                raise ValueError("different ctypes")  # pragma: no cover
 
 
 class Add(ILCommand):
@@ -77,10 +69,6 @@ class Add(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.output]
-
-    def clobber_spots(self): # noqa D102
-        # Current implementation lazily clobbers RAX always.
-        return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         ctype = self.arg1.ctype
@@ -116,10 +104,6 @@ class Mult(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.output]
-
-    def clobber_spots(self): # noqa D102
-        # Current implementation lazily clobbers RAX always.
-        return [spots.RAX, spots.RDX, spots.RSI]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         ctype = self.arg1.ctype
@@ -165,11 +149,6 @@ class Div(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.output]
-
-    def clobber_spots(self): # noqa D102
-        # RAX/RDX are used by the IDIV command, and RSI is used for moving a
-        # literal divisor into a register.
-        return [spots.RAX, spots.RDX, spots.RSI]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         ctype = self.arg1.ctype
@@ -222,9 +201,6 @@ class _GeneralEqualCmp(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.output]
-
-    def clobber_spots(self): # noqa D102
-        return []
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
@@ -289,10 +265,6 @@ class Set(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.output]
-
-    def clobber_spots(self): # noqa D102
-        # Current implementation lazily clobbers RAX at times.
-        return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         if self.output.ctype == ctypes.bool_t:
@@ -366,9 +338,6 @@ class Return(ILCommand):
     def output_values(self): # noqa D102
         return []
 
-    def clobber_spots(self): # noqa D102
-        return [spots.RAX]
-
     def make_asm(self, spotmap, asm_code): # noqa D102
         arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
         rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
@@ -392,9 +361,6 @@ class Label(ILCommand):
     def output_values(self): # noqa D102
         return []
 
-    def clobber_spots(self): # noqa D102
-        return []
-
     def make_asm(self, spotmap, asm_code): # noqa D102
         asm_code.add_label(self.label)
 
@@ -411,9 +377,6 @@ class JumpZero(ILCommand):
 
     def output_values(self): # noqa D102
         return []
-
-    def clobber_spots(self): # noqa D102
-        return [spots.RAX]
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         if spotmap[self.cond].spot_type == Spot.LITERAL:
@@ -449,10 +412,6 @@ class Call(ILCommand):
 
     def output_values(self): # noqa D102
         return [self.ret]
-
-    def clobber_spots(self): # noqa D102
-        # TODO: TBH, this clobbers a ton of them...
-        return []
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         # Registers ordered from first to last for arguments.

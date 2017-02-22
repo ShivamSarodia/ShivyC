@@ -96,6 +96,11 @@ int main() {
   if(b) return 19;
 
   b = 10;
-  if(b) return 0;
+  if(b) {
+    b = i3;
+    if(b) {
+      return 0;
+    }
+  }
   return 1;
 }
