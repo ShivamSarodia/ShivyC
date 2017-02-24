@@ -65,7 +65,7 @@ class Spot:
 
             if self.spot_type == self.STACK:
                 addr = "rbp-" + str(abs(self.detail))
-            else:
+            else:  # self.DATA
                 addr = self.detail
 
             return size_desc + " [{}]".format(addr)

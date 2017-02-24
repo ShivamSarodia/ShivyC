@@ -111,7 +111,7 @@ class ASMGen:
                                       self.il_code.literals[value])
             elif self.il_code.variables.get(value, None):
                 # If there is a preassigned spot, continue
-                spotmap[value] = self.il_code.variables[value]
+                spotmap[value] = Spot(Spot.DATA, self.il_code.variables[value])
             else:
                 # Allocate stack spots for all temps and variables
                 offset += value.ctype.size
