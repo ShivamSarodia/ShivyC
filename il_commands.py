@@ -408,7 +408,7 @@ class Call(ILCommand):
         self.ret = ret
 
     def input_values(self): # noqa D102
-        return self.args
+        return [self.func] + self.args
 
     def output_values(self): # noqa D102
         return [self.ret]
@@ -430,7 +430,7 @@ class Call(ILCommand):
             asm_code.add_command("mov", reg.asm_str(arg.ctype.size),
                                  spotmap[arg].asm_str(arg.ctype.size))
 
-        asm_code.add_command("call", self.func.name)
+        asm_code.add_command("call", spotmap[self.func])
 
         ret_asm = spotmap[self.ret].asm_str(self.func.ctype.ret.size)
         rax_asm = spots.RAX.asm_str(self.func.ctype.ret.size)

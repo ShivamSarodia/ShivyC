@@ -9,7 +9,7 @@ import ctypes
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import CType, LiteralILValue, TempILValue, VariableILValue
+from il_gen import CType, ILValue
 from il_gen import FunctionCType
 from tokens import Token
 
@@ -86,7 +86,7 @@ class Node:
             return il_value
         else:
             # TODO: Raise error/warning on sketchy casts
-            new = TempILValue(ctype)
+            new = ILValue(ctype)
             il_code.add(il_commands.Set(new, il_value))
             return new
 
@@ -204,7 +204,10 @@ class NumberNode(Node):
         """
         # TODO: Support a long integer, etc. We can be a smarter about the type
         # we assign a number here, based on the size of the number etc.
-        return LiteralILValue(ctypes.integer, str(self.number))
+        il_value = ILValue(ctypes.integer)
+        il_code.add_literal(il_value, str(self.number))
+
+        return il_value
 
 
 class IdentifierNode(Node):
@@ -402,9 +405,9 @@ class BinaryOperatorNode(Node):
         cmp_cmds = {il_commands.EqualCmp, il_commands.NotEqualCmp}
 
         if cmd_map[self.operator.kind] in cmp_cmds:
-            output = TempILValue(ctypes.integer)
+            output = ILValue(ctypes.integer)
         else:
-            output = TempILValue(new_type)
+            output = ILValue(new_type)
 
         il_code.add(cmd_map[self.operator.kind](output, left_cast, right_cast))
         return output
@@ -459,9 +462,8 @@ class FunctionCallNode(Node):
             except CompilerError:
                 # If function not found, generate a default one and mark as
                 # extern.
-                il_func = VariableILValue(FunctionCType(None, ctypes.integer),
-                                          False,
-                                          self.func.identifier.content)
+                il_func = ILValue(FunctionCType(None, ctypes.integer))
+                il_code.add_variable(il_func, self.func.identifier.content)
                 il_code.add_extern(self.func.identifier.content)
 
                 # Log a warning
@@ -491,7 +493,7 @@ class FunctionCallNode(Node):
                                      ctypes.integer, il_code)
                 cast_args = list(map(c, self.args))
 
-            output = TempILValue(il_func.ctype.ret)
+            output = ILValue(il_func.ctype.ret)
             il_code.add(il_commands.Call(il_func, cast_args, output))
 
             return output
@@ -544,4 +546,4 @@ class DeclarationNode(Node):
                     (token_kinds.long_kw, False): ctypes.unsig_longint}
 
         ctype = type_map[(self.ctype_token.kind, self.signed)]
-        symbol_table.add(self.variable_name, ctype, True)
+        symbol_table.add(self.variable_name, ctype, il_code)

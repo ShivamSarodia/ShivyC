@@ -1,6 +1,5 @@
 """Objects for the IL->ASM stage of the compiler."""
 
-from il_gen import ILValue
 from spots import Spot
 
 
@@ -107,11 +106,14 @@ class ASMGen:
         offset = 0
         spotmap = {}
         for value in all_values:
-            if value.value_type == ILValue.LITERAL:
-                spotmap[value] = Spot(Spot.LITERAL, value.value)
-            elif value.value_type == ILValue.VARIABLE and not value.stack:
-                spotmap[value] = Spot(Spot.DATA, value.name)
+            if value in self.il_code.literals:
+                spotmap[value] = Spot(Spot.LITERAL,
+                                      self.il_code.literals[value])
+            elif self.il_code.variables.get(value, None):
+                # If there is a preassigned spot, continue
+                spotmap[value] = self.il_code.variables[value]
             else:
+                # Allocate stack spots for all temps and variables
                 offset += value.ctype.size
                 spotmap[value] = Spot(Spot.STACK, -offset)
 

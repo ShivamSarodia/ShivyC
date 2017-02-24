@@ -56,6 +56,11 @@ class ILCode:
 
     commands (List) - The commands recorded.
     label_num (int) - Unique identifier returned by get_label
+    externs (List(str)) - List of external identifiers in code
+    literals (Dict(ILValue -> str)) - Mapping from ILValue to the literal
+    value it represents
+    variables (Dict(ILValue -> str or None)) - Mapping from ILValue to None
+    if it is on stack, else its label in ASM.
 
     """
 
@@ -64,6 +69,8 @@ class ILCode:
         self.commands = []
         self.label_num = 0
         self.externs = []
+        self.literals = {}
+        self.variables = {}
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -81,6 +88,23 @@ class ILCode:
         """
         if name not in self.externs:
             self.externs.append(name)
+
+    def add_literal(self, il_value, value):
+        """Add a new literal to the IL code.
+
+        il_value - ILValue object that has a literal value
+        value - Literal value to store in the ILValue
+
+        """
+        self.literals[il_value] = value
+
+    def add_variable(self, il_value, pos=None):
+        """Add a variable, potentially with a preassigned position.
+
+        il_value - ILValue to add
+        pos - The preassigned place for this variable, or None otherwise.
+        """
+        self.variables[il_value] = pos
 
     def get_label(self):
         """Return a unique label identifier string."""
@@ -118,84 +142,15 @@ class ILCode:
 class ILValue:
     """Value that appears as an element in generated IL code.
 
-    Do not use this class directly; instead, use one of the derived classes
-    below.
-
-    value_type (enum) - One of the values below describing the general
-    type of value this is.
-    ctype (Type) - C type of this value.
+    ctype (CType) - C type of this value.
+    lvalue (bool) - Whether this value is an lvalue
 
     """
 
-    # Options for value_type:
-    # Temporary value. These are used to store intermediate values in
-    # computations.
-    TEMP = 1
-    # Literal value. These are literal values that are known at compile time.
-    LITERAL = 2
-    # Variable value. These represent variables in the original C code,
-    # including functions.
-    VARIABLE = 3
-
-    def __init__(self, value_type, ctype):
+    def __init__(self, ctype, lvalue=False):
         """Initialize IL value."""
         self.ctype = ctype
-        self.value_type = value_type
-
-    def __str__(self):
-        """Pretty-print the last 4 digits of the ID for display."""
-        return str(id(self) % 10000)
-
-
-class TempILValue(ILValue):
-    """ILValue that represents a temporary intermediate value."""
-
-    def __init__(self, ctype):
-        """Initialize temp IL value."""
-        super().__init__(ILValue.TEMP, ctype)
-
-
-class LiteralILValue(ILValue):
-    """ILValue that represents a literal value.
-
-    value (str) - Value in an representation that is convenient for asm.
-
-    """
-
-    def __init__(self, ctype, value):
-        """Initialize literal IL value."""
-        super().__init__(ILValue.LITERAL, ctype)
-        self.value = value
-
-    # We want to literals to compare equal iff they have the same value and
-    # type, so the ASM generation step can keep track of their storage
-    # locations as one unit.
-    def __eq__(self, other):
-        """Test equality by comparing type and value."""
-        if not isinstance(other, LiteralILValue):
-            return False
-        return self.ctype == other.ctype and self.value == other.value
-
-    def __hash__(self):
-        """Hash based on type and value."""
-        return hash((self.ctype, self.value))
-
-
-class VariableILValue(ILValue):
-    """ILValue that represents a variable, including a function..
-
-    stack (bool) - If true, allocate space on the stack for this variable. True
-    for locals, false for function definitions or static variables.
-    name (str) - If not a stack variable, provides a name for where variable is
-    stored.
-
-    """
-
-    def __init__(self, ctype, stack, name):
-        """Initialize variable IL value."""
-        self.name = name
-        self.stack = stack
-        super().__init__(ILValue.VARIABLE, ctype)
+        self.lvalue = lvalue
 
 
 class SymbolTable:
@@ -248,17 +203,18 @@ class SymbolTable:
                                 identifier.file_name,
                                 identifier.line_num)
 
-    def add(self, identifier, ctype, stack):
+    def add(self, identifier, ctype, il_code):
         """Add an identifier with the given name and type to the symbol table.
 
-        name (str) - Identifier name to add.
+        identifier (Token) - Identifier to add, for error purposes.
         ctype (CType) - C type of the identifier we're adding.
-        stack (bool) - Whether this variable needs stack space.
 
         """
         name = identifier.content
         if name not in self.tables[-1]:
-            self.tables[-1][name] = VariableILValue(ctype, stack, name)
+            il_value = ILValue(ctype, True)
+            il_code.add_variable(il_value)
+            self.tables[-1][name] = il_value
         else:
             descrip = "redefinition of '{}'"
             raise CompilerError(descrip.format(name),
