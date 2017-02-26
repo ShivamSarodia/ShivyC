@@ -158,14 +158,12 @@ class ILValue:
     """Value that appears as an element in generated IL code.
 
     ctype (CType) - C type of this value.
-    lvalue (bool) - Whether this value is an lvalue
 
     """
 
-    def __init__(self, ctype, lvalue=False):
+    def __init__(self, ctype):
         """Initialize IL value."""
         self.ctype = ctype
-        self.lvalue = lvalue
 
 
 class SymbolTable:
@@ -227,7 +225,7 @@ class SymbolTable:
         """
         name = identifier.content
         if name not in self.tables[-1]:
-            il_value = ILValue(ctype, True)
+            il_value = ILValue(ctype)
             il_code.add_variable(il_value)
             self.tables[-1][name] = il_value
         else:
