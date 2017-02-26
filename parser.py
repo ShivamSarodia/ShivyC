@@ -243,6 +243,10 @@ class Parser:
                             token_kinds.notequal: 8,
                             token_kinds.equals: 1}
 
+        # Dictionary of unary prefix operators {TokenKind: tree.Node}
+        unary_prefix_operators = {token_kinds.amp: tree.AddrOfNode,
+                                  token_kinds.star: tree.DerefNode}
+
         # The set of assignment_tokens (because these are right-associative)
         assignment_operators = {token_kinds.equals}
 
@@ -304,11 +308,11 @@ class Parser:
                                                 right_expr.item), left_expr.
                         length + operator.length + right_expr.length))
 
-            # If the top of the stack matches an address-of operator,
-            # reduce it to an expression node.
+            # If the top of the stack matches a unary prefix operator, reduce
+            # it to an expression node.
             elif (len(stack) >= 2 and isinstance(stack[-1].item, tree.Node) and
                   isinstance(stack[-2].item, Token) and
-                  stack[-2].item.kind == token_kinds.amp
+                  stack[-2].item.kind in unary_prefix_operators
 
                   # Make sure next token is not beginning a function call,
                   # because function call has higher precedence than
@@ -317,9 +321,10 @@ class Parser:
                            self.tokens[i].kind == token_kinds.open_paren)):
 
                 expr = stack[-1]
+                node = unary_prefix_operators[stack[-2].item.kind]
+
                 del stack[-2:]
-                stack.append(StackItem(tree.AddrOfNode(expr.item),
-                                       1 + expr.length))
+                stack.append(StackItem(node(expr.item), 1 + expr.length))
 
             # If the top of the stack matches an identifier followed by a pair
             # of parentheses, reduce it to a function call node.

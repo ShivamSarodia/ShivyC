@@ -447,6 +447,27 @@ class AddrOfNode(Node):
         raise NotImplementedError
 
 
+class DerefNode(Node):
+    """Expression produced by dereferencing a pointer.
+
+    expr (expression) - pointer to dereference
+
+    """
+
+    symbol = Node.EXPRESSION
+
+    def __init__(self, expr):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(expr, Node.EXPRESSION)
+        self.expr = expr
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for getting the value at the address."""
+        raise NotImplementedError
+
+
 class FunctionCallNode(Node):
     """Expression produced by calling a function.
 

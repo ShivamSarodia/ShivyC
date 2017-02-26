@@ -515,6 +515,21 @@ class ExpressionTests(ParserTestUtil):
 
         self.assertExprParsesTo(tokens, t)
 
+    def test_deref(self):  # noqa: D400, D403
+        """a = *b"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.equals),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "b")]
+
+        t = tree.BinaryOperatorNode(
+            tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+            Token(token_kinds.equals),
+            tree.DerefNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "b"))))
+
+        self.assertExprParsesTo(tokens, t)
+
 
 class DeclarationTests(ParserTestUtil):
     """Tests declaration parsing."""
