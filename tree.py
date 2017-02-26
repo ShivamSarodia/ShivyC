@@ -74,19 +74,26 @@ class Node:
                              str(kind) + "' but got '" +
                              str(token.kind) + "'")  # pragma: no cover
 
-    def cast(self, il_value, ctype, il_code):
+    def cast(self, il_value, ctype, token, il_code):
         """If necessary, emit code to cast given il_value to the given ctype.
 
-        Returns an IL value of given ctype, or raises a CompilerError if type
-        conversion cannot be done.
+        il_value - ILValue to convert
+        ctype - CType to convert to
+        token - Token relevant to the cast, for error reporting
+        il_code - ILCode object to emit code to
 
         """
         if il_value.ctype == ctype:
             # Already correct type, no need to cast
             return il_value
         else:
-            # TODO: Raise error/warning on sketchy casts
             new = ILValue(ctype)
+
+            if il_value.ctype.type_type == CType.POINTER:
+                descrip = "converts from pointer type without explicit cast"
+                error_collector.add(CompilerError(descrip, token.file_name,
+                                                  token.line_num, True))
+
             il_code.add(il_commands.Set(new, il_value))
             return new
 
@@ -121,7 +128,8 @@ class MainNode(Node):
         """
         self.body.make_code(il_code, symbol_table)
 
-        return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")))
+        return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")),
+                                 None)
         return_node.make_code(il_code, symbol_table)
 
 
@@ -163,19 +171,20 @@ class ReturnNode(Node):
 
     symbol = Node.STATEMENT
 
-    def __init__(self, return_value):
+    def __init__(self, return_value, return_kw):
         """Initialize node."""
         super().__init__()
 
         self.assert_symbol(return_value, self.EXPRESSION)
 
         self.return_value = return_value
+        self.return_kw = return_kw
 
     def make_code(self, il_code, symbol_table):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
         il_code.add(il_commands.Return(
-            self.cast(il_value, ctypes.integer, il_code)))
+            self.cast(il_value, ctypes.integer, self.return_kw, il_code)))
 
 
 class NumberNode(Node):
@@ -390,8 +399,8 @@ class BinaryOperatorNode(Node):
         right = self.right_expr.make_code(il_code, symbol_table)
 
         new_type = self._promo_type(left.ctype, right.ctype)
-        left_cast = self.cast(left, new_type, il_code)
-        right_cast = self.cast(right, new_type, il_code)
+        left_cast = self.cast(left, new_type, self.operator, il_code)
+        right_cast = self.cast(right, new_type, self.operator, il_code)
 
         # Mapping from a token_kind to the ILCommand it corresponds to.
         cmd_map = {token_kinds.plus: il_commands.Add,
@@ -551,7 +560,7 @@ class FunctionCallNode(Node):
                 # integer.
                 def c(arg):
                     return self.cast(arg.make_code(il_code, symbol_table),
-                                     ctypes.integer, il_code)
+                                     ctypes.integer, None, il_code)
                 cast_args = list(map(c, self.args))
 
             output = ILValue(il_func.ctype.ret)

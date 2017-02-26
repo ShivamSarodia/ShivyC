@@ -60,7 +60,8 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
 
         self.assertParsesTo(tokens, [
-            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15")))
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15")),
+                            Token(token_kinds.return_kw))
         ])  # yapf: disable
 
     def test_multiple_returns_in_main_function(self):  # noqa: D400, D403
@@ -72,8 +73,10 @@ class GeneralTests(ParserTestUtil):
         ]
 
         self.assertParsesTo(tokens, [
-            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15"))),
-            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "10")))
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "15")),
+                            Token(token_kinds.return_kw)),
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "10")),
+                            Token(token_kinds.return_kw))
         ])  # yapf: disable
 
     def test_extra_tokens_at_end_after_main_function(self):  # noqa: D400, D403
@@ -160,11 +163,14 @@ class GeneralTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.CompoundNode([
                 tree.ReturnNode(tree.NumberNode(
-                    Token(token_kinds.number, "15"))),
+                    Token(token_kinds.number, "15")),
+                    Token(token_kinds.return_kw)),
                 tree.ReturnNode(tree.NumberNode(
-                    Token(token_kinds.number, "20")))
+                    Token(token_kinds.number, "20")),
+                    Token(token_kinds.return_kw))
             ]),
-            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "25")))
+            tree.ReturnNode(tree.NumberNode(Token(token_kinds.number, "25")),
+                            Token(token_kinds.return_kw))
         ])  # yapf: disable
 
     def test_one_line_if_statement(self):  # noqa: D400, D403
@@ -181,10 +187,12 @@ class GeneralTests(ParserTestUtil):
             tree.IfStatementNode(
                 tree.IdentifierNode(Token(token_kinds.identifier, "a")),
                 tree.ReturnNode(tree.NumberNode(
-                    Token(token_kinds.number, "10")))
+                    Token(token_kinds.number, "10")),
+                    Token(token_kinds.return_kw))
             ),
             tree.ReturnNode(
-                tree.NumberNode(Token(token_kinds.number, "5")))
+                tree.NumberNode(Token(token_kinds.number, "5")),
+                Token(token_kinds.return_kw))
         ])  # yapf: disable
 
     def test_compound_if_statement(self):  # noqa: D400, D403
@@ -205,13 +213,16 @@ class GeneralTests(ParserTestUtil):
                 tree.IdentifierNode(Token(token_kinds.identifier, "a")),
                 tree.CompoundNode([
                     tree.ReturnNode(tree.NumberNode(
-                        Token(token_kinds.number, "15"))),
+                        Token(token_kinds.number, "15")),
+                        Token(token_kinds.return_kw)),
                     tree.ReturnNode(tree.NumberNode(
-                        Token(token_kinds.number, "20")))
+                        Token(token_kinds.number, "20")),
+                        Token(token_kinds.return_kw))
                 ])
             ),
             tree.ReturnNode(
-                tree.NumberNode(Token(token_kinds.number, "25")))
+                tree.NumberNode(Token(token_kinds.number, "25")),
+                Token(token_kinds.return_kw))
         ])  # yapf: disable
 
     def test_missing_if_statement_open_paren(self):  # noqa: D400, D403

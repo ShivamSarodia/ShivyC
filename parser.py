@@ -146,9 +146,10 @@ class Parser:
         """
         index = self._match_token(index, token_kinds.return_kw,
                                   "expected keyword 'return'", ParserError.GOT)
+        return_kw = self.tokens[index - 1]
         node, index = self.parse_expression(index)
         index = self._expect_semicolon(index)
-        return (tree.ReturnNode(node), index)
+        return (tree.ReturnNode(node, return_kw), index)
 
     def parse_if_statement(self, index):
         """Parse an if statement."""
