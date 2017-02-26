@@ -14,6 +14,8 @@ class CType:
     INTEGER = 0
     # Function CTYPE
     FUNCTION = 1
+    # Pointer CType
+    POINTER = 2
 
     def __init__(self, size, type_type):
         """Initialize type."""
@@ -49,6 +51,19 @@ class FunctionCType(CType):
         self.args = args
         self.ret = ret
         super().__init__(1, CType.FUNCTION)
+
+
+class PointerCType(CType):
+    """Represents a pointer C type.
+
+    arg (CType) - Type pointed to.
+
+    """
+
+    def __init__(self, arg):
+        """Initialize type."""
+        self.arg = arg
+        super().__init__(8, CType.POINTER)
 
 
 class ILCode:
