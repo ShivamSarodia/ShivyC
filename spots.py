@@ -11,20 +11,17 @@ class Spot:
 
     """
 
-    # Options for spot_type:
     # Register spot. The `detail` attribute is the full 64-bit register name
     # (rax, rdi, etc.) as a string.
     REGISTER = 1
-    # Stack spot. The `detail` attribute is an integer representing the offset
-    # from rbp, usually negative.
-    STACK = 2
-    # Data spot. The `detail` attribute is the name of the value in data, like
-    # function name or static variable name.
-    DATA = 3
+    # Memory spot, like on the stack or in .data section. The `detail`
+    # attribute is a tuple with first argument base as a string, and second
+    # argument offset as an integer. For example, ("rbp", -5).
+    MEM = 2
     # A literal value. This is a bit of a hack, since a literal value isn't
     # /really/ a storage spot. The detail attribute is a string representation
     # of the value of this literal.
-    LITERAL = 4
+    LITERAL = 3
 
     def __init__(self, spot_type, detail):
         """Initialize a spot."""
@@ -57,19 +54,22 @@ class Spot:
             elif size == 2: return spot_map[self.detail][2]
             elif size == 4: return spot_map[self.detail][1]
             elif size == 8: return spot_map[self.detail][0]
-        elif self.spot_type == self.STACK or self.spot_type == self.DATA:
+        elif self.spot_type == self.MEM:
             if size == 1: size_desc = "BYTE"
             elif size == 2: size_desc = "WORD"
             elif size == 4: size_desc = "DWORD"
             elif size == 8: size_desc = "QWORD"
-            elif size == 0: size_desc = ""
+            else: size_desc = ""
 
-            if self.spot_type == self.STACK:
-                addr = "rbp-" + str(abs(self.detail))
-            else:  # self.DATA
-                addr = self.detail
-
-            return size_desc + " [{}]".format(addr)
+            if self.detail[1] > 0:
+                t = "{} [{}+{}]"
+                return t.format(size_desc, self.detail[0], self.detail[1])
+            elif self.detail[1] == 0:
+                t = "{} [{}]"
+                return t.format(size_desc, self.detail[0])
+            else:  # self.detail[1] < 0
+                t = "{} [{}-{}]"
+                return t.format(size_desc, self.detail[0], -self.detail[1])
 
         elif self.spot_type == self.LITERAL:
             return self.detail

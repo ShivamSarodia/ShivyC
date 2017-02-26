@@ -211,8 +211,8 @@ class _GeneralEqualCmp(ILCommand):
 
         if ((spotmap[self.arg1].spot_type == Spot.LITERAL and
              spotmap[self.arg2].spot_type == Spot.LITERAL) or
-            (spotmap[self.arg1].spot_type == Spot.STACK and
-             spotmap[self.arg2].spot_type == Spot.STACK)):
+            (spotmap[self.arg1].spot_type == Spot.MEM and
+             spotmap[self.arg2].spot_type == Spot.MEM)):
             rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
             asm_code.add_command("mov", rax_asm, arg1_asm)
             arg1_asm = rax_asm
@@ -274,8 +274,8 @@ class Set(ILCommand):
             output_spot = spotmap[self.output]
             output_asm = output_spot.asm_str(self.output.ctype.size)
 
-            both_stack = (arg_spot.spot_type == Spot.STACK and
-                          output_spot.spot_type == Spot.STACK)
+            both_stack = (arg_spot.spot_type == Spot.MEM and
+                          output_spot.spot_type == Spot.MEM)
 
             if both_stack:
                 temp = spots.RAX.asm_str(self.output.ctype.size)
@@ -436,24 +436,14 @@ class ReadAt(ILCommand):
         return [self.output]
 
     def make_asm(self, spotmap, asm_code):  # noqa D102
-        addr_asm = spotmap[self.addr].asm_str(self.addr.ctype.size)
+        addr_asm = spotmap[self.addr].asm_str(8)
+        rax = spots.RAX.asm_str(8)
+        temp = spots.RAX.asm_str(self.output.ctype.size)
+        rax_spot = Spot(Spot.MEM, ("rax", 0)).asm_str(self.output.ctype.size)
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
 
-        if self.output.ctype.size == 1:
-            size_desc = "BYTE "
-        elif self.output.ctype.size == 2:
-            size_desc = "WORD "
-        elif self.output.ctype.size == 4:
-            size_desc = "DWORD "
-        elif self.output.ctype.size == 8:
-            size_desc = "QWORD "
-        else:
-            size_desc = ""
-
-        rax = spots.RAX.asm_str(self.addr.ctype.size)
         asm_code.add_command("mov", rax, addr_asm)
-        temp = spots.RAX.asm_str(self.output.ctype.size)
-        asm_code.add_command("mov", temp, size_desc + "[{}]".format(rax))
+        asm_code.add_command("mov", temp, rax_spot)
         asm_code.add_command("mov", output_asm, temp)
 
 
