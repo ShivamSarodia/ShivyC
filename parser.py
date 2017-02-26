@@ -304,6 +304,23 @@ class Parser:
                                                 right_expr.item), left_expr.
                         length + operator.length + right_expr.length))
 
+            # If the top of the stack matches an address-of operator,
+            # reduce it to an expression node.
+            elif (len(stack) >= 2 and isinstance(stack[-1].item, tree.Node) and
+                  isinstance(stack[-2].item, Token) and
+                  stack[-2].item.kind == token_kinds.amp
+
+                  # Make sure next token is not beginning a function call,
+                  # because function call has higher precedence than
+                  # address-of operator.
+                  and not (i < len(self.tokens) and
+                           self.tokens[i].kind == token_kinds.open_paren)):
+
+                expr = stack[-1]
+                del stack[-2:]
+                stack.append(StackItem(tree.AddrOfNode(expr.item),
+                                       1 + expr.length))
+
             # If the top of the stack matches an identifier followed by a pair
             # of parentheses, reduce it to a function call node.
             elif self.match_function_call(stack):
@@ -353,6 +370,7 @@ class Parser:
                       self.tokens[i].kind != token_kinds.open_paren and
                       self.tokens[i].kind != token_kinds.close_paren and
                       self.tokens[i].kind != token_kinds.comma and
+                      self.tokens[i].kind != token_kinds.amp and
                       self.tokens[i].kind not in binary_operators.keys()):
                     break
 

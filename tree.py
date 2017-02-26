@@ -426,6 +426,27 @@ class BinaryOperatorNode(Node):
                                 self.operator.line_num)
 
 
+class AddrOfNode(Node):
+    """Expression produced by getting the address of a variable.
+
+    expr (expression) - lvalue for which to get the address
+
+    """
+
+    symbol = Node.EXPRESSION
+
+    def __init__(self, expr):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(expr, Node.EXPRESSION)
+        self.expr = expr
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for getting the address."""
+        raise NotImplementedError
+
+
 class FunctionCallNode(Node):
     """Expression produced by calling a function.
 
