@@ -321,10 +321,12 @@ class Parser:
                            self.tokens[i].kind == token_kinds.open_paren)):
 
                 expr = stack[-1]
-                node = unary_prefix_operators[stack[-2].item.kind]
+                op = stack[-2]
+                node = unary_prefix_operators[op.item.kind]
 
                 del stack[-2:]
-                stack.append(StackItem(node(expr.item), 1 + expr.length))
+                stack.append(StackItem(node(expr.item, op.item),
+                                       1 + expr.length))
 
             # If the top of the stack matches an identifier followed by a pair
             # of parentheses, reduce it to a function call node.

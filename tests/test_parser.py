@@ -511,7 +511,8 @@ class ExpressionTests(ParserTestUtil):
             tree.IdentifierNode(Token(token_kinds.identifier, "a")),
             Token(token_kinds.equals),
             tree.AddrOfNode(
-                tree.IdentifierNode(Token(token_kinds.identifier, "b"))))
+                tree.IdentifierNode(Token(token_kinds.identifier, "b")),
+                Token(token_kinds.amp)))
 
         self.assertExprParsesTo(tokens, t)
 
@@ -526,7 +527,8 @@ class ExpressionTests(ParserTestUtil):
             tree.IdentifierNode(Token(token_kinds.identifier, "a")),
             Token(token_kinds.equals),
             tree.DerefNode(
-                tree.IdentifierNode(Token(token_kinds.identifier, "b"))))
+                tree.IdentifierNode(Token(token_kinds.identifier, "b")),
+                Token(token_kinds.star)))
 
         self.assertExprParsesTo(tokens, t)
 

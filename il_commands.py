@@ -391,6 +391,72 @@ class JumpZero(ILCommand):
         asm_code.add_command("je", self.label)
 
 
+class AddrOf(ILCommand):
+    """Gets address of given variable.
+
+    `output` must have type pointer to the type of `var`.
+
+    """
+
+    def __init__(self, output, var):  # noqa D102
+        self.output = output
+        self.var = var
+
+    def input_values(self):  # noqa D102
+        return [self.var]
+
+    def output_values(self):  # noqa D102
+        return [self.output]
+
+    def make_asm(self, spotmap, asm_code):  # noqa D102
+        # TODO: Use permanent spot of var, not spotmap temporary spot
+        var_asm = spotmap[self.var].asm_str(0)
+        temp = spots.RAX.asm_str(self.output.ctype.size)
+        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+
+        asm_code.add_command("lea", temp, var_asm)
+        asm_code.add_command("mov", output_asm, temp)
+
+
+class ReadAt(ILCommand):
+    """Reads value at given address.
+
+    `addr` must have type pointer to the type of `output`
+
+    """
+
+    def __init__(self, output, addr):  # noqa D102
+        self.output = output
+        self.addr = addr
+
+    def input_values(self):  # noqa D102
+        return [self.addr]
+
+    def output_values(self):  # noqa D102
+        return [self.output]
+
+    def make_asm(self, spotmap, asm_code):  # noqa D102
+        addr_asm = spotmap[self.addr].asm_str(self.addr.ctype.size)
+        output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+
+        if self.output.ctype.size == 1:
+            size_desc = "BYTE "
+        elif self.output.ctype.size == 2:
+            size_desc = "WORD "
+        elif self.output.ctype.size == 4:
+            size_desc = "DWORD "
+        elif self.output.ctype.size == 8:
+            size_desc = "QWORD "
+        else:
+            size_desc = ""
+
+        rax = spots.RAX.asm_str(self.addr.ctype.size)
+        asm_code.add_command("mov", rax, addr_asm)
+        temp = spots.RAX.asm_str(self.output.ctype.size)
+        asm_code.add_command("mov", temp, size_desc + "[{}]".format(rax))
+        asm_code.add_command("mov", output_asm, temp)
+
+
 class Call(ILCommand):
     """Call a given function.
 

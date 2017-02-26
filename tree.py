@@ -10,7 +10,7 @@ import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
 from il_gen import CType, ILValue
-from il_gen import FunctionCType
+from il_gen import PointerCType, FunctionCType
 from tokens import Token
 
 
@@ -430,21 +430,31 @@ class AddrOfNode(Node):
     """Expression produced by getting the address of a variable.
 
     expr (expression) - lvalue for which to get the address
+    op (Token) - Token representing this operator. Used for error reporting.
 
     """
 
     symbol = Node.EXPRESSION
 
-    def __init__(self, expr):
+    def __init__(self, expr, op):
         """Initialize node."""
         super().__init__()
 
         self.assert_symbol(expr, Node.EXPRESSION)
         self.expr = expr
+        self.op = op
 
     def make_code(self, il_code, symbol_table):
         """Make code for getting the address."""
-        raise NotImplementedError
+        if not isinstance(self.expr, IdentifierNode):
+            descrip = "lvalue required as unary '&' operand"
+            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
+
+        lvalue = self.expr.make_code(il_code, symbol_table)
+        out = ILValue(PointerCType(lvalue.ctype))
+        il_code.add(il_commands.AddrOf(out, lvalue))
+
+        return out
 
 
 class DerefNode(Node):
@@ -456,16 +466,25 @@ class DerefNode(Node):
 
     symbol = Node.EXPRESSION
 
-    def __init__(self, expr):
+    def __init__(self, expr, op):
         """Initialize node."""
         super().__init__()
 
         self.assert_symbol(expr, Node.EXPRESSION)
         self.expr = expr
+        self.op = op
 
     def make_code(self, il_code, symbol_table):
         """Make code for getting the value at the address."""
-        raise NotImplementedError
+        addr = self.expr.make_code(il_code, symbol_table)
+
+        if addr.ctype.type_type != CType.POINTER:
+            descrip = "operand of unary '*' must have pointer type"
+            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
+
+        out = ILValue(addr.ctype.arg)
+        il_code.add(il_commands.ReadAt(out, addr))
+        return out
 
 
 class FunctionCallNode(Node):

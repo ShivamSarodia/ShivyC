@@ -62,6 +62,7 @@ class Spot:
             elif size == 2: size_desc = "WORD"
             elif size == 4: size_desc = "DWORD"
             elif size == 8: size_desc = "QWORD"
+            elif size == 0: size_desc = ""
 
             if self.spot_type == self.STACK:
                 addr = "rbp-" + str(abs(self.detail))
