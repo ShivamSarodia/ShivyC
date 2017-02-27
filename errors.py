@@ -26,7 +26,7 @@ class ErrorCollector:
         """Return True iff there are no errors."""
         return not any(not issue.warning for issue in self.issues)
 
-    def show(self):
+    def show(self):  # pragma: no cover
         """Display all warnings and errors."""
         for issue in self.issues:
             print(issue)

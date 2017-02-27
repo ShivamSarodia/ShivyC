@@ -48,7 +48,7 @@ class ILCommand:
             if ctype and ctype != il_value.ctype:
                 raise ValueError("different ctypes")  # pragma: no cover
 
-    def to_str(self, name, inputs, output=None):
+    def to_str(self, name, inputs, output=None):  # pragma: no cover
         """Given the name, inputs, and outputs return its string form."""
         RED = '\033[91m'
         ENDC = '\033[0m'
