@@ -223,6 +223,10 @@ class NumberNode(Node):
         il_value = ILValue(ctypes.integer)
         il_code.add_literal(il_value, str(self.number))
 
+        # Literal integer 0 is a null pointer constant
+        if int(self.number.content) == 0:
+            il_value.null_ptr_const = True
+
         return il_value
 
 
