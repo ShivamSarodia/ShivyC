@@ -74,20 +74,27 @@ class Node:
                              str(kind) + "' but got '" +
                              str(token.kind) + "'")  # pragma: no cover
 
-    def cast(self, il_value, ctype, token, il_code):
+    def cast(self, il_value, ctype, token, il_code, output=None):
         """If necessary, emit code to cast given il_value to the given ctype.
 
         il_value - ILValue to convert
         ctype - CType to convert to
         token - Token relevant to the cast, for error reporting
         il_code - ILCode object to emit code to
+        output - If provided, ILValue to store the cast value in and return
 
         """
+        # Already correct type, no need to convert
         if il_value.ctype == ctype:
-            # Already correct type, no need to cast
-            return il_value
+            if not output or il_value == output:
+                return il_value
+            else:
+                il_code.add(il_commands.Set(output, il_value))
+                return output
+
         else:
-            new = ILValue(ctype)
+            if output: new = output
+            else: new = ILValue(ctype)
 
             if il_value.ctype.type_type == CType.POINTER:
                 descrip = "converts from pointer type without explicit cast"
@@ -427,8 +434,10 @@ class BinaryOperatorNode(Node):
             right = self.right_expr.make_code(il_code, symbol_table)
             left = symbol_table.lookup_tok(self.left_expr.identifier)
 
-            il_code.add(il_commands.Set(left, right))
-            return left
+            # Does cast and emits necessary SET command.
+            # TODO: Once reg alloc implemented, can this return an ILValue
+            # and then perform another SET?
+            return self.cast(right, left.ctype, self.operator, il_code, left)
         else:
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,
