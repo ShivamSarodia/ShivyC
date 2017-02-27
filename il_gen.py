@@ -101,7 +101,8 @@ class PointerCType(CType):
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return self.arg.compatible(other.arg)
+        return (self.type_type == other.type_type and
+                self.arg.compatible(other.arg))
 
 
 class ILCode:
