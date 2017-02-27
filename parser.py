@@ -438,7 +438,7 @@ class Parser:
         """
         type_tokens = [token_kinds.bool_kw, token_kinds.char_kw,
                        token_kinds.int_kw, token_kinds.short_kw,
-                       token_kinds.long_kw]
+                       token_kinds.long_kw, token_kinds.void_kw]
 
         err = "expected type name"
         for tok in type_tokens[:-1]:

@@ -15,6 +15,7 @@ int_kw = TokenKind("int", keyword_kinds)
 long_kw = TokenKind("long", keyword_kinds)
 signed_kw = TokenKind("signed", keyword_kinds)
 unsigned_kw = TokenKind("unsigned", keyword_kinds)
+void_kw = TokenKind("void", keyword_kinds)
 
 return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)

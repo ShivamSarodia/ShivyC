@@ -679,6 +679,13 @@ class DeclarationNode(Node):
         variable to the symbol table.
 
         """
+        # Do not allow `void` declaration without indirection
+        if (self.ctype_token.kind == token_kinds.void_kw and
+             self.indirection == 0):
+            raise CompilerError("variable of void type declared",
+                                self.ctype_token.file_name,
+                                self.ctype_token.line_num)
+
         type_map = {(token_kinds.bool_kw, True): ctypes.bool_t,
                     (token_kinds.char_kw, True): ctypes.char,
                     (token_kinds.char_kw, False): ctypes.unsig_char,
