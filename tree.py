@@ -653,12 +653,15 @@ class DeclarationNode(Node):
     variable name.
     ctype_token(Token(int_kw or char_kw)) - The type of this variable.
     signed (bool) - Whether this variable is signed or unsigned.
+    indirection (int) - Level of indirection. 0 means this is not a pointer,
+    any other n means it is a pointer to the equivalent CType with
+    indirection n-1.
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, variable_name, ctype_token, signed):
+    def __init__(self, variable_name, ctype_token, signed, indirection=0):
         """Initialize node."""
         super().__init__()
 
@@ -667,6 +670,7 @@ class DeclarationNode(Node):
         self.variable_name = variable_name
         self.ctype_token = ctype_token
         self.signed = signed
+        self.indirection = indirection
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
@@ -686,4 +690,7 @@ class DeclarationNode(Node):
                     (token_kinds.long_kw, False): ctypes.unsig_longint}
 
         ctype = type_map[(self.ctype_token.kind, self.signed)]
+        for i in range(self.indirection):
+            ctype = PointerCType(ctype)
+
         symbol_table.add(self.variable_name, ctype, il_code)

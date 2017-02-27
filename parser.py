@@ -414,13 +414,20 @@ class Parser:
         index = self._expect_type_name(index)
         ctype_tok = self.tokens[index - 1]
 
+        indirection = 0
+        # Parse any number of stars to indicate pointer type
+        while self._next_token_is(index, token_kinds.star):
+            index += 1
+            indirection += 1
+
         # Parse the identifier name
         index = self._match_token(index, token_kinds.identifier,
                                   "expected identifier", ParserError.AFTER)
         variable_name = self.tokens[index - 1]
         index = self._expect_semicolon(index)
 
-        return (tree.DeclarationNode(variable_name, ctype_tok, signed), index)
+        return (tree.DeclarationNode(variable_name, ctype_tok, signed,
+                                     indirection), index)
 
     def _expect_type_name(self, index):
         """Expect a type name at self.tokens[index].

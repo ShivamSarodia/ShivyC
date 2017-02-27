@@ -613,5 +613,18 @@ class DeclarationTests(ParserTestUtil):
                                  Token(token_kinds.char_kw), True)
         ])  # yapf: disable
 
+    def test_pointer_declaration(self):  # noqa: D400, D403
+        """int** a;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
+                                 Token(token_kinds.int_kw), True, 2)
+        ])
+
 if __name__ == "__main__":
     unittest.main()
