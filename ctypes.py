@@ -1,6 +1,8 @@
 """All of the C types recognized by the compiler."""
 
-from il_gen import IntegerCType
+from il_gen import VoidCType, IntegerCType
+
+void = VoidCType()
 
 # In our implementation, we have 1 represent true and 0 represent false. We
 # maintain this convention so that true boolean values always comare equal.

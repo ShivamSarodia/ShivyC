@@ -204,8 +204,9 @@ class Div(ILCommand):
 class _GeneralEqualCmp(ILCommand):
     """_GeneralEqualCmp - base class for EqualCmp and NotEqualCmp.
 
-    IL value output must have int type. arg1, arg2 must all have the same
-    type. No type conversion or promotion is done here.
+    IL value output must have int type. arg1, arg2 must have types that can
+    be compared for equality bit-by-bit. No type conversion or promotion is
+    done here.
 
     """
 
@@ -213,8 +214,6 @@ class _GeneralEqualCmp(ILCommand):
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
-
-        self.assert_same_ctype([arg1, arg2])
 
     def input_values(self): # noqa D102
         return [self.arg1, self.arg2]

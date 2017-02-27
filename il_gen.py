@@ -16,11 +16,25 @@ class CType:
     FUNCTION = 1
     # Pointer CType
     POINTER = 2
+    # Void CType
+    VOID = 3
 
     def __init__(self, size, type_type):
         """Initialize type."""
         self.size = size
         self.type_type = type_type
+
+
+class VoidCType(CType):
+    """Represents a void C type."""
+
+    def __init__(self):
+        """Initialize type."""
+        super().__init__(0, CType.VOID)
+
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self."""
+        return other.type_type == self.type_type
 
 
 class IntegerCType(CType):
@@ -39,6 +53,12 @@ class IntegerCType(CType):
     def __str__(self):  # pragma: no cover
         return "({} INT {} BYTES)".format("SIG" if self.signed else "UNSIG",
                                             self.size)
+
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self."""
+        return (other.type_type == self.type_type and
+                other.signed == self.signed and
+                other.size == self.size)
 
 
 class FunctionCType(CType):
@@ -59,6 +79,10 @@ class FunctionCType(CType):
     def __str__(self):  # pragma: no cover
         return "(FUNC RET {})".format(str(self.ret))
 
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self."""
+        raise NotImplementedError
+
 
 class PointerCType(CType):
     """Represents a pointer C type.
@@ -74,6 +98,10 @@ class PointerCType(CType):
 
     def __str__(self):  # pragma: no cover
         return "(PTR TO {})".format(str(self.arg))
+
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self."""
+        return self.arg.compatible(other.arg)
 
 
 class ILCode:

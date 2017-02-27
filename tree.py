@@ -412,6 +412,50 @@ class BinaryOperatorNode(Node):
         if (left.ctype.type_type == CType.INTEGER and
               right.ctype.type_type == CType.INTEGER):
             return self.make_integer_code(right, left, il_code)
+
+        elif (self.operator.kind == token_kinds.twoequals,
+              self.operator.kind == token_kinds.notequal):
+
+            # If either operand is a null pointer constant, cast it to the
+            # other's pointer type.
+            if (left.ctype.type_type == CType.POINTER and
+                 right.null_ptr_const):
+                right = self.cast(right, left.ctype, self.operator, il_code)
+            elif (right.ctype.type_type == CType.POINTER and
+                  left.null_ptr_const):
+                left = self.cast(left, right.ctype, self.operator, il_code)
+
+            # If both operands are not pointer types, warn!
+            if (left.ctype.type_type != CType.POINTER or
+                  right.ctype.type_type != CType.POINTER):
+                descrip = "comparison between incomparable types"
+                error_collector.add(
+                    CompilerError(descrip, self.operator.file_name,
+                                  self.operator.line_num, True))
+
+            # If one side is pointer to void, cast the other to same.
+            elif left.ctype.arg == ctypes.void:
+                right = self.cast(right, left.ctype, self.operator, il_code)
+            elif right.ctype.arg == ctypes.void:
+                left = self.cast(left, right.ctype, self.operator, il_code)
+
+            # If both types are still incompatible, warn!
+            elif not left.ctype.compatible(right.ctype):
+                descrip = "comparison between distinct pointer types"
+                error_collector.add(
+                    CompilerError(descrip, self.operator.file_name,
+                                  self.operator.line_num, True))
+
+            # Now, we can do comparison
+            output = ILValue(ctypes.integer)
+            if self.operator.kind == token_kinds.twoequals:
+                cmd = il_commands.EqualCmp
+            else:
+                cmd = il_commands.NotEqualCmp
+            il_code.add(cmd(output, left, right))
+
+            return output
+
         else:
             raise NotImplementedError("Unsupported operands")
 
