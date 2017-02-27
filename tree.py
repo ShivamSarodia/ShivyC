@@ -397,14 +397,29 @@ class BinaryOperatorNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
-        # If equals, call make_equals_code immediately.
         if self.operator == Token(token_kinds.equals):
             return self.make_equals_code(il_code, symbol_table)
 
-        # Make code for both operands and cast if necessary.
+        # Make code for both operands
         left = self.left_expr.make_code(il_code, symbol_table)
         right = self.right_expr.make_code(il_code, symbol_table)
 
+        # If integer types, dispatch to integer binary op.
+        if (left.ctype.type_type == CType.INTEGER and
+              right.ctype.type_type == CType.INTEGER):
+            return self.make_integer_code(right, left, il_code)
+        else:
+            raise NotImplementedError("Unsupported operands")
+
+    def make_integer_code(self, right, left, il_code):
+        """Make code with given integer operands.
+
+        right - Expression on right side of operator
+        left - Expression on left side of operator
+        il_code - ILCode object to add code to
+
+        """
+        # Cast both operands to a common type if necessary.
         new_type = self._promo_type(left.ctype, right.ctype)
         left_cast = self.cast(left, new_type, self.operator, il_code)
         right_cast = self.cast(right, new_type, self.operator, il_code)
@@ -419,12 +434,10 @@ class BinaryOperatorNode(Node):
         # Commands that output an ILValue of integer type rather than of the
         # input type.
         cmp_cmds = {il_commands.EqualCmp, il_commands.NotEqualCmp}
-
         if cmd_map[self.operator.kind] in cmp_cmds:
             output = ILValue(ctypes.integer)
         else:
             output = ILValue(new_type)
-
         il_code.add(cmd_map[self.operator.kind](output, left_cast, right_cast))
         return output
 
