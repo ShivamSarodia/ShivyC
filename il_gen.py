@@ -36,6 +36,10 @@ class IntegerCType(CType):
         self.signed = signed
         super().__init__(size, CType.INTEGER)
 
+    def __str__(self):  # pragma: no cover
+        return "({} INT {} BYTES)".format("SIG" if self.signed else "UNSIG",
+                                            self.size)
+
 
 class FunctionCType(CType):
     """Represents a function C type.
@@ -52,6 +56,9 @@ class FunctionCType(CType):
         self.ret = ret
         super().__init__(1, CType.FUNCTION)
 
+    def __str__(self):  # pragma: no cover
+        return "(FUNC RET {})".format(str(self.ret))
+
 
 class PointerCType(CType):
     """Represents a pointer C type.
@@ -64,6 +71,9 @@ class PointerCType(CType):
         """Initialize type."""
         self.arg = arg
         super().__init__(8, CType.POINTER)
+
+    def __str__(self):  # pragma: no cover
+        return "(PTR TO {})".format(str(self.arg))
 
 
 class ILCode:
@@ -131,6 +141,9 @@ class ILCode:
         from asm_gen import ASMCode
         return ASMCode.get_label()
 
+    def __str__(self):  # pragma: no cover
+        return "\n".join(str(command) for command in self.commands)
+
     def __iter__(self):
         """Return the lines of code in order when iterating through ILCode.
 
@@ -164,6 +177,10 @@ class ILValue:
     def __init__(self, ctype):
         """Initialize IL value."""
         self.ctype = ctype
+
+    def __str__(self):  # pragma: no cover
+        return "< {} | {} >".format((str(id(self) % 100)).zfill(2),
+                                    str(self.ctype))
 
 
 class SymbolTable:

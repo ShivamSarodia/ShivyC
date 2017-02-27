@@ -48,6 +48,17 @@ class ILCommand:
             if ctype and ctype != il_value.ctype:
                 raise ValueError("different ctypes")  # pragma: no cover
 
+    def to_str(self, name, inputs, output=None):
+        """Given the name, inputs, and outputs return its string form."""
+        RED = '\033[91m'
+        ENDC = '\033[0m'
+        BOLD = '\033[1m'
+
+        input_str = "".join(str(input).ljust(40) for input in inputs)
+        output_str = (str(output) if output else "").ljust(40)
+        return output_str + RED + BOLD + str(name).ljust(10) + ENDC + " " + \
+               input_str
+
 
 class Add(ILCommand):
     """ADD - adds arg1 and arg2, then saves to output.
@@ -83,6 +94,9 @@ class Add(ILCommand):
         asm_code.add_command("add", rax_asm, arg2_asm)
         asm_code.add_command("mov", output_asm, rax_asm)
 
+    def __str__(self):    # pragma: no cover
+        return self.to_str("ADD", [self.arg1, self.arg2], self.output)
+
 
 class Mult(ILCommand):
     """MULT - multiplies arg1 and arg2, then saves to output.
@@ -92,7 +106,7 @@ class Mult(ILCommand):
 
     """
 
-    def __init__(self, output, arg1, arg2): # noqa D102
+    def __init__(self, output, arg1, arg2):  # noqa D102
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
@@ -127,6 +141,9 @@ class Mult(ILCommand):
             asm_code.add_command("mul", arg2_asm)
 
         asm_code.add_command("mov", output_asm, rax_asm)
+
+    def __str__(self):    # pragma: no cover
+        return self.to_str("MULT", [self.arg1, self.arg2], self.output)
 
 
 class Div(ILCommand):
@@ -179,6 +196,9 @@ class Div(ILCommand):
             asm_code.add_command("div", arg2_final_asm)
 
         asm_code.add_command("mov", output_asm, rax_asm)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("DIV", [self.arg1, self.arg2], self.output)
 
 
 class _GeneralEqualCmp(ILCommand):
@@ -235,6 +255,9 @@ class NotEqualCmp(_GeneralEqualCmp):
     equal_value = "0"
     not_equal_value = "1"
 
+    def __str__(self):  # pragma: no cover
+        return self.to_str("NEQ", [self.arg1, self.arg2], self.output)
+
 
 class EqualCmp(_GeneralEqualCmp):
     """EqualCmp - checks whether arg1 and arg2 are equal.
@@ -246,6 +269,9 @@ class EqualCmp(_GeneralEqualCmp):
 
     equal_value = "1"
     not_equal_value = "0"
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("NEQ", [self.arg1, self.arg2], self.output)
 
 
 class Set(ILCommand):
@@ -320,6 +346,9 @@ class Set(ILCommand):
         asm_code.add_command("mov", output_asm, "1")
         asm_code.add_label(label)
 
+    def __str__(self):  # pragma: no cover
+        return self.to_str("SET", [self.arg], self.output)
+
 
 class Return(ILCommand):
     """RETURN - returns the given value from function.
@@ -347,6 +376,9 @@ class Return(ILCommand):
         asm_code.add_command("pop", "rbp")
         asm_code.add_command("ret")
 
+    def __str__(self):  # pragma: no cover
+        return self.to_str("RET", [self.arg])
+
 
 class Label(ILCommand):
     """Label - Analogous to an ASM label."""
@@ -363,6 +395,9 @@ class Label(ILCommand):
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         asm_code.add_label(self.label)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("LABEL", [self.label])
 
 
 class JumpZero(ILCommand):
@@ -390,6 +425,9 @@ class JumpZero(ILCommand):
         asm_code.add_command("cmp", cond_asm, "0")
         asm_code.add_command("je", self.label)
 
+    def __str__(self):  # pragma: no cover
+        return self.to_str("JZERO", [self.cond, self.label])
+
 
 class AddrOf(ILCommand):
     """Gets address of given variable.
@@ -416,6 +454,9 @@ class AddrOf(ILCommand):
 
         asm_code.add_command("lea", temp, var_asm)
         asm_code.add_command("mov", output_asm, temp)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("ADDROF", [self.var], self.output)
 
 
 class ReadAt(ILCommand):
@@ -445,6 +486,9 @@ class ReadAt(ILCommand):
         asm_code.add_command("mov", rax, addr_asm)
         asm_code.add_command("mov", temp, rax_spot)
         asm_code.add_command("mov", output_asm, temp)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("READAT", [self.addr], self.output)
 
 
 class Call(ILCommand):
@@ -493,3 +537,6 @@ class Call(ILCommand):
         ret_asm = spotmap[self.ret].asm_str(self.func.ctype.ret.size)
         rax_asm = spots.RAX.asm_str(self.func.ctype.ret.size)
         asm_code.add_command("mov", ret_asm, rax_asm)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("CALL", self.args, self.ret)

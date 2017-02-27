@@ -47,6 +47,10 @@ def main():
         error_collector.show()
         return 1
 
+    # Display the IL generated if indicated on the command line.
+    if arguments.show_il:
+        print(str(il_code))
+
     asm_code = ASMCode()
     ASMGen(il_code, asm_code).make_asm()
     asm_source = asm_code.full_code()
@@ -78,27 +82,31 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(description="Compile C files.")
 
-    # The file name of the C file to compile. The file name gets saved to the
-    # file_name attribute of the returned object, but this parameter appears as
-    # "filename" (no underscore) on the command line.
-    parser.add_argument("file_name", metavar="filename")
+    # The file name of the C file to compile.
+    parser.add_argument("filename", metavar="filename")
+
+    # Boolean flag for whether to print the generated IL
+    parser.add_argument("-show-il", help="display generated IL",
+                        dest="show_il", action="store_true")
+    parser.set_defaults(show_il=False)
+
     return parser.parse_args()
 
 
 def get_code_lines(arguments):
     """Open the file(s) in arguments and return lines of code."""
     try:
-        with open(arguments.file_name) as c_file:
+        with open(arguments.filename) as c_file:
             code_lines = []
             for line_num, line_text in enumerate(c_file):
                 line = line_text.strip()
                 code_lines.append((line.split("//")[0],
-                                   arguments.file_name,
+                                   arguments.filename,
                                    line_num + 1))
             return code_lines
     except IOError:
         descrip = "could not read file: '{}'"
-        error_collector.add(CompilerError(descrip.format(arguments.file_name)))
+        error_collector.add(CompilerError(descrip.format(arguments.filename)))
 
 
 def write_asm(asm_source, asm_filename):

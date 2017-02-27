@@ -50,7 +50,7 @@ class MetaIntegrationTests(type):
                             issues.append(line.split(issue_mark)[-1])
 
                 # Mock out arguments to ShivyC call
-                class MockArguments: file_name = test_file_name
+                class MockArguments: filename = test_file_name
                 shivyc.get_arguments = lambda: MockArguments()
 
                 # Mock out error collector functions
