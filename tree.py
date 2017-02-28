@@ -413,7 +413,7 @@ class BinaryOperatorNode(Node):
               right.ctype.type_type == CType.INTEGER):
             return self.make_integer_code(right, left, il_code)
 
-        elif (self.operator.kind == token_kinds.twoequals,
+        elif (self.operator.kind == token_kinds.twoequals or
               self.operator.kind == token_kinds.notequal):
 
             # If either operand is a null pointer constant, cast it to the
