@@ -626,5 +626,18 @@ class DeclarationTests(ParserTestUtil):
                                  Token(token_kinds.int_kw), True, 2)
         ])
 
+    def test_void_pointer_declaration(self):  # noqa: D400, D403
+        """void* a;"""
+        tokens = [Token(token_kinds.void_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
+                                 Token(token_kinds.void_kw), True, 1)
+        ])
+
+
 if __name__ == "__main__":
     unittest.main()
