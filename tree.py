@@ -448,6 +448,8 @@ class BinaryOperatorNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
+
+        # If = operator
         if self.operator == Token(token_kinds.equals):
             return self.make_equals_code(il_code, symbol_table)
 
@@ -455,59 +457,66 @@ class BinaryOperatorNode(Node):
         left = self.left_expr.make_code(il_code, symbol_table)
         right = self.right_expr.make_code(il_code, symbol_table)
 
-        # If integer types, dispatch to integer binary op.
+        # If arithmetic type
         if (left.ctype.type_type == CType.ARITH and
               right.ctype.type_type == CType.ARITH):
             return self.make_integer_code(right, left, il_code)
 
+        # If operator is == or !=
         elif (self.operator.kind == token_kinds.twoequals or
               self.operator.kind == token_kinds.notequal):
+            return self.make_nonarith_equality_code(left, right, il_code)
 
-            # If either operand is a null pointer constant, cast it to the
-            # other's pointer type.
+        # If operator is addition
+        elif self.operator.kind == token_kinds.plus:
+            # One operand should be pointer to complete object type, and the
+            # other should be any integer type.
+
+            # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
             if (left.ctype.type_type == CType.POINTER and
-                 right.null_ptr_const):
-                right = self.raw_cast(right, left.ctype, il_code)
+                 right.ctype.type_type == CType.ARITH):
+                arith_op, pointer_op = right, left
             elif (right.ctype.type_type == CType.POINTER and
-                  left.null_ptr_const):
-                left = self.raw_cast(left, right.ctype, il_code)
-
-            # If both operands are not pointer types, warn!
-            if (left.ctype.type_type != CType.POINTER or
-                  right.ctype.type_type != CType.POINTER):
-                descrip = "comparison between incomparable types"
-                error_collector.add(
-                    CompilerError(descrip, self.operator.file_name,
-                                  self.operator.line_num, True))
-
-            # If one side is pointer to void, cast the other to same.
-            elif left.ctype.arg == ctypes.void:
-                right = self.raw_cast(right, left.ctype, il_code)
-            elif right.ctype.arg == ctypes.void:
-                left = self.raw_cast(left, right.ctype, il_code)
-
-            # If both types are still incompatible, warn!
-            elif not left.ctype.compatible(right.ctype):
-                descrip = "comparison between distinct pointer types"
-                error_collector.add(
-                    CompilerError(descrip, self.operator.file_name,
-                                  self.operator.line_num, True))
-
-            # Now, we can do comparison
-            output = ILValue(ctypes.integer)
-            if self.operator.kind == token_kinds.twoequals:
-                cmd = il_commands.EqualCmp
+                  left.ctype.type_type == CType.ARITH):
+                arith_op, pointer_op = left, right
             else:
-                cmd = il_commands.NotEqualCmp
-            il_code.add(cmd(output, left, right))
+                descrip = "invalid operand types for binary addition"
+                raise CompilerError(descrip, self.operator.file_name,
+                                    self.operator.line_num)
 
-            return output
+            # Cast the integer operand to a long for multiplication.
+            l_arith_op = self.raw_cast(arith_op, ctypes.unsig_longint, il_code)
+
+            # Amount to shift the pointer by
+            shift = ILValue(ctypes.unsig_longint)
+
+            # ILValue for the output pointer
+            out = ILValue(pointer_op.ctype)
+
+            # Size of pointed-to object as a literal IL value
+            size = ILValue(ctypes.unsig_longint)
+            il_code.add_literal(size, str(pointer_op.ctype.arg.size))
+
+            il_code.add(il_commands.Mult(shift, l_arith_op, size))
+            il_code.add(il_commands.Add(out, pointer_op, shift))
+
+            return out
+
+        # If operator is multiplication or division
+        elif self.operator.kind in {token_kinds.star, token_kinds.slash}:
+            if self.operator.kind == token_kinds.star:
+                descrip = "invalid operand types for binary multiplication"
+            else:  # self.operator.kind == token_kinds.slash
+                descrip = "invalid operand types for binary division"
+
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
 
         else:
             raise NotImplementedError("Unsupported operands")
 
     def make_integer_code(self, right, left, il_code):
-        """Make code with given integer operands.
+        """Make code with given arithmetic operands.
 
         right - Expression on right side of operator
         left - Expression on left side of operator
@@ -550,6 +559,48 @@ class BinaryOperatorNode(Node):
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,
                                 self.operator.line_num)
+
+    def make_nonarith_equality_code(self, left, right, il_code):
+        """Make code for == and != operators for non-arithmetic operands."""
+
+        # If either operand is a null pointer constant, cast it to the
+        # other's pointer type.
+        if (left.ctype.type_type == CType.POINTER and
+                right.null_ptr_const):
+            right = self.raw_cast(right, left.ctype, il_code)
+        elif (right.ctype.type_type == CType.POINTER and
+                  left.null_ptr_const):
+            left = self.raw_cast(left, right.ctype, il_code)
+
+        # If both operands are not pointer types, warn!
+        if (left.ctype.type_type != CType.POINTER or
+                    right.ctype.type_type != CType.POINTER):
+            descrip = "comparison between incomparable types"
+            error_collector.add(
+                CompilerError(descrip, self.operator.file_name,
+                              self.operator.line_num, True))
+
+        # If one side is pointer to void, cast the other to same.
+        elif left.ctype.arg == ctypes.void:
+            right = self.raw_cast(right, left.ctype, il_code)
+        elif right.ctype.arg == ctypes.void:
+            left = self.raw_cast(left, right.ctype, il_code)
+
+        # If both types are still incompatible, warn!
+        elif not left.ctype.compatible(right.ctype):
+            descrip = "comparison between distinct pointer types"
+            error_collector.add(
+                CompilerError(descrip, self.operator.file_name,
+                              self.operator.line_num, True))
+
+        # Now, we can do comparison
+        output = ILValue(ctypes.integer)
+        if self.operator.kind == token_kinds.twoequals:
+            cmd = il_commands.EqualCmp
+        else:
+            cmd = il_commands.NotEqualCmp
+        il_code.add(cmd(output, left, right))
+        return output
 
 
 class AddrOfNode(Node):
