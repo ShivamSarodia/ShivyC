@@ -11,7 +11,7 @@ class CType:
     """
 
     # Integer CType
-    INTEGER = 0
+    ARITH = 0
     # Function CTYPE
     FUNCTION = 1
     # Pointer CType
@@ -48,7 +48,7 @@ class IntegerCType(CType):
     def __init__(self, size, signed):
         """Initialize type."""
         self.signed = signed
-        super().__init__(size, CType.INTEGER)
+        super().__init__(size, CType.ARITH)
 
     def __str__(self):  # pragma: no cover
         return "({} INT {} BYTES)".format("SIG" if self.signed else "UNSIG",

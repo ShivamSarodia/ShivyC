@@ -520,7 +520,7 @@ class Call(ILCommand):
         # registers.
         regs.reverse()
         for arg in self.args:
-            if arg.ctype.type_type != CType.INTEGER:
+            if arg.ctype.type_type != CType.ARITH:
                 raise NotImplementedError("only integer arguments supported")
             elif not regs:
                 raise NotImplementedError("too many arguments")

@@ -409,8 +409,8 @@ class BinaryOperatorNode(Node):
         right = self.right_expr.make_code(il_code, symbol_table)
 
         # If integer types, dispatch to integer binary op.
-        if (left.ctype.type_type == CType.INTEGER and
-              right.ctype.type_type == CType.INTEGER):
+        if (left.ctype.type_type == CType.ARITH and
+              right.ctype.type_type == CType.ARITH):
             return self.make_integer_code(right, left, il_code)
 
         elif (self.operator.kind == token_kinds.twoequals or
