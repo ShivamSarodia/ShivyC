@@ -94,6 +94,3 @@ class IntegrationTests(unittest.TestCase, metaclass=MetaIntegrationTests):
     def setUp(self):
         """Clear error collector before each test."""
         error_collector.clear()
-
-if __name__ == "__main__":
-    unittest.main()
