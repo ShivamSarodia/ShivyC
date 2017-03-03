@@ -84,19 +84,15 @@ class Node:
         output - If provided, ILValue to store the cast value in and return
 
         """
-        # Set `new` to the place to store the generated ILValue
-        if output:
+        if il_value.ctype == ctype and output:
+            il_code.add(il_commands.Set(output, il_value))
+            return output
+        elif il_value.ctype == ctype and not output:
+            return il_value
+        elif output:
             new = output
         else:
             new = ILValue(ctype)
-
-        # Already same type, no need to convert
-        if il_value.ctype == ctype:
-            if il_value == new:
-                return new
-            else:
-                il_code.add(il_commands.Set(new, il_value))
-                return new
 
         # Convert immediately if both are arithmetic types.
         if (ctype.type_type == CType.ARITH and
