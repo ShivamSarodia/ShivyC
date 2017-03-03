@@ -12,14 +12,24 @@ int main() {
 
   if(&a == (0)) return 5;
 
-  // Issue: 16: warning: comparison between incomparable types
-  if(&a == 1) return 6;
+  if(0 == &a) return 6;
 
-  // Issue: 19: warning: comparison between distinct pointer types
-  if(&a == &c) return 7;
+  // Issue: 18: warning: comparison between incomparable types
+  if(&a == 1) return 7;
 
-  // Issue: 22: warning: comparison between distinct pointer types
-  if(&a == &d) return 8;
+  // Issue: 21: warning: comparison between distinct pointer types
+  if(&a == &c) return 8;
+
+  // Issue: 24: warning: comparison between distinct pointer types
+  if(&a == &d) return 9;
+
+  void* v;
+  v = &a;
+  if(v == 0) return 10;
+  if(0 == v) return 11;
+  if(v == &b) return 12;
+  if(&b == v) return 13;
+  if(v != &a) return 14;
 
   return 0;
 }
