@@ -51,6 +51,10 @@ class ASMCode:
         """
         self.externs.append("extern " + name)
 
+    def add_comment(self, comment):
+        """Add a comment in the ASM code."""
+        self.lines.append(";; " + comment)
+
     def full_code(self):  # noqa: D202
         """Produce the full assembly code.
 
@@ -65,8 +69,11 @@ class ASMCode:
             Does not terminate with a newline.
 
             """
-            if isinstance(line, str):  # this is a label
-                return line + ":"
+            if isinstance(line, str):
+                if line[:2] == ";;":  # this is a comment
+                    return "     " + line
+                else:  # this is a label
+                    return line + ":"
             else:
                 line_str = "     " + line[0]
                 if line[1]:
@@ -127,6 +134,7 @@ class ASMGen:
 
         # Generate all asm code
         for command in self.il_code:
+            self.asm_code.add_comment(type(command).__name__.upper())
             command.make_asm(spotmap, self.asm_code)
 
     def _all_il_values(self):
