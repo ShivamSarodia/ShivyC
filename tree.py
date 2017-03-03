@@ -84,25 +84,76 @@ class Node:
         output - If provided, ILValue to store the cast value in and return
 
         """
-        # Already correct type, no need to convert
-        if il_value.ctype == ctype:
-            if not output or il_value == output:
-                return il_value
-            else:
-                il_code.add(il_commands.Set(output, il_value))
-                return output
-
+        # Set `new` to the place to store the generated ILValue
+        if output:
+            new = output
         else:
-            if output: new = output
-            else: new = ILValue(ctype)
+            new = ILValue(ctype)
 
-            if il_value.ctype.type_type == CType.POINTER:
-                descrip = "converts from pointer type without explicit cast"
-                error_collector.add(CompilerError(descrip, token.file_name,
-                                                  token.line_num, True))
+        # Already same type, no need to convert
+        if il_value.ctype == ctype:
+            if il_value == new:
+                return new
+            else:
+                il_code.add(il_commands.Set(new, il_value))
+                return new
+
+        # Convert immediately if both are arithmetic types.
+        if (ctype.type_type == CType.ARITH and
+             il_value.ctype.type_type == CType.ARITH):
+            il_code.add(il_commands.Set(new, il_value))
+
+        elif (ctype.type_type == CType.POINTER and
+              il_value.ctype.type_type == CType.POINTER):
+
+            # If they're pointers to compatible types, it's fine.
+            if ctype.compatible(il_value.ctype):
+                pass
+
+            # If one is pointer to void, it's fine.
+            elif ctypes.void in {ctype.arg, il_value.ctype.arg}:
+                pass
+
+            # Else, do assignment but complain
+            else:
+                descrip = "assignment from incompatible pointer type"
+                error_collector.add(
+                    CompilerError(descrip, token.file_name,
+                                  token.line_num, True))
 
             il_code.add(il_commands.Set(new, il_value))
-            return new
+
+        # If il_value is a null pointer constant, it's fine
+        elif (ctype.type_type == CType.POINTER and
+              il_value.null_ptr_const):
+            il_code.add(il_commands.Set(new, il_value))
+
+        # If converting to boolean type, it's fine
+        elif (ctype == ctypes.bool_t and
+              il_value.ctype.type_type == CType.POINTER):
+            il_code.add(il_commands.Set(new, il_value))
+
+        else:
+            descrip = "invalid conversion between types"
+            raise CompilerError(descrip, token.file_name, token.line_num)
+
+        return new
+
+    def raw_cast(self, il_value, ctype, il_code, output=None):
+        """If necessary, emit code to cast given il_value to the given ctype.
+
+        Unlike cast() above, this function does no type checking and will
+        never produce a warning or error.
+
+        """
+        # (no output value, and same types) OR (output is same as input)
+        if (not output and il_value.ctype == ctype) or output == il_value:
+            return il_value
+        else:
+            if not output:
+                output = ILValue(ctype)
+            il_code.add(il_commands.Set(output, il_value))
+            return output
 
 
 class MainNode(Node):
@@ -420,10 +471,10 @@ class BinaryOperatorNode(Node):
             # other's pointer type.
             if (left.ctype.type_type == CType.POINTER and
                  right.null_ptr_const):
-                right = self.cast(right, left.ctype, self.operator, il_code)
+                right = self.raw_cast(right, left.ctype, il_code)
             elif (right.ctype.type_type == CType.POINTER and
                   left.null_ptr_const):
-                left = self.cast(left, right.ctype, self.operator, il_code)
+                left = self.raw_cast(left, right.ctype, il_code)
 
             # If both operands are not pointer types, warn!
             if (left.ctype.type_type != CType.POINTER or
@@ -435,9 +486,9 @@ class BinaryOperatorNode(Node):
 
             # If one side is pointer to void, cast the other to same.
             elif left.ctype.arg == ctypes.void:
-                right = self.cast(right, left.ctype, self.operator, il_code)
+                right = self.raw_cast(right, left.ctype, il_code)
             elif right.ctype.arg == ctypes.void:
-                left = self.cast(left, right.ctype, self.operator, il_code)
+                left = self.raw_cast(left, right.ctype, il_code)
 
             # If both types are still incompatible, warn!
             elif not left.ctype.compatible(right.ctype):
@@ -469,8 +520,8 @@ class BinaryOperatorNode(Node):
         """
         # Cast both operands to a common type if necessary.
         new_type = self._promo_type(left.ctype, right.ctype)
-        left_cast = self.cast(left, new_type, self.operator, il_code)
-        right_cast = self.cast(right, new_type, self.operator, il_code)
+        left_cast = self.raw_cast(left, new_type, il_code)
+        right_cast = self.raw_cast(right, new_type, il_code)
 
         # Mapping from a token_kind to the ILCommand it corresponds to.
         cmd_map = {token_kinds.plus: il_commands.Add,

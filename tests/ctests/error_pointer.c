@@ -1,4 +1,4 @@
-int main() {
+ int main() {
   int a; int b;
 
   // Issue: 5: error: lvalue required as unary '&' operand
@@ -7,5 +7,12 @@ int main() {
   // Issue: 8: error: operand of unary '*' must have pointer type
   *a;
 
+  // Issue: 11: error: invalid conversion between types
+  a = &b;  // setting integer to pointer
+
+  // Issue: 15: error: invalid conversion between types
+  int* c;
+  c = 10;  // setting pointer to integer
+
   return 0;
-}
+ }
