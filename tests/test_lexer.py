@@ -1,6 +1,5 @@
 """Tests for the lexer phase of the compiler."""
 
-import unittest
 
 import token_kinds
 from errors import error_collector
@@ -99,7 +98,3 @@ class LexerTests(TestUtils):
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
         self.assertEqual(Lexer().tokenize(content), tokens)
-
-
-if __name__ == "__main__":
-    unittest.main()

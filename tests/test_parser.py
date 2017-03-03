@@ -1,6 +1,5 @@
 """Tests for the parser phase of the compiler."""
 
-import unittest
 
 import tree
 import token_kinds
@@ -637,7 +636,3 @@ class DeclarationTests(ParserTestUtil):
             tree.DeclarationNode(Token(token_kinds.identifier, "a"),
                                  Token(token_kinds.void_kw), True, 1)
         ])
-
-
-if __name__ == "__main__":
-    unittest.main()
