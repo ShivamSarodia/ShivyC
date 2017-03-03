@@ -65,9 +65,13 @@ class MetaIntegrationTests(type):
                     self.assertEqual(error_collector.issues, [])
                     self.assertEqual(subprocess.call(["./out"]), ret_val)
                 else:
-                    self.assertEqual(len(issues), len(error_collector.issues))
-                    for issue, actual in zip(issues, error_collector.issues):
-                        self.assertIn(issue.strip(), str(actual))
+                    clean_issues = list(map(lambda x: x.strip(), issues))
+
+                    front_strip = len(test_file_name) + 1
+                    clean_actual = list(map(lambda x: str(x)[front_strip:],
+                                            error_collector.issues))
+
+                    self.assertListEqual(clean_issues, clean_actual)
 
             return test_function
 
