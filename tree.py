@@ -399,8 +399,47 @@ class BinaryOperatorNode(Node):
         self.operator = operator
         self.right_expr = right_expr
 
+    def make_code(self, il_code, symbol_table):
+        """Make code for this node."""
+
+        # If = operator
+        if self.operator == Token(token_kinds.equals):
+            return self._make_equals_code(il_code, symbol_table)
+
+        # Make code for both operands
+        left = self.left_expr.make_code(il_code, symbol_table)
+        right = self.right_expr.make_code(il_code, symbol_table)
+
+        # If arithmetic type
+        if (left.ctype.type_type == CType.ARITH and
+              right.ctype.type_type == CType.ARITH):
+            return self._make_integer_code(right, left, il_code)
+
+        # If operator is == or !=
+        elif (self.operator.kind == token_kinds.twoequals or
+              self.operator.kind == token_kinds.notequal):
+            return self._make_nonarith_equality_code(left, right, il_code)
+
+        # If operator is addition
+        elif self.operator.kind == token_kinds.plus:
+            return self._make_nonarith_plus_code(left, right, il_code)
+
+        # If operator is multiplication or division
+        elif self.operator.kind in {token_kinds.star, token_kinds.slash}:
+            if self.operator.kind == token_kinds.star:
+                descrip = "invalid operand types for binary multiplication"
+            else:  # self.operator.kind == token_kinds.slash
+                descrip = "invalid operand types for binary division"
+
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
+
+        else:
+            raise NotImplementedError("Unsupported operands")
+
     def _promo_type(self, type1, type2):
         """Return the type these both should be promoted to for computation."""
+
         # If an int can represent all values of the original type, the value is
         # converted to an int; otherwise, it is converted to an unsigned
         # int. These are called the integer promotions.
@@ -446,45 +485,7 @@ class BinaryOperatorNode(Node):
         elif type2_promo.signed:
             return ctypes.to_unsigned(type2_promo)
 
-    def make_code(self, il_code, symbol_table):
-        """Make code for this node."""
-
-        # If = operator
-        if self.operator == Token(token_kinds.equals):
-            return self.make_equals_code(il_code, symbol_table)
-
-        # Make code for both operands
-        left = self.left_expr.make_code(il_code, symbol_table)
-        right = self.right_expr.make_code(il_code, symbol_table)
-
-        # If arithmetic type
-        if (left.ctype.type_type == CType.ARITH and
-              right.ctype.type_type == CType.ARITH):
-            return self.make_integer_code(right, left, il_code)
-
-        # If operator is == or !=
-        elif (self.operator.kind == token_kinds.twoequals or
-              self.operator.kind == token_kinds.notequal):
-            return self.make_nonarith_equality_code(left, right, il_code)
-
-        # If operator is addition
-        elif self.operator.kind == token_kinds.plus:
-            return self.make_nonarith_plus_code(left, right, il_code)
-
-        # If operator is multiplication or division
-        elif self.operator.kind in {token_kinds.star, token_kinds.slash}:
-            if self.operator.kind == token_kinds.star:
-                descrip = "invalid operand types for binary multiplication"
-            else:  # self.operator.kind == token_kinds.slash
-                descrip = "invalid operand types for binary division"
-
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
-
-        else:
-            raise NotImplementedError("Unsupported operands")
-
-    def make_integer_code(self, right, left, il_code):
+    def _make_integer_code(self, right, left, il_code):
         """Make code with given arithmetic operands.
 
         right - Expression on right side of operator
@@ -514,7 +515,7 @@ class BinaryOperatorNode(Node):
         il_code.add(cmd_map[self.operator.kind](output, left_cast, right_cast))
         return output
 
-    def make_equals_code(self, il_code, symbol_table):
+    def _make_equals_code(self, il_code, symbol_table):
         """Make code if this is a = node."""
         if isinstance(self.left_expr, IdentifierNode):
             right = self.right_expr.make_code(il_code, symbol_table)
@@ -529,7 +530,7 @@ class BinaryOperatorNode(Node):
             raise CompilerError(descrip, self.operator.file_name,
                                 self.operator.line_num)
 
-    def make_nonarith_plus_code(self, left, right, il_code):
+    def _make_nonarith_plus_code(self, left, right, il_code):
         """Make code for + operator for non-arithmetic operands."""
 
         # One operand should be pointer to complete object type, and the
@@ -563,7 +564,7 @@ class BinaryOperatorNode(Node):
         il_code.add(il_commands.Add(out, pointer_op, shift))
         return out
 
-    def make_nonarith_equality_code(self, left, right, il_code):
+    def _make_nonarith_equality_code(self, left, right, il_code):
         """Make code for == and != operators for non-arithmetic operands."""
 
         # If either operand is a null pointer constant, cast it to the
