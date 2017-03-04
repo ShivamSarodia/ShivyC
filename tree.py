@@ -261,10 +261,10 @@ class NumberNode(Node):
         # TODO: Support a long integer, etc. We can be a smarter about the type
         # we assign a number here, based on the size of the number etc.
         il_value = ILValue(ctypes.integer)
-        il_code.add_literal(il_value, str(self.number))
+        il_code.add_literal(il_value, int(str(self.number)))
 
         # Literal integer 0 is a null pointer constant
-        if int(self.number.content) == 0:
+        if int(str(self.number)) == 0:
             il_value.null_ptr_const = True
 
         return il_value

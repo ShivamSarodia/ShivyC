@@ -19,8 +19,8 @@ class Spot:
     # argument offset as an integer. For example, ("rbp", -5).
     MEM = 2
     # A literal value. This is a bit of a hack, since a literal value isn't
-    # /really/ a storage spot. The detail attribute is a string representation
-    # of the value of this literal.
+    # /really/ a storage spot. The detail attribute is the integer
+    # representation of the value of this literal.
     LITERAL = 3
 
     def __init__(self, spot_type, detail):
@@ -72,7 +72,7 @@ class Spot:
                 return t.format(size_desc, self.detail[0], -self.detail[1])
 
         elif self.spot_type == self.LITERAL:
-            return self.detail
+            return str(self.detail)
 
         raise NotImplementedError("Unsupported spot_type/size combo")
 
