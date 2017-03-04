@@ -258,13 +258,22 @@ class NumberNode(Node):
         returns a LiteralILValue that can be used in IL code by the caller.
 
         """
-        # TODO: Support a long integer, etc. We can be a smarter about the type
-        # we assign a number here, based on the size of the number etc.
-        il_value = ILValue(ctypes.integer)
-        il_code.add_literal(il_value, int(str(self.number)))
+        v = int(str(self.number))
+
+        if ctypes.int_min <= v <= ctypes.int_max:
+            il_value = ILValue(ctypes.integer)
+        elif ctypes.long_min <= v <= ctypes.long_max:
+            il_value = ILValue(ctypes.longint)
+        else:
+            descrip = ("integer literal too large to be represented by any " +
+                       "integer type")
+            raise CompilerError(descrip, self.number.file_name,
+                                self.number.line_num)
+
+        il_code.add_literal(il_value, v)
 
         # Literal integer 0 is a null pointer constant
-        if int(str(self.number)) == 0:
+        if v == 0:
             il_value.null_ptr_const = True
 
         return il_value

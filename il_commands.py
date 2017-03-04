@@ -223,21 +223,38 @@ class _GeneralEqualCmp(ILCommand):
 
     def make_asm(self, spotmap, asm_code): # noqa D102
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
-        arg1_asm = spotmap[self.arg1].asm_str(self.arg1.ctype.size)
-        arg2_asm = spotmap[self.arg2].asm_str(self.arg2.ctype.size)
+        arg1_spot = spotmap[self.arg1]
+        arg2_spot = spotmap[self.arg2]
 
         asm_code.add_command("mov", output_asm, self.equal_value)
 
-        if ((spotmap[self.arg1].spot_type == Spot.LITERAL and
-             spotmap[self.arg2].spot_type == Spot.LITERAL) or
-            (spotmap[self.arg1].spot_type == Spot.MEM and
-             spotmap[self.arg2].spot_type == Spot.MEM)):
+        # If both LITERAL or both MEM, move one to a register
+        if ((arg1_spot.spot_type == Spot.LITERAL and
+             arg2_spot.spot_type == Spot.LITERAL) or
+            (arg1_spot.spot_type == Spot.MEM and
+             arg2_spot.spot_type == Spot.MEM)):
             rax_asm = spots.RAX.asm_str(self.arg1.ctype.size)
-            asm_code.add_command("mov", rax_asm, arg1_asm)
-            arg1_asm = rax_asm
+            asm_code.add_command("mov", rax_asm,
+                                 arg1_spot.asm_str(self.arg1.ctype.size))
+            arg1_spot = spots.RAX
+
+        # If either arg is 64-bit immediate, move to a register
+        if ((arg1_spot.spot_type == Spot.LITERAL and
+             self.arg1.ctype.size == 8)):
+            rdx_asm = spots.RDX.asm_str(self.arg1.ctype.size)
+            asm_code.add_command("mov", rdx_asm,
+                                 arg1_spot.asm_str(self.arg1.ctype.size))
+            arg1_spot = spots.RDX
+        elif ((arg2_spot.spot_type == Spot.LITERAL and
+               self.arg2.ctype.size == 8)):
+            rdx_asm = spots.RDX.asm_str(self.arg2.ctype.size)
+            asm_code.add_command("mov", rdx_asm,
+                                 arg2_spot.asm_str(self.arg2.ctype.size))
+            arg2_spot = spots.RDX
 
         label = asm_code.get_label()
-        asm_code.add_command("cmp", arg1_asm, arg2_asm)
+        asm_code.add_command("cmp", arg1_spot.asm_str(self.arg1.ctype.size),
+                             arg2_spot.asm_str(self.arg2.ctype.size))
         asm_code.add_command("je", label)
         asm_code.add_command("mov", output_asm, self.not_equal_value)
         asm_code.add_label(label)
@@ -307,18 +324,27 @@ class Set(ILCommand):
             else:
                 temp = output_asm
 
+            # TODO: This is getting /really/ messy.
             if self.output.ctype.size <= self.arg.ctype.size:
                 asm_code.add_command("mov", temp,
                                      arg_spot.asm_str(self.output.ctype.size))
             elif self.output.ctype.size > self.arg.ctype.size:
                 if arg_spot.spot_type == Spot.LITERAL:
+                    temp2 = temp
+                    mov = "mov"
+                elif (self.output.ctype.size == 8 and
+                      self.arg.ctype.size == 4 and
+                      not self.arg.ctype.signed):
+                    temp2 = spots.RAX.asm_str(4)
                     mov = "mov"
                 elif self.arg.ctype.signed:
+                    temp2 = temp
                     mov = "movsx"
                 else:
+                    temp2 = temp
                     mov = "movzx"
 
-                asm_code.add_command(mov, temp,
+                asm_code.add_command(mov, temp2,
                                      arg_spot.asm_str(self.arg.ctype.size))
 
             if both_stack:

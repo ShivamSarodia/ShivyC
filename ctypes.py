@@ -16,9 +16,13 @@ unsig_short = IntegerCType(2, False)
 
 integer = IntegerCType(4, True)
 unsig_int = IntegerCType(4, False)
+int_max = 2147483647
+int_min = -2147483648
 
 longint = IntegerCType(8, True)
 unsig_longint = IntegerCType(8, False)
+long_max = 9223372036854775807
+long_min = -9223372036854775808
 
 
 # When adding new types, update this function!
