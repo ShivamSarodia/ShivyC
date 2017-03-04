@@ -74,72 +74,63 @@ class Node:
                              str(kind) + "' but got '" +
                              str(token.kind) + "'")  # pragma: no cover
 
-    def cast(self, il_value, ctype, token, il_code, output=None):
-        """If necessary, emit code to cast given il_value to the given ctype.
+    def check_cast(self, il_value, ctype, token):
+        """Emit warnings/errors of casting il_value to given ctype.
+
+        This method does not actually cast the values. If values cannot be
+        cast, an error is raised by this method.
 
         il_value - ILValue to convert
         ctype - CType to convert to
         token - Token relevant to the cast, for error reporting
-        il_code - ILCode object to emit code to
-        output - If provided, ILValue to store the cast value in and return
 
         """
-        if il_value.ctype == ctype and output:
-            il_code.add(il_commands.Set(output, il_value))
-            return output
-        elif il_value.ctype == ctype and not output:
-            return il_value
-        elif output:
-            new = output
-        else:
-            new = ILValue(ctype)
+        # Cast between same types is always okay
+        if il_value.ctype == ctype:
+            return
 
-        # Convert immediately if both are arithmetic types.
+        # Cast between arithmetic types is always okay
         if (ctype.type_type == CType.ARITH and
              il_value.ctype.type_type == CType.ARITH):
-            il_code.add(il_commands.Set(new, il_value))
+            return
 
         elif (ctype.type_type == CType.POINTER and
               il_value.ctype.type_type == CType.POINTER):
 
-            # If they're pointers to compatible types, it's fine.
+            # Cast between compatible pointer types okay
             if ctype.compatible(il_value.ctype):
-                pass
+                return
 
-            # If one is pointer to void, it's fine.
+            # Cast between void pointer and pointer okay
             elif ctypes.void in {ctype.arg, il_value.ctype.arg}:
-                pass
+                return
 
-            # Else, do assignment but complain
             else:
                 descrip = "assignment from incompatible pointer type"
                 error_collector.add(
                     CompilerError(descrip, token.file_name,
                                   token.line_num, True))
+                return
 
-            il_code.add(il_commands.Set(new, il_value))
-
-        # If il_value is a null pointer constant, it's fine
+        # Cast from null pointer constant to pointer okay
         elif (ctype.type_type == CType.POINTER and
               il_value.null_ptr_const):
-            il_code.add(il_commands.Set(new, il_value))
+            return
 
-        # If converting to boolean type, it's fine
+        # Cast from pointer to boolean okay
         elif (ctype == ctypes.bool_t and
               il_value.ctype.type_type == CType.POINTER):
-            il_code.add(il_commands.Set(new, il_value))
+            return
 
         else:
             descrip = "invalid conversion between types"
             raise CompilerError(descrip, token.file_name, token.line_num)
 
-        return new
-
     def raw_cast(self, il_value, ctype, il_code, output=None):
         """If necessary, emit code to cast given il_value to the given ctype.
 
-        Unlike cast() above, this function does no type checking and will
-        never produce a warning or error.
+        This function does no type checking and will never produce a warning or
+        error.
 
         """
         # (no output value, and same types) OR (output is same as input)
@@ -237,8 +228,10 @@ class ReturnNode(Node):
     def make_code(self, il_code, symbol_table):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
+
+        self.check_cast(il_value, ctypes.integer, self.return_kw)
         il_code.add(il_commands.Return(
-            self.cast(il_value, ctypes.integer, self.return_kw, il_code)))
+            self.raw_cast(il_value, ctypes.integer, il_code)))
 
 
 class NumberNode(Node):
@@ -522,9 +515,8 @@ class BinaryOperatorNode(Node):
             left = symbol_table.lookup_tok(self.left_expr.identifier)
 
             # Does cast and emits necessary SET command.
-            # TODO: Once reg alloc implemented, can this return an ILValue
-            # and then perform another SET?
-            return self.cast(right, left.ctype, self.operator, il_code, left)
+            self.check_cast(right, left.ctype, self.operator)
+            return self.raw_cast(right, left.ctype, il_code, left)
         else:
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,
@@ -731,8 +723,9 @@ class FunctionCallNode(Node):
                 # Function has unspecified argument list, so cast everything to
                 # integer.
                 def c(arg):
-                    return self.cast(arg.make_code(il_code, symbol_table),
-                                     ctypes.integer, None, il_code)
+                    a = arg.make_code(il_code, symbol_table)
+                    self.check_cast(a, ctypes.integer, None)
+                    return self.raw_cast(a, ctypes.integer, il_code)
                 cast_args = list(map(c, self.args))
 
             output = ILValue(il_func.ctype.ret)
