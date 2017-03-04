@@ -469,38 +469,7 @@ class BinaryOperatorNode(Node):
 
         # If operator is addition
         elif self.operator.kind == token_kinds.plus:
-            # One operand should be pointer to complete object type, and the
-            # other should be any integer type.
-
-            # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
-            if (left.ctype.type_type == CType.POINTER and
-                 right.ctype.type_type == CType.ARITH):
-                arith_op, pointer_op = right, left
-            elif (right.ctype.type_type == CType.POINTER and
-                  left.ctype.type_type == CType.ARITH):
-                arith_op, pointer_op = left, right
-            else:
-                descrip = "invalid operand types for binary addition"
-                raise CompilerError(descrip, self.operator.file_name,
-                                    self.operator.line_num)
-
-            # Cast the integer operand to a long for multiplication.
-            l_arith_op = self.raw_cast(arith_op, ctypes.unsig_longint, il_code)
-
-            # Amount to shift the pointer by
-            shift = ILValue(ctypes.unsig_longint)
-
-            # ILValue for the output pointer
-            out = ILValue(pointer_op.ctype)
-
-            # Size of pointed-to object as a literal IL value
-            size = ILValue(ctypes.unsig_longint)
-            il_code.add_literal(size, str(pointer_op.ctype.arg.size))
-
-            il_code.add(il_commands.Mult(shift, l_arith_op, size))
-            il_code.add(il_commands.Add(out, pointer_op, shift))
-
-            return out
+            return self.make_nonarith_plus_code(left, right, il_code)
 
         # If operator is multiplication or division
         elif self.operator.kind in {token_kinds.star, token_kinds.slash}:
@@ -559,6 +528,40 @@ class BinaryOperatorNode(Node):
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,
                                 self.operator.line_num)
+
+    def make_nonarith_plus_code(self, left, right, il_code):
+        """Make code for + operator for non-arithmetic operands."""
+
+        # One operand should be pointer to complete object type, and the
+        # other should be any integer type.
+        # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
+        if (left.ctype.type_type == CType.POINTER and
+                    right.ctype.type_type == CType.ARITH):
+            arith_op, pointer_op = right, left
+        elif (right.ctype.type_type == CType.POINTER and
+                      left.ctype.type_type == CType.ARITH):
+            arith_op, pointer_op = left, right
+        else:
+            descrip = "invalid operand types for binary addition"
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
+
+        # Cast the integer operand to a long for multiplication.
+        l_arith_op = self.raw_cast(arith_op, ctypes.unsig_longint, il_code)
+
+        # Amount to shift the pointer by
+        shift = ILValue(ctypes.unsig_longint)
+
+        # ILValue for the output pointer
+        out = ILValue(pointer_op.ctype)
+
+        # Size of pointed-to object as a literal IL value
+        size = ILValue(ctypes.unsig_longint)
+        il_code.add_literal(size, str(pointer_op.ctype.arg.size))
+
+        il_code.add(il_commands.Mult(shift, l_arith_op, size))
+        il_code.add(il_commands.Add(out, pointer_op, shift))
+        return out
 
     def make_nonarith_equality_code(self, left, right, il_code):
         """Make code for == and != operators for non-arithmetic operands."""
