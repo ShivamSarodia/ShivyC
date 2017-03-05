@@ -113,6 +113,10 @@ class ILCommand:
 
         asm_code - ASMCode object to add code to
 
+        returns - Dictionary mapping an ILValue to a list of spots. For each
+        ILValue V copied to a new spot S in this function, S should be in the
+        list keyed by V. This allows the register allocator to potentially
+        avoid unnecessary copies.
         """
         raise NotImplementedError
 
