@@ -20,28 +20,103 @@ from spots import Spot
 class ILCommand:
     """Base interface for all IL commands."""
 
-    def input_values(self):
-        """Return list of values read by this command."""
+    def inputs(self):
+        """Return list of ILValues used as input for this command."""
         raise NotImplementedError
 
-    def output_values(self):
-        """Return list of values modified by this command."""
+    def outputs(self):
+        """Return list of values output by this command.
+
+        No command executed after this one should rely on the previous value of
+        any ILValue in the list returned here. ("Previous value" denotes the
+        value of the ILValue before this command was executed.)
+        """
         raise NotImplementedError
 
-    def make_asm(self, spotmap, asm_code):
+    def clobber(self):
+        """Return list of Spots this command may clobber, other than outputs.
+
+        Every Spot this command may change the value at (not including
+        the Spots of the outputs returned above) must be included in the
+        return list of this function. For example, signed division clobbers
+        RAX and RDX.
+        """
+        return []
+
+    def rel_spot_pref(self):
+        """Return the relative spot preference list (RSPL) for this command.
+
+        A RSPL is a dictionary mapping an ILValue to a list of ILValues. For
+        each key k in the RSPL, the register allocator will attempt to place k
+        in the same spot as an ILValue in RSPL[k] is placed. RSPL[k] is
+        ordered by preference; that is, the register allocator will
+        first attempt to place k in the same spot as RSPL[k][0], then the
+        same spot as RSPL[k][1], etc.
+        """
+        return {}
+
+    def abs_spot_pref(self):
+        """Return the absolute spot preference list (ASPL) for this command.
+
+        An ASPL is a dictionary mapping an ILValue to a list of Spots. For
+        each key k in the ASPL, the register allocator will attempt to place k
+        in one of the spots listed in ASPL[k]. ASPL[k] is ordered by
+        preference; that is, the register allocator will first attempt to
+        place k in ASPL[k][0], then in ASPL[k][1], etc.
+        """
+        return {}
+
+    def references(self):
+        """Return the potential reference list (PRL) for this command.
+
+        The PRL is a dictionary mapping an ILValue to a list of ILValues.
+        If this command may directly set some ILValue k to be a pointer to
+        other ILValue(s) v1, v2, etc., then PRL[k] must include v1, v2,
+        etc. That is, suppose the PRL was {t1: [t2]}. This means that
+        ILValue t1 output from this command may be a pointer to the ILValue t2.
+        """
+        return {}
+
+    def indir_write(self):
+        """Return list of values that may be dereferenced for indirect write.
+
+        For example, suppose this list is [t1, t2]. Then, this command may
+        be changing the value of the ILValue pointed to by t1 or the value
+        of the ILValue pointed to by t2.
+        """
+        return []
+
+    def indir_read(self):
+        """Return list of values that may be dereferenced for indirect read.
+
+        For example, suppose this list is [t1, t2]. Then, this command may
+        be reading the value of the ILValue pointed to by t1 or the value of
+        the ILValue pointed to by t2.
+        """
+        return []
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):
         """Generate assembly code for this command.
 
-        Generated assembly can read any of the values returned from
-        input_values, may overwrite any values returned from output_values, and
-        may change the value of any spots returned from clobber_spots.
+        spotmap - Dictionary mapping every input and output ILValue to a spot.
 
-        asm_code (ASMCode) - Object to which to save generated code.
-        spotmap - Dictionary mapping each input/output value to a spot.
+        home_spots - Dictionary mapping every ILValue that appears in any of
+        self.references().values() to a memory spot. This is used for
+        commands which need the address of an ILValue.
+
+        get_reg - Function to get a usable register. Accepts two arguments,
+        first is a list of Spot preferences, and second is a list of
+        unacceptable spots. This function returns a register which is not
+        in the list of unacceptable spots and can be clobbered. Note this
+        could be one of the registers the input is stored in, if the input
+        ILValues are not being used after this command executes.
+
+        asm_code - ASMCode object to add code to
 
         """
         raise NotImplementedError
 
-    def assert_same_ctype(self, il_values):
+    def _assert_same_ctype(self, il_values):
         """Raise ValueError if all IL values do not have the same type."""
         ctype = None
         for il_value in il_values:
@@ -73,15 +148,15 @@ class Add(ILCommand):
         self.arg1 = arg1
         self.arg2 = arg2
 
-        self.assert_same_ctype([output, arg1, arg2])
+        self._assert_same_ctype([output, arg1, arg2])
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         ctype = self.arg1.ctype
         arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
@@ -111,15 +186,15 @@ class Mult(ILCommand):
         self.arg1 = arg1
         self.arg2 = arg2
 
-        self.assert_same_ctype([output, arg1, arg2])
+        self._assert_same_ctype([output, arg1, arg2])
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         ctype = self.arg1.ctype
         arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
@@ -159,15 +234,15 @@ class Div(ILCommand):
         self.arg1 = arg1
         self.arg2 = arg2
 
-        self.assert_same_ctype([output, arg1, arg2])
+        self._assert_same_ctype([output, arg1, arg2])
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         ctype = self.arg1.ctype
         arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
@@ -215,13 +290,13 @@ class _GeneralEqualCmp(ILCommand):
         self.arg1 = arg1
         self.arg2 = arg2
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg1, self.arg2]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
         arg1_spot = spotmap[self.arg1]
         arg2_spot = spotmap[self.arg2]
@@ -302,13 +377,13 @@ class Set(ILCommand):
         self.output = output
         self.arg = arg
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         if self.output.ctype == ctypes.bool_t:
             self._set_bool(spotmap, asm_code)
         else:
@@ -386,13 +461,13 @@ class Return(ILCommand):
         # arg must already be cast to return type
         self.arg = arg
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.arg]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return []
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
         rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
 
@@ -412,13 +487,13 @@ class Label(ILCommand):
         """The label argument is an string label name unique to this label."""
         self.label = label
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return []
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return []
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         asm_code.add_label(self.label)
 
     def __str__(self):  # pragma: no cover
@@ -432,13 +507,13 @@ class JumpZero(ILCommand):
         self.cond = cond
         self.label = label
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.cond]
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return []
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         if spotmap[self.cond].spot_type == Spot.LITERAL:
             cond_asm_old = spotmap[self.cond].asm_str(self.cond.ctype.size)
             rax_asm = spots.RAX.asm_str(self.cond.ctype.size)
@@ -465,13 +540,13 @@ class AddrOf(ILCommand):
         self.output = output
         self.var = var
 
-    def input_values(self):  # noqa D102
+    def inputs(self):  # noqa D102
         return [self.var]
 
-    def output_values(self):  # noqa D102
+    def outputs(self):  # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code):  # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         # TODO: Use permanent spot of var, not spotmap temporary spot
         var_asm = spotmap[self.var].asm_str(0)
         temp = spots.RAX.asm_str(self.output.ctype.size)
@@ -495,13 +570,13 @@ class ReadAt(ILCommand):
         self.output = output
         self.addr = addr
 
-    def input_values(self):  # noqa D102
+    def inputs(self):  # noqa D102
         return [self.addr]
 
-    def output_values(self):  # noqa D102
+    def outputs(self):  # noqa D102
         return [self.output]
 
-    def make_asm(self, spotmap, asm_code):  # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         addr_asm = spotmap[self.addr].asm_str(8)
         rax = spots.RAX.asm_str(8)
         temp = spots.RAX.asm_str(self.output.ctype.size)
@@ -532,13 +607,13 @@ class Call(ILCommand):
         self.args = args
         self.ret = ret
 
-    def input_values(self): # noqa D102
+    def inputs(self): # noqa D102
         return [self.func] + self.args
 
-    def output_values(self): # noqa D102
+    def outputs(self): # noqa D102
         return [self.ret]
 
-    def make_asm(self, spotmap, asm_code): # noqa D102
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         # Registers ordered from first to last for arguments.
         regs = [spots.RDI, spots.RSI, spots.RDX]
 

@@ -135,13 +135,16 @@ class ASMGen:
         # Generate all asm code
         for command in self.il_code:
             self.asm_code.add_comment(type(command).__name__.upper())
-            command.make_asm(spotmap, self.asm_code)
+
+            def get_reg(x, y):
+                raise NotImplementedError
+            command.make_asm(spotmap, spotmap, get_reg, self.asm_code)
 
     def _all_il_values(self):
         """Return a list of all IL values that appear in the IL code."""
         all_values = []
         for command in self.il_code:
-            for value in command.input_values() + command.output_values():
+            for value in command.inputs() + command.outputs():
                 if value not in all_values:
                     all_values.append(value)
 
