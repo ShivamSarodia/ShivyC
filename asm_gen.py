@@ -1,5 +1,6 @@
 """Objects for the IL->ASM stage of the compiler."""
 
+import spots
 from spots import Spot
 
 
@@ -136,8 +137,8 @@ class ASMGen:
         for command in self.il_code:
             self.asm_code.add_comment(type(command).__name__.upper())
 
-            def get_reg(x, y):
-                raise NotImplementedError
+            def get_reg(x=[], y=[]):
+                return spots.RAX
             command.make_asm(spotmap, spotmap, get_reg, self.asm_code)
 
     def _all_il_values(self):

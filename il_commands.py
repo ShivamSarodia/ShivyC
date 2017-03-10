@@ -127,6 +127,12 @@ class ILCommand:
             if ctype and ctype != il_value.ctype:
                 raise ValueError("different ctypes")  # pragma: no cover
 
+    def _is_imm64(self, spot):
+        """Return True iff given spot is a 64-bit immediate operand."""
+        return (spot.spot_type == Spot.LITERAL and
+                (int(spot.detail) > ctypes.int_max or
+                 int(spot.detail) < ctypes.int_min))
+
     def to_str(self, name, inputs, output=None):  # pragma: no cover
         """Given the name, inputs, and outputs return its string form."""
         RED = '\033[91m'
@@ -160,18 +166,56 @@ class Add(ILCommand):
     def outputs(self): # noqa D102
         return [self.output]
 
+    def rel_spot_pref(self): # noqa D102
+        return {self.output: [self.arg1, self.arg2]}
+
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
+        moves = {}
+
         ctype = self.arg1.ctype
+        output_asm = spotmap[self.output].asm_str(ctype.size)
         arg1_asm = spotmap[self.arg1].asm_str(ctype.size)
         arg2_asm = spotmap[self.arg2].asm_str(ctype.size)
-        output_asm = spotmap[self.output].asm_str(ctype.size)
-        rax_asm = spots.RAX.asm_str(ctype.size)
 
-        # We can just use "mov" without sign extending because these will be
-        # same size.
-        asm_code.add_command("mov", rax_asm, arg1_asm)
-        asm_code.add_command("add", rax_asm, arg2_asm)
-        asm_code.add_command("mov", output_asm, rax_asm)
+        # Get temp register for computation.
+        temp = get_reg([spotmap[self.output],
+                        spotmap[self.arg1],
+                        spotmap[self.arg2]])
+        temp_asm = temp.asm_str(ctype.size)
+
+        if temp == spotmap[self.arg1]:
+            if not self._is_imm64(spotmap[self.arg2]):
+                asm_code.add_command("add", temp_asm, arg2_asm)
+            else:
+                raise NotImplementedError
+        elif temp == spotmap[self.arg2]:
+            if not self._is_imm64(spotmap[self.arg1]):
+                asm_code.add_command("add", temp_asm, arg1_asm)
+            else:
+                raise NotImplementedError
+        else:
+            if (not self._is_imm64(spotmap[self.arg1]) and
+                 not self._is_imm64(spotmap[self.arg2])):
+                moves[self.arg1] = [temp]
+                asm_code.add_command("mov", temp_asm, arg1_asm)
+                asm_code.add_command("add", temp_asm, arg2_asm)
+            elif (self._is_imm64(spotmap[self.arg1]) and
+                  not self._is_imm64(spotmap[self.arg2])):
+                moves[self.arg1] = [temp]
+                asm_code.add_command("mov", temp_asm, arg1_asm)
+                asm_code.add_command("add", temp_asm, arg2_asm)
+            elif (not self._is_imm64(spotmap[self.arg1]) and
+                  self._is_imm64(spotmap[self.arg2])):
+                moves[self.arg2] = [temp]
+                asm_code.add_command("mov", temp_asm, arg2_asm)
+                asm_code.add_command("add", temp_asm, arg1_asm)
+            else:  # both are imm64
+                raise NotImplementedError
+
+        if temp != spotmap[self.output]:
+            asm_code.add_command("mov", output_asm, temp_asm)
+
+        return moves
 
     def __str__(self):    # pragma: no cover
         return self.to_str("ADD", [self.arg1, self.arg2], self.output)
