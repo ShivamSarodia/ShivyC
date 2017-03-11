@@ -533,6 +533,12 @@ class Return(ILCommand):
     def outputs(self): # noqa D102
         return []
 
+    def clobber(self):  # noqa D102
+        return [spots.RAX]
+
+    def abs_spot_pref(self):  # noqa D102
+        return {self.arg: [spots.RAX]}
+
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
         rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
