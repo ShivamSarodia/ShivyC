@@ -431,58 +431,76 @@ class Set(ILCommand):
     def outputs(self): # noqa D102
         return [self.output]
 
+    def rel_spot_pref(self): # noqa D102
+        return {self.output: [self.arg]}
+
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         if self.output.ctype == ctypes.bool_t:
-            self._set_bool(spotmap, asm_code)
+            return self._set_bool(spotmap, get_reg, asm_code)
+        elif spotmap[self.arg].spot_type == Spot.LITERAL:
+            moves = {}
+            output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+            arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
+            asm_code.add_command("mov", output_asm, arg_asm)
+        elif self.output.ctype.size <= self.arg.ctype.size:
+            moves = {}
+            if spotmap[self.output] == spotmap[self.arg]:
+                return moves
+
+            small_arg_asm = spotmap[self.arg].asm_str(self.output.ctype.size)
+            output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
+
+            # TODO: In some cases, an extra mov may be emitted.
+            # get_reg returns a FREE register. so, even if self.arg is in a
+            # register, if it's not free, that register will not be returned.
+            r = get_reg([spotmap[self.output], spotmap[self.arg]])
+            r_asm = r.asm_str(self.output.ctype.size)
+
+            if r != spotmap[self.arg]:
+                asm_code.add_command("mov", r_asm, small_arg_asm)
+                if self.output.ctype.size == self.arg.ctype.size:
+                    moves[self.arg] = [r]
+
+            if spotmap[self.output] != r:
+                asm_code.add_command("mov", output_asm, r_asm)
+                moves[self.output] = [r]
         else:
-            arg_spot = spotmap[self.arg]
-            output_spot = spotmap[self.output]
-            output_asm = output_spot.asm_str(self.output.ctype.size)
+            moves = {}
+            arg_asm = spotmap[self.arg].asm_str(self.arg.ctype.size)
+            output_asm = spotmap[self.output].asm_str(self.output.ctype.size)
 
-            both_stack = (arg_spot.spot_type == Spot.MEM and
-                          output_spot.spot_type == Spot.MEM)
+            r = get_reg([spotmap[self.output], spotmap[self.arg]])
+            r_asm = r.asm_str(self.output.ctype.size)
 
-            if both_stack:
-                temp = spots.RAX.asm_str(self.output.ctype.size)
+            # Move from arg_asm -> r_asm
+            if self.arg.ctype.signed:
+                asm_code.add_command("movsx", r_asm, arg_asm)
+            elif self.arg.ctype.size == 4:
+                small_r_asm = r.asm_str(4)
+                asm_code.add_command("mov", small_r_asm, arg_asm)
             else:
-                temp = output_asm
+                asm_code.add_command("movzx", r_asm, arg_asm)
 
-            # TODO: This is getting /really/ messy.
-            if self.output.ctype.size <= self.arg.ctype.size:
-                asm_code.add_command("mov", temp,
-                                     arg_spot.asm_str(self.output.ctype.size))
-            elif self.output.ctype.size > self.arg.ctype.size:
-                if arg_spot.spot_type == Spot.LITERAL:
-                    temp2 = temp
-                    mov = "mov"
-                elif (self.output.ctype.size == 8 and
-                      self.arg.ctype.size == 4 and
-                      not self.arg.ctype.signed):
-                    temp2 = spots.RAX.asm_str(4)
-                    mov = "mov"
-                elif self.arg.ctype.signed:
-                    temp2 = temp
-                    mov = "movsx"
-                else:
-                    temp2 = temp
-                    mov = "movzx"
+            # If necessary, move from r_asm -> output_asm
+            if r != spotmap[self.output]:
+                moves[self.output] = r
+                asm_code.add_command("mov", output_asm, r_asm)
 
-                asm_code.add_command(mov, temp2,
-                                     arg_spot.asm_str(self.arg.ctype.size))
+        return moves
 
-            if both_stack:
-                # We can move because rax_asm has same size as output_asm
-                asm_code.add_command("mov", output_asm, temp)
-
-    def _set_bool(self, spotmap, asm_code):
+    def _set_bool(self, spotmap, get_reg, asm_code):
         """Emit code for SET command if arg is boolean type."""
         # When any scalar value is converted to _Bool, the result is 0 if the
         # value compares equal to 0; otherwise, the result is 1
+
         arg_asm_old = spotmap[self.arg].asm_str(self.arg.ctype.size)
+
+        # If arg_asm is a LITERAL, move to register.
         if spotmap[self.arg].spot_type == Spot.LITERAL:
-            rax_asm = spots.RAX.asm_str(self.arg.ctype.size)
-            asm_code.add_command("mov", rax_asm, arg_asm_old)
-            arg_asm = rax_asm
+            r = get_reg()
+            r_asm = r.asm_str(self.arg.ctype.size)
+            asm_code.add_command("mov", r_asm, arg_asm_old)
+            arg_asm = r_asm
         else:
             arg_asm = arg_asm_old
 
