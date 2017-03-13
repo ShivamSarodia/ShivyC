@@ -297,18 +297,25 @@ class ASMGen:
         live_vars = self._get_live_vars(free_values)
 
         # Generate conflict and preference graph
-        g = self._generate_graph(free_values, live_vars)
-        g_bak = g.copy()
+        g_bak = self._generate_graph(free_values, live_vars)
 
-        removed_nodes = []
         spilled_nodes = []
-        merged_nodes = {}
 
-        while g.nodes():
-            # Repeat simplification, coalescing, and freeze until freeze does
-            # not work.
+        while True:
+            g = g_bak.copy()
+
+            # Remove all nodes that have been spilled for this iteration
+            for n in spilled_nodes:
+                g.pop(n)
+
+            removed_nodes = []
+            merged_nodes = {}
+
+            # Repeat simplification, coalescing, and freeze until freeze
+            # does not work.
             while True:
-                # Repeat simplification and coalescing until nothing happens
+                # Repeat simplification and coalescing until nothing
+                # happens.
                 while True:
                     simplified = self._simplify_all(removed_nodes, g)
                     merged = self._coalesce_all(merged_nodes, g)
@@ -318,13 +325,17 @@ class ASMGen:
                 if not self._freeze(g):
                     break
 
-            # If necessary, spill a variable.
-            if g.nodes():
-                # Spill node with highest number of conflicts. This node will
-                # never be a merged node because we merge nodes conservatively,
-                # so any recently merged node can be simplified immediately.
+            # If no nodes remain, we are done
+            if not g.nodes():
+                break
+            # If nodes do remain, spill one of them and retry
+            else:
+                # Spill node with highest number of conflicts. This node
+                # will never be a merged node because we merge nodes
+                # conservatively, so any recently merged node can be
+                # simplified immediately.
                 n = max(g.nodes(), key=lambda n: len(g.confs(n)))
-                spilled_nodes.append(g.pop(n))
+                spilled_nodes.append(n)
 
         # Move any remaining nodes from graph into removed_nodes
         # This accounts for pseudonodes which cannot be removed in the
