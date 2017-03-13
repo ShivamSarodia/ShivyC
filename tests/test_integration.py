@@ -53,6 +53,8 @@ class MetaIntegrationTests(type):
                 class MockArguments:
                     filename = test_file_name
                     show_il = False
+                    show_reg_alloc_perf = False
+                    variables_on_stack = False
 
                 shivyc.get_arguments = lambda: MockArguments()
 

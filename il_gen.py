@@ -215,8 +215,10 @@ class ILValue:
         self.null_ptr_const = null_ptr_const
 
     def __str__(self):  # pragma: no cover
-        return "< {} | {} >".format((str(id(self) % 100)).zfill(2),
-                                    str(self.ctype))
+        return str(id(self) % 1000).zfill(3)
+
+    def __repr__(self):  # pragma: no cover
+        return str(self)
 
 
 class SymbolTable:

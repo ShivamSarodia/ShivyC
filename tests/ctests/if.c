@@ -42,6 +42,19 @@ int main() {
       return 7;
     }
 
+    // Check register allocation of branch
+
+    // Without proper register allocation of branches, the compiler places `e`
+    // in the same register as `d` because it does not realize `d` is still
+    // live due to the comparison at line 58.
+    int d; int e;
+    d = 0;
+    e = d + 2;
+    if(e == 5) {   // not taken
+      d = 1;
+    }
+    if(d != 0) return 8;
+
     // Valid conditions with computations
     int ret1; int ret2; int ret3;
     if(b == 3) {
@@ -58,5 +71,5 @@ int main() {
     }
   }
 
-  return 8;
+  return 9;
 }

@@ -45,9 +45,15 @@ class Spot:
         """
         # TODO: Do I need rex prefix on any of the 8-bit?
         spot_map = {"rax": ["rax", "eax", "ax", "al"],
-                    "rsi": ["rsi", "esi", "si", "sil"],
+                    "rbx": ["rbx", "ebx", "bx", "bl"],
+                    "rcx": ["rcx", "ecx", "cx", "cl"],
                     "rdx": ["rdx", "edx", "dx", "dl"],
-                    "rdi": ["rdi", "edi", "di", "dil"]}
+                    "rsi": ["rsi", "esi", "si", "sil"],
+                    "rdi": ["rdi", "edi", "di", "dil"],
+                    "r8": ["r8", "r8d", "r8w", "r8b"],
+                    "r9": ["r9", "r9d", "r9w", "r9b"],
+                    "r10": ["r10", "r10d", "r10w", "r10b"],
+                    "r11": ["r11", "r11d", "r11w", "r11b"]}
 
         if self.spot_type == self.REGISTER:
             if size == 1: return spot_map[self.detail][3]
@@ -76,15 +82,29 @@ class Spot:
 
         raise NotImplementedError("Unsupported spot_type/size combo")
 
+    def __repr__(self):
+        return self.detail
+
     def __eq__(self, other):
         """Test equality by comparing type and detail."""
+        if not isinstance(other, Spot): return False
         return (self.spot_type, self.detail) == (other.spot_type, other.detail)
 
     def __hash__(self):
         """Hash based on type and detail."""
         return hash((self.spot_type, self.detail))
 
+# RBX is callee-saved
+# RBX = Spot(Spot.REGISTER, "rbx")
+
 RAX = Spot(Spot.REGISTER, "rax")
-RSI = Spot(Spot.REGISTER, "rsi")
+RCX = Spot(Spot.REGISTER, "rcx")
 RDX = Spot(Spot.REGISTER, "rdx")
+RSI = Spot(Spot.REGISTER, "rsi")
 RDI = Spot(Spot.REGISTER, "rdi")
+R8 = Spot(Spot.REGISTER, "r8")
+R9 = Spot(Spot.REGISTER, "r9")
+R10 = Spot(Spot.REGISTER, "r10")
+R11 = Spot(Spot.REGISTER, "r11")
+
+registers = [RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11]

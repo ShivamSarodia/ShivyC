@@ -18,11 +18,7 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Improve ILCommand support for longs
-    - Go through each expression asm command and figure out when moves and stuff
-      are necessary.
-
-2) Implement SetAt in some form.
+1) Implement SetAt in some form.
     - Shouldn't be terrible now that I have the cast stuff worked out nicely.
 
 
@@ -31,15 +27,11 @@ IMMEDIATE TIMELINE
 MAIN PROJECTS
 -------------
 
-0   - Implement register allocation
-0     - Figure out good interface for commands for a reg allocator
-0    - Restructure ILCommands to implement this interface
-0     - Test performance in some way?
-
 0  - Implement array type variables
 
 1  - Implement functions
-1     - Implement function call (with proper pointer decaying)
+1     - Implement function call
+1       - Proper pointer decaying and register allocation hints
 1     - Implement function declaration
 0     - Implement function definition
 
@@ -55,8 +47,6 @@ FEATURES
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
        `signed char` as distinct from `char`, etc.
-
-0  - Optimize conditionals in if-statements
 
 1  - Implement more control statements
 0     - for-loops
@@ -81,5 +71,8 @@ FEATURES
 0  - Implement sizeof operator
 
 0  - Implement casts
+
+0  - Optimize conditionals in if-statements
+0  - Implement live range splitting in register allocator
 
 --------------------------------------------------------------------------------

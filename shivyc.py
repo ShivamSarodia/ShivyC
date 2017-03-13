@@ -52,7 +52,7 @@ def main():
         print(str(il_code))
 
     asm_code = ASMCode()
-    ASMGen(il_code, asm_code).make_asm()
+    ASMGen(il_code, asm_code, arguments).make_asm()
     asm_source = asm_code.full_code()
     if not error_collector.ok():
         error_collector.show()
@@ -88,6 +88,17 @@ def get_arguments():
     # Boolean flag for whether to print the generated IL
     parser.add_argument("-show-il", help="display generated IL",
                         dest="show_il", action="store_true")
+
+    # Boolean flag for whether to print register allocator performance info
+    parser.add_argument("-show-reg-alloc-perf",
+                        help="display register allocator performance info",
+                        dest="show_reg_alloc_perf", action="store_true")
+
+    # Boolean flag for whether to allocate any variables in registers
+    parser.add_argument("-variables-on-stack",
+                        help="allocate all variables on the stack",
+                        dest="variables_on_stack", action="store_true")
+
     parser.set_defaults(show_il=False)
 
     return parser.parse_args()
