@@ -646,7 +646,7 @@ class Set(ILCommand):
 
         # If arg_asm is a LITERAL, move to register.
         if spotmap[self.arg].spot_type == Spot.LITERAL:
-            r = get_reg()
+            r = get_reg([], [spotmap[self.output]])
             r_asm = r.asm_str(self.arg.ctype.size)
             asm_code.add_command("mov", r_asm, arg_asm_old)
             arg_asm = r_asm
