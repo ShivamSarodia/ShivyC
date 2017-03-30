@@ -526,6 +526,22 @@ class BinaryOperatorNode(Node):
             # Does cast and emits necessary SET command.
             self.check_cast(right, left.ctype, self.operator)
             return self.raw_cast(right, left.ctype, il_code, left)
+        elif isinstance(self.left_expr, DerefNode):
+            right = self.right_expr.make_code(il_code, symbol_table)
+
+            # Make code for the argument of the dereference operator
+            left_p = self.left_expr.expr.make_code(il_code, symbol_table)
+            if left_p.ctype.type_type != CType.POINTER:
+                descrip = "operand of unary '*' must have pointer type"
+                raise CompilerError(descrip, self.left_expr.op.file_name,
+                                    self.left_expr.op.line_num)
+
+            # Cast right
+            right_cast = self.raw_cast(right, left_p.ctype.arg, il_code)
+
+            # Cast and emit SETAT command
+            self.check_cast(right_cast, left_p.ctype.arg, self.operator)
+            il_code.add(il_commands.SetAt(left_p, right_cast))
         else:
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,

@@ -830,6 +830,41 @@ class ReadAt(ILCommand):
         return self.to_str("READAT", [self.addr], self.output)
 
 
+class SetAt(ILCommand):
+    """Sets value at given address.
+
+    `addr` must have type pointer to the type of `val`
+
+    """
+
+    def __init__(self, addr, val):  # noqa D102
+        self.addr = addr
+        self.val = val
+
+    def inputs(self):  # noqa D102
+        return [self.addr, self.val]
+
+    def outputs(self):  # noqa D102
+        return []
+
+    def indir_write(self):  # noqa D102
+        return [self.addr]
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
+        addr_asm = spotmap[self.addr].asm_str(8)
+        val_asm = spotmap[self.val].asm_str(self.val.ctype.size)
+
+        if spotmap[self.addr].spot_type == Spot.REGISTER:
+            indir_spot = Spot(Spot.MEM, (spotmap[self.addr].asm_str(8), 0))
+        else:
+            r = get_reg()
+            asm_code.add_command("mov", r.asm_str(8), addr_asm)
+            indir_spot = Spot(Spot.MEM, (r.asm_str(8), 0))
+
+        indir_asm = indir_spot.asm_str(self.val.ctype.size)
+        asm_code.add_command("mov", indir_asm, val_asm)
+
+
 class Call(ILCommand):
     """Call a given function.
 

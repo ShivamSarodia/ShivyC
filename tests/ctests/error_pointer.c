@@ -14,5 +14,8 @@
   int* c;
   c = 10;  // setting pointer to integer
 
+  // Issue: 18: error: operand of unary '*' must have pointer type
+  *a = 1;
+
   return 0;
  }

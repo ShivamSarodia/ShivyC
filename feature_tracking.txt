@@ -18,9 +18,7 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Implement SetAt in some form.
-    - Shouldn't be terrible now that I have the cast stuff worked out nicely.
-
+1) Add tests for the imm64 cases
 
 --------------------------------------------------------------------------------
 

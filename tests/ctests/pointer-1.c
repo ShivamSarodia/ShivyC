@@ -1,3 +1,5 @@
+// For testing dereference operator on left-side of assignment, see pointer-2.c
+
 int main() {
   int a;
   a = 10;
@@ -24,7 +26,7 @@ int main() {
   v = 0;
   e = 0;
 
-  // Issue: 29: warning: assignment from incompatible pointer type
+  // Issue: 31: warning: assignment from incompatible pointer type
   int *f; unsigned int *g;
   f = g;
 
