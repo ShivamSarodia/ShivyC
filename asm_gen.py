@@ -253,8 +253,8 @@ class ASMGen:
 
     """
 
-    # List of registers used for allocation
-    alloc_registers = spots.registers[::-1]
+    # List of registers used for allocation, sorted preferred-first
+    alloc_registers = spots.registers
 
     # List of registers used by the get_reg function.
     all_registers = alloc_registers
@@ -672,7 +672,7 @@ class ASMGen:
 
             # Allocate register to node `n`
             n1 = removed_nodes.pop()
-            regs = self.alloc_registers[:]
+            regs = self.alloc_registers[::-1]
 
             # If n1 is a Spot (i.e. dummy node), immediately assign it a
             # register.
