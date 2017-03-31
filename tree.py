@@ -9,7 +9,7 @@ import ctypes
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import CType, ILValue
+from il_gen import CType, ILValue, ILCode
 from il_gen import PointerCType, FunctionCType
 from tokens import Token
 
@@ -142,6 +142,55 @@ class Node:
             il_code.add(il_commands.Set(output, il_value))
             return output
 
+    def make_code(self, il_code, symbol_table):
+        """Make code for this node.
+
+        Add IL code for this node to the given il_code object.
+        """
+        raise NotImplementedError
+
+
+class ExpressionNode(Node):
+    """General class for representing an expression node in the AST.
+
+    Subclasses should implement the make_code_raw function.
+
+    """
+
+    symbol = Node.EXPRESSION
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for this node and return decayed version of result."""
+        return self._decay(self.make_code_raw(il_code, symbol_table), il_code)
+
+    def _decay(self, il_value, il_code):
+        """Decay given ILValue if needed.
+
+        If given ILValue is of function type or array type, decays it into a
+        pointer and emits code necessary to do so.
+        """
+        return il_value
+
+    def expr_ctype(self, symbol_table):
+        """Return the undecayed CType of this expression.
+
+        This function produces errors and warnings just as make_code does.
+        """
+        dummy = ILCode()
+        return self.make_code_raw(dummy, symbol_table).ctype
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Generate code for the given node.
+
+        Return the undecayed result. That is, do not decay function or
+        array types into their pointer equivalents.
+
+        Note that because the expr_ctype function inserts a dummy ILCode
+        object, this function should generally not reference any information
+        stored in the ILCode object when generating code.
+        """
+        raise NotImplementedError
+
 
 class MainNode(Node):
     """General rule for the main function.
@@ -234,14 +283,12 @@ class ReturnNode(Node):
             self.raw_cast(il_value, ctypes.integer, il_code)))
 
 
-class NumberNode(Node):
+class NumberNode(ExpressionNode):
     """Expression that is just a single number.
 
     number (Token(Number)) - Number this expression represents.
 
     """
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, number):
         """Initialize node."""
@@ -251,7 +298,7 @@ class NumberNode(Node):
 
         self.number = number
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for a literal number.
 
         This function does not actually make any code in the IL, it just
@@ -279,14 +326,12 @@ class NumberNode(Node):
         return il_value
 
 
-class IdentifierNode(Node):
+class IdentifierNode(ExpressionNode):
     """Expression that is a single identifier.
 
     identifier (Token(Identifier)) - Identifier this expression represents.
 
     """
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, identifier):
         """Initialize node."""
@@ -296,7 +341,7 @@ class IdentifierNode(Node):
 
         self.identifier = identifier
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for an identifier.
 
         This function performs a lookup in the symbol table, and returns the
@@ -306,7 +351,7 @@ class IdentifierNode(Node):
         return symbol_table.lookup_tok(self.identifier)
 
 
-class ExprStatementNode(Node):
+class ExprStatementNode(ExpressionNode):
     """Statement that contains just an expression."""
 
     symbol = Node.STATEMENT
@@ -328,10 +373,8 @@ class ExprStatementNode(Node):
         self.expr.make_code(il_code, symbol_table)
 
 
-class ParenExprNode(Node):
+class ParenExprNode(ExpressionNode):
     """Expression in parentheses."""
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, expr):
         """Initialize node."""
@@ -341,7 +384,7 @@ class ParenExprNode(Node):
 
         self.expr = expr
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for the expression in the parentheses."""
         return self.expr.make_code(il_code, symbol_table)
 
@@ -379,7 +422,7 @@ class IfStatementNode(Node):
             error_collector.add(e)
 
 
-class BinaryOperatorNode(Node):
+class BinaryOperatorNode(ExpressionNode):
     """Expression that is a sum/difference/xor/etc of two expressions.
 
     left_expr (expression) - Expression on left side.
@@ -387,8 +430,6 @@ class BinaryOperatorNode(Node):
     right_expr (expression) - Expression on right side.
 
     """
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, left_expr, operator, right_expr):
         """Initialize node."""
@@ -401,7 +442,7 @@ class BinaryOperatorNode(Node):
         self.operator = operator
         self.right_expr = right_expr
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for this node."""
 
         # If = operator
@@ -624,15 +665,13 @@ class BinaryOperatorNode(Node):
         return output
 
 
-class AddrOfNode(Node):
+class AddrOfNode(ExpressionNode):
     """Expression produced by getting the address of a variable.
 
     expr (expression) - lvalue for which to get the address
     op (Token) - Token representing this operator. Used for error reporting.
 
     """
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, expr, op):
         """Initialize node."""
@@ -642,7 +681,7 @@ class AddrOfNode(Node):
         self.expr = expr
         self.op = op
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for getting the address."""
         if not isinstance(self.expr, IdentifierNode):
             descrip = "lvalue required as unary '&' operand"
@@ -655,14 +694,12 @@ class AddrOfNode(Node):
         return out
 
 
-class DerefNode(Node):
+class DerefNode(ExpressionNode):
     """Expression produced by dereferencing a pointer.
 
     expr (expression) - pointer to dereference
 
     """
-
-    symbol = Node.EXPRESSION
 
     def __init__(self, expr, op):
         """Initialize node."""
@@ -672,7 +709,7 @@ class DerefNode(Node):
         self.expr = expr
         self.op = op
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for getting the value at the address."""
         addr = self.expr.make_code(il_code, symbol_table)
 
@@ -685,7 +722,7 @@ class DerefNode(Node):
         return out
 
 
-class FunctionCallNode(Node):
+class FunctionCallNode(ExpressionNode):
     """Expression produced by calling a function.
 
     For example:     f(3, 4, 5)     (&f)()
@@ -700,8 +737,6 @@ class FunctionCallNode(Node):
 
     """
 
-    symbol = Node.EXPRESSION
-
     def __init__(self, func, args):
         """Initialize node."""
         super().__init__()
@@ -713,7 +748,7 @@ class FunctionCallNode(Node):
         self.func = func
         self.args = args
 
-    def make_code(self, il_code, symbol_table):
+    def make_code_raw(self, il_code, symbol_table):
         """Make code for this function call."""
         if isinstance(self.func, IdentifierNode):
             try:
