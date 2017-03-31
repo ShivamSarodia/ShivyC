@@ -31,5 +31,12 @@ int main() {
   *(&e) = d;
   if(e != 4) return 5;
 
+  // dereferencing pointer stored on stack
+  int* p4; int f;
+  &p2;
+  p2 = &f;
+  *p2 = 10;
+  if(f != 10) return 6;
+
   return 0;
 }

@@ -31,7 +31,19 @@ int main() {
   f = g;
 
   _Bool h;
-  h = &a;
+  h = &a; // Value is checked at very end of this main() function
+
+  // Address-of operator where output is on the stack
+  int* i_on_stack; int j;
+  &i_on_stack;
+  i_on_stack = &j;
+  if(i_on_stack != &j) return 3;
+
+  // Read-at where address is on stack
+  j = 10;
+  i_on_stack = &j;
+  j = *i_on_stack;
+  if(j != 10) return 4;
 
   if(h) return 0;
   return 1;

@@ -7,6 +7,14 @@ int main() {
   f = d;
   g = 20;
 
+  // Force variables to be on stack
+  int i; int j; char k;
+  &i; &j;
+  i = g;
+  j = i;
+  j = k;
+
+
   if(a != 10) return 1;
   if(b != 10) return 2;
   if(c != 10) return 3;

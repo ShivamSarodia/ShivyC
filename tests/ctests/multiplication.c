@@ -22,6 +22,7 @@ int main() {
   unsigned int i;
   g = 5;
   h = g * 10; // 50
+  h = 10 * g; // 50
   i = g * h; // 250
 
   if(i != 250) return 2;
