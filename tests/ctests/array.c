@@ -17,12 +17,14 @@ int main() {
   unsigned int array4[5];
   // Issue: 19: warning: comparison between distinct pointer types
   if(&array == &array4) return 9;
+  // Issue: 21: warning: comparison between distinct pointer types
+  if(array == array4) return 10;
 
   *array = 15;
-  if(*array != 15) return 10;
+  if(*array != 15) return 11;
 
   *(array + 2) = 20;
-  if(*(array + 2) != 20) return 11;
+  if(*(array + 2) != 20) return 12;
 
   return 0;
 }
