@@ -169,7 +169,13 @@ class ExpressionNode(Node):
         If given ILValue is of function type or array type, decays it into a
         pointer and emits code necessary to do so.
         """
-        return il_value
+        if il_value.ctype.type_type == CType.ARRAY:
+            new_type = PointerCType(il_value.ctype.el)
+            out = ILValue(new_type)
+            il_code.add(il_commands.AddrOf(out, il_value))
+            return out
+        else:
+            return il_value
 
     def expr_ctype(self, symbol_table):
         """Return the undecayed CType of this expression.
@@ -351,7 +357,7 @@ class IdentifierNode(ExpressionNode):
         return symbol_table.lookup_tok(self.identifier)
 
 
-class ExprStatementNode(ExpressionNode):
+class ExprStatementNode(Node):
     """Statement that contains just an expression."""
 
     symbol = Node.STATEMENT
@@ -564,9 +570,11 @@ class BinaryOperatorNode(ExpressionNode):
             right = self.right_expr.make_code(il_code, symbol_table)
             left = symbol_table.lookup_tok(self.left_expr.identifier)
 
-            # Does cast and emits necessary SET command.
-            self.check_cast(right, left.ctype, self.operator)
-            return self.raw_cast(right, left.ctype, il_code, left)
+            if left.ctype.type_type in {CType.ARITH, CType.POINTER}:
+                # Does cast and emits necessary SET command.
+                self.check_cast(right, left.ctype, self.operator)
+                return self.raw_cast(right, left.ctype, il_code, left)
+
         elif isinstance(self.left_expr, DerefNode):
             right = self.right_expr.make_code(il_code, symbol_table)
 
@@ -577,16 +585,17 @@ class BinaryOperatorNode(ExpressionNode):
                 raise CompilerError(descrip, self.left_expr.op.file_name,
                                     self.left_expr.op.line_num)
 
-            # Cast right
-            right_cast = self.raw_cast(right, left_p.ctype.arg, il_code)
-
             # Cast and emit SETAT command
-            self.check_cast(right_cast, left_p.ctype.arg, self.operator)
+            self.check_cast(right, left_p.ctype.arg, self.operator)
+            right_cast = self.raw_cast(right, left_p.ctype.arg, il_code)
             il_code.add(il_commands.SetAt(left_p, right_cast))
-        else:
-            descrip = "expression on left of '=' is not assignable"
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
+
+            return right_cast
+
+        # Did not return from either of above cases
+        descrip = "expression on left of '=' is not assignable"
+        raise CompilerError(descrip, self.operator.file_name,
+                            self.operator.line_num)
 
     def _make_nonarith_plus_code(self, left, right, il_code):
         """Make code for + operator for non-arithmetic operands."""
@@ -636,7 +645,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If both operands are not pointer types, warn!
         if (left.ctype.type_type != CType.POINTER or
-                    right.ctype.type_type != CType.POINTER):
+             right.ctype.type_type != CType.POINTER):
             descrip = "comparison between incomparable types"
             error_collector.add(
                 CompilerError(descrip, self.operator.file_name,
@@ -687,7 +696,7 @@ class AddrOfNode(ExpressionNode):
             descrip = "lvalue required as unary '&' operand"
             raise CompilerError(descrip, self.op.file_name, self.op.line_num)
 
-        lvalue = self.expr.make_code(il_code, symbol_table)
+        lvalue = self.expr.make_code_raw(il_code, symbol_table)
         out = ILValue(PointerCType(lvalue.ctype))
         il_code.add(il_commands.AddrOf(out, lvalue))
 
@@ -806,26 +815,20 @@ class DeclarationNode(Node):
 
     variable_name (Token(identifier)) - The identifier representing the new
     variable name.
-    ctype_token(Token(int_kw or char_kw)) - The type of this variable.
-    signed (bool) - Whether this variable is signed or unsigned.
-    indirection (int) - Level of indirection. 0 means this is not a pointer,
-    any other n means it is a pointer to the equivalent CType with
-    indirection n-1.
+    ctype (CType) - The ctype of this variable
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, variable_name, ctype_token, signed, indirection=0):
+    def __init__(self, variable_name, ctype):
         """Initialize node."""
         super().__init__()
 
         self.assert_kind(variable_name, token_kinds.identifier)
 
         self.variable_name = variable_name
-        self.ctype_token = ctype_token
-        self.signed = signed
-        self.indirection = indirection
+        self.ctype = ctype
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
@@ -834,26 +837,9 @@ class DeclarationNode(Node):
         variable to the symbol table.
 
         """
-        # Do not allow `void` declaration without indirection
-        if (self.ctype_token.kind == token_kinds.void_kw and
-             self.indirection == 0):
+        if self.ctype == ctypes.void:
             raise CompilerError("variable of void type declared",
-                                self.ctype_token.file_name,
-                                self.ctype_token.line_num)
+                                self.variable_name.file_name,
+                                self.variable_name.line_num)
 
-        type_map = {(token_kinds.void_kw, True): ctypes.void,
-                    (token_kinds.bool_kw, True): ctypes.bool_t,
-                    (token_kinds.char_kw, True): ctypes.char,
-                    (token_kinds.char_kw, False): ctypes.unsig_char,
-                    (token_kinds.short_kw, True): ctypes.short,
-                    (token_kinds.short_kw, False): ctypes.unsig_short,
-                    (token_kinds.int_kw, True): ctypes.integer,
-                    (token_kinds.int_kw, False): ctypes.unsig_int,
-                    (token_kinds.long_kw, True): ctypes.longint,
-                    (token_kinds.long_kw, False): ctypes.unsig_longint}
-
-        ctype = type_map[(self.ctype_token.kind, self.signed)]
-        for i in range(self.indirection):
-            ctype = PointerCType(ctype)
-
-        symbol_table.add(self.variable_name, ctype, il_code)
+        symbol_table.add(self.variable_name, self.ctype, il_code)

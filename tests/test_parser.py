@@ -1,9 +1,9 @@
 """Tests for the parser phase of the compiler."""
-
-
+import ctypes
 import tree
 import token_kinds
 from errors import error_collector
+from il_gen import PointerCType, ArrayCType
 from parser import Parser
 from tokens import Token
 from tests.test_utils import TestUtils
@@ -129,7 +129,7 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.int_kw), True)
+                                 ctypes.integer)
         ])  # yapf: disable
 
     def test_equals_in_main(self):  # noqa: D400, D403
@@ -553,7 +553,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.int_kw), True)
+                                 ctypes.integer)
         ])
 
 
@@ -564,7 +564,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.char_kw), True)
+                                 ctypes.char)
         ])  # yapf: disable
 
     def test_unsigned_int_declaration(self):  # noqa: D400, D403
@@ -575,7 +575,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.int_kw), False)
+                                 ctypes.unsig_int)
         ])
 
 
@@ -587,7 +587,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.char_kw), False)
+                                 ctypes.unsig_char)
         ])  # yapf: disable
 
     def test_signed_int_declaration(self):  # noqa: D400, D403
@@ -598,7 +598,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.char_kw), True)
+                                 ctypes.char)
         ])  # yapf: disable
 
     def test_signed_char_declaration(self):  # noqa: D400, D403
@@ -609,7 +609,7 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 Token(token_kinds.char_kw), True)
+                                 ctypes.char)
         ])  # yapf: disable
 
     def test_pointer_declaration(self):  # noqa: D400, D403
@@ -622,7 +622,7 @@ class DeclarationTests(ParserTestUtil):
 
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 Token(token_kinds.int_kw), True, 2)
+                                 PointerCType(PointerCType(ctypes.integer)))
         ])
 
     def test_void_pointer_declaration(self):  # noqa: D400, D403
@@ -634,5 +634,34 @@ class DeclarationTests(ParserTestUtil):
 
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 Token(token_kinds.void_kw), True, 1)
+                                 PointerCType(ctypes.void))
+        ])
+
+    def test_array_declaration(self):  # noqa: D400, D403
+        """int arr[3];"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
+                                 ArrayCType(ctypes.integer, 3))
+        ])
+
+    def test_pointer_array_declaration(self):  # noqa: D400, D403
+        """int* arr[3];"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
+                                 ArrayCType(PointerCType(ctypes.integer), 3))
         ])

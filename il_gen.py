@@ -18,6 +18,8 @@ class CType:
     POINTER = 2
     # Void CType
     VOID = 3
+    # Array CType
+    ARRAY = 4
 
     def __init__(self, size, type_type):
         """Initialize type."""
@@ -26,7 +28,11 @@ class CType:
 
 
 class VoidCType(CType):
-    """Represents a void C type."""
+    """Represents a void C type.
+
+    This class must be instantiated only once.
+
+    """
 
     def __init__(self):
         """Initialize type."""
@@ -34,11 +40,13 @@ class VoidCType(CType):
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return other.type_type == self.type_type
+        return other == self
 
 
 class IntegerCType(CType):
     """Represents an integer C type, like 'unsigned long' or 'bool'.
+
+    This class must be instantiated only once for each distinct integer C type.
 
     size (int) - The result of sizeof on this type.
     signed (bool) - Whether this type is signed.
@@ -56,9 +64,7 @@ class IntegerCType(CType):
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return (other.type_type == self.type_type and
-                other.signed == self.signed and
-                other.size == self.size)
+        return other == self
 
 
 class FunctionCType(CType):
@@ -99,10 +105,43 @@ class PointerCType(CType):
     def __str__(self):  # pragma: no cover
         return "(PTR TO {})".format(str(self.arg))
 
+    def __eq__(self, other):
+        # Used for testing
+        return other.type_type == self.type_type and self.arg == other.arg
+
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return (self.type_type == other.type_type and
+        return (other.type_type == CType.POINTER and
                 self.arg.compatible(other.arg))
+
+
+class ArrayCType(CType):
+    """Represents an array C type.
+
+    el (CType) - Type of each element in array.
+    n (int) - Size of array
+
+    """
+
+    def __init__(self, el, n):
+        """Initialize type."""
+        self.el = el
+        self.n = n
+        super().__init__(n * self.el.size, CType.ARRAY)
+
+    def __str__(self):  # pragma: no cover
+        return "(ARR OF {})".format(str(self.el))
+
+    def __eq__(self, other):
+        # Used for testing
+        return (other.type_type == self.type_type and self.el == other.el
+                and self.n == other.n)
+
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self."""
+        return (other.type_type == CType.ARRAY and
+                self.el.compatible(other.el) and
+                self.n == other.n)
 
 
 class ILCode:

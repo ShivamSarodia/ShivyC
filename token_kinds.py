@@ -32,6 +32,8 @@ open_paren = TokenKind("(", symbol_kinds)
 close_paren = TokenKind(")", symbol_kinds)
 open_brack = TokenKind("{", symbol_kinds)
 close_brack = TokenKind("}", symbol_kinds)
+open_sq_brack = TokenKind("[", symbol_kinds)
+close_sq_brack = TokenKind("]", symbol_kinds)
 
 comma = TokenKind(",", symbol_kinds)
 semicolon = TokenKind(";", symbol_kinds)

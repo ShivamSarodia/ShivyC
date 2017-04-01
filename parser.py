@@ -6,9 +6,11 @@ no fun.
 """
 from collections import namedtuple
 
+import ctypes
 import tree
 import token_kinds
 from errors import ParserError, error_collector
+from il_gen import PointerCType, ArrayCType
 from tokens import Token
 
 
@@ -391,6 +393,13 @@ class Parser:
             err = "expected expression"
             raise ParserError(err, index, self.tokens, ParserError.GOT)
 
+    type_tokens = {token_kinds.void_kw: ctypes.void,
+                   token_kinds.bool_kw: ctypes.bool_t,
+                   token_kinds.char_kw: ctypes.char,
+                   token_kinds.short_kw: ctypes.short,
+                   token_kinds.int_kw: ctypes.integer,
+                   token_kinds.long_kw: ctypes.longint}
+
     def parse_declaration(self, index):
         """Parse a declaration.
 
@@ -412,22 +421,30 @@ class Parser:
 
         # Parse the type name
         index = self._expect_type_name(index)
-        ctype_tok = self.tokens[index - 1]
+        ctype = self.type_tokens[self.tokens[index - 1].kind]
+        if not signed:
+            ctype = ctypes.to_unsigned(ctype)
 
-        indirection = 0
         # Parse any number of stars to indicate pointer type
         while self._next_token_is(index, token_kinds.star):
+            ctype = PointerCType(ctype)
             index += 1
-            indirection += 1
 
         # Parse the identifier name
         index = self._match_token(index, token_kinds.identifier,
                                   "expected identifier", ParserError.AFTER)
         variable_name = self.tokens[index - 1]
+
+        # Parse an array declaration
+        if (self._next_token_is(index, token_kinds.open_sq_brack) and
+            self._next_token_is(index + 1, token_kinds.number) and
+             self._next_token_is(index + 2, token_kinds.close_sq_brack)):
+            ctype = ArrayCType(ctype, int(self.tokens[index + 1].content))
+            index += 3
+
         index = self._expect_semicolon(index)
 
-        return (tree.DeclarationNode(variable_name, ctype_tok, signed,
-                                     indirection), index)
+        return tree.DeclarationNode(variable_name, ctype), index
 
     def _expect_type_name(self, index):
         """Expect a type name at self.tokens[index].
@@ -436,11 +453,9 @@ class Parser:
         ParserError.
 
         """
-        type_tokens = [token_kinds.bool_kw, token_kinds.char_kw,
-                       token_kinds.int_kw, token_kinds.short_kw,
-                       token_kinds.long_kw, token_kinds.void_kw]
-
         err = "expected type name"
+
+        type_tokens = list(self.type_tokens.keys())
         for tok in type_tokens[:-1]:
             try:
                 return self._match_token(index, tok, err, ParserError.GOT)
