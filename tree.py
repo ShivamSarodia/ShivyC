@@ -616,15 +616,12 @@ class AddrOfNode(ExpressionNode):
 
     def make_code_raw(self, il_code, symbol_table):
         """Make code for getting the address."""
-        if not isinstance(self.expr, IdentifierNode):
+        lvalue = self.expr.lvalue(il_code, symbol_table)
+        if lvalue:
+            return lvalue.addr(il_code)
+        else:
             descrip = "lvalue required as unary '&' operand"
             raise CompilerError(descrip, self.op.file_name, self.op.line_num)
-
-        lvalue = self.expr.make_code_raw(il_code, symbol_table)
-        out = ILValue(PointerCType(lvalue.ctype))
-        il_code.add(il_commands.AddrOf(out, lvalue))
-
-        return out
 
 
 class DerefNode(ExpressionNode):

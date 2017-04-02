@@ -271,7 +271,8 @@ class LValue:
     Note this is not directly related to the ILValue class above.
 
     lvalue_type (DIRECT or INDIRECT) - See description above.
-    il_value (ILValue) - ILValue describing this lvalue
+    il_value (ILValue) - ILValue describing this lvalue. If this is an
+    indirect lvalue, the il_value will have pointer type.
     """
 
     DIRECT = 0
@@ -312,6 +313,19 @@ class LValue:
             right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
             il_code.add(il_commands.SetAt(self.il_value, right_cast))
             return right_cast
+
+    def addr(self, il_code):
+        """Generate code for and return address of this lvalue."""
+
+        # Import must be local to avoid circular dependencies
+        import il_commands
+
+        if self.lvalue_type == self.DIRECT:
+            out = ILValue(PointerCType(self.il_value.ctype))
+            il_code.add(il_commands.AddrOf(out, self.il_value))
+            return out
+        else:
+            return self.il_value
 
 
 class SymbolTable:
