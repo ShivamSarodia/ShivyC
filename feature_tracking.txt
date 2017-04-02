@@ -18,9 +18,9 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Implement array subscripting
+1) Implement functions
 
-2) Implement functions
+2) Proper declaration parsing
 
 --------------------------------------------------------------------------------
 
