@@ -373,6 +373,43 @@ class IfStatementNode(Node):
             error_collector.add(e)
 
 
+class WhileStatementNode(Node):
+    """While statement.
+
+    conditional - Condition expression of the while statement.
+    statement - Statement to be executed by the while statement. Note this is
+    very often a compound-statement blocked out with curly braces.
+
+    """
+
+    symbol = Node.STATEMENT
+
+    def __init__(self, conditional, statement):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(conditional, Node.EXPRESSION)
+        self.assert_symbol(statement, Node.STATEMENT)
+
+        self.conditional = conditional
+        self.statement = statement
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for this node."""
+        try:
+            start = il_code.get_label()
+            end = il_code.get_label()
+
+            il_code.add(il_commands.Label(start))
+            condition = self.conditional.make_code(il_code, symbol_table)
+            il_code.add(il_commands.JumpZero(condition, end))
+            self.statement.make_code(il_code, symbol_table)
+            il_code.add(il_commands.Jump(start))
+            il_code.add(il_commands.Label(end))
+        except CompilerError as e:
+            error_collector.add(e)
+
+
 class BinaryOperatorNode(ExpressionNode):
     """Expression that is a sum/difference/xor/etc of two expressions.
 

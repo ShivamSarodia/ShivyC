@@ -19,6 +19,7 @@ void_kw = TokenKind("void", keyword_kinds)
 
 return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)
+while_kw = TokenKind("while", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
 star = TokenKind("*", symbol_kinds)

@@ -725,6 +725,28 @@ class Label(ILCommand):
         return self.to_str("LABEL", [self.label])
 
 
+class Jump(ILCommand):
+    """Jumps unconditionally to a label."""
+
+    def __init__(self, label): # noqa D102
+        self.label = label
+
+    def inputs(self): # noqa D102
+        return []
+
+    def outputs(self): # noqa D102
+        return []
+
+    def targets(self): # noqa D102
+        return [self.label]
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
+        asm_code.add_command("jmp", self.label)
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("JMP", [self.label])
+
+
 class JumpZero(ILCommand):
     """Jumps to a label if given condition is zero."""
 
