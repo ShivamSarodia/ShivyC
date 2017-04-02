@@ -9,7 +9,7 @@ import ctypes
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import CType, ILValue, ILCode
+from il_gen import CType, ILValue, ILCode, LValue, check_cast, set_type
 from il_gen import PointerCType, FunctionCType
 from tokens import Token
 
@@ -74,74 +74,6 @@ class Node:
                              str(kind) + "' but got '" +
                              str(token.kind) + "'")  # pragma: no cover
 
-    def check_cast(self, il_value, ctype, token):
-        """Emit warnings/errors of casting il_value to given ctype.
-
-        This method does not actually cast the values. If values cannot be
-        cast, an error is raised by this method.
-
-        il_value - ILValue to convert
-        ctype - CType to convert to
-        token - Token relevant to the cast, for error reporting
-
-        """
-        # Cast between same types is always okay
-        if il_value.ctype == ctype:
-            return
-
-        # Cast between arithmetic types is always okay
-        if (ctype.type_type == CType.ARITH and
-             il_value.ctype.type_type == CType.ARITH):
-            return
-
-        elif (ctype.type_type == CType.POINTER and
-              il_value.ctype.type_type == CType.POINTER):
-
-            # Cast between compatible pointer types okay
-            if ctype.compatible(il_value.ctype):
-                return
-
-            # Cast between void pointer and pointer okay
-            elif ctypes.void in {ctype.arg, il_value.ctype.arg}:
-                return
-
-            else:
-                descrip = "assignment from incompatible pointer type"
-                error_collector.add(
-                    CompilerError(descrip, token.file_name,
-                                  token.line_num, True))
-                return
-
-        # Cast from null pointer constant to pointer okay
-        elif (ctype.type_type == CType.POINTER and
-              il_value.null_ptr_const):
-            return
-
-        # Cast from pointer to boolean okay
-        elif (ctype == ctypes.bool_t and
-              il_value.ctype.type_type == CType.POINTER):
-            return
-
-        else:
-            descrip = "invalid conversion between types"
-            raise CompilerError(descrip, token.file_name, token.line_num)
-
-    def raw_cast(self, il_value, ctype, il_code, output=None):
-        """If necessary, emit code to cast given il_value to the given ctype.
-
-        This function does no type checking and will never produce a warning or
-        error.
-
-        """
-        # (no output value, and same types) OR (output is same as input)
-        if (not output and il_value.ctype == ctype) or output == il_value:
-            return il_value
-        else:
-            if not output:
-                output = ILValue(ctype)
-            il_code.add(il_commands.Set(output, il_value))
-            return output
-
     def make_code(self, il_code, symbol_table):
         """Make code for this node.
 
@@ -184,6 +116,10 @@ class ExpressionNode(Node):
         """
         dummy = ILCode()
         return self.make_code_raw(dummy, symbol_table).ctype
+
+    def lvalue(self, il_code, symbol_table):
+        """Return an LValue object corresponding to this, or None."""
+        return None
 
     def make_code_raw(self, il_code, symbol_table):
         """Generate code for the given node.
@@ -284,9 +220,9 @@ class ReturnNode(Node):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
 
-        self.check_cast(il_value, ctypes.integer, self.return_kw)
+        check_cast(il_value, ctypes.integer, self.return_kw)
         il_code.add(il_commands.Return(
-            self.raw_cast(il_value, ctypes.integer, il_code)))
+            set_type(il_value, ctypes.integer, il_code)))
 
 
 class NumberNode(ExpressionNode):
@@ -356,6 +292,11 @@ class IdentifierNode(ExpressionNode):
         """
         return symbol_table.lookup_tok(self.identifier)
 
+    def lvalue(self, il_code, symbol_table):
+        """Return the LValue form of this identifier, or None."""
+        var = symbol_table.lookup_tok(self.identifier)
+        return LValue(LValue.DIRECT, var)
+
 
 class ExprStatementNode(Node):
     """Statement that contains just an expression."""
@@ -393,6 +334,10 @@ class ParenExprNode(ExpressionNode):
     def make_code_raw(self, il_code, symbol_table):
         """Make code for the expression in the parentheses."""
         return self.expr.make_code(il_code, symbol_table)
+
+    def lvalue(self, il_code, symbol_table):
+        """Return the LValue form of this identifier, or None."""
+        return self.expr.lvalue(il_code, symbol_table)
 
 
 class IfStatementNode(Node):
@@ -544,8 +489,8 @@ class BinaryOperatorNode(ExpressionNode):
         """
         # Cast both operands to a common type if necessary.
         new_type = self._promo_type(left.ctype, right.ctype)
-        left_cast = self.raw_cast(left, new_type, il_code)
-        right_cast = self.raw_cast(right, new_type, il_code)
+        left_cast = set_type(left, new_type, il_code)
+        right_cast = set_type(right, new_type, il_code)
 
         # Mapping from a token_kind to the ILCommand it corresponds to.
         cmd_map = {token_kinds.plus: il_commands.Add,
@@ -566,36 +511,15 @@ class BinaryOperatorNode(ExpressionNode):
 
     def _make_equals_code(self, il_code, symbol_table):
         """Make code if this is a = node."""
-        if isinstance(self.left_expr, IdentifierNode):
-            right = self.right_expr.make_code(il_code, symbol_table)
-            left = symbol_table.lookup_tok(self.left_expr.identifier)
+        right = self.right_expr.make_code(il_code, symbol_table)
+        lvalue = self.left_expr.lvalue(il_code, symbol_table)
 
-            if left.ctype.type_type in {CType.ARITH, CType.POINTER}:
-                # Does cast and emits necessary SET command.
-                self.check_cast(right, left.ctype, self.operator)
-                return self.raw_cast(right, left.ctype, il_code, left)
-
-        elif isinstance(self.left_expr, DerefNode):
-            right = self.right_expr.make_code(il_code, symbol_table)
-
-            # Make code for the argument of the dereference operator
-            left_p = self.left_expr.expr.make_code(il_code, symbol_table)
-            if left_p.ctype.type_type != CType.POINTER:
-                descrip = "operand of unary '*' must have pointer type"
-                raise CompilerError(descrip, self.left_expr.op.file_name,
-                                    self.left_expr.op.line_num)
-
-            # Cast and emit SETAT command
-            self.check_cast(right, left_p.ctype.arg, self.operator)
-            right_cast = self.raw_cast(right, left_p.ctype.arg, il_code)
-            il_code.add(il_commands.SetAt(left_p, right_cast))
-
-            return right_cast
-
-        # Did not return from either of above cases
-        descrip = "expression on left of '=' is not assignable"
-        raise CompilerError(descrip, self.operator.file_name,
-                            self.operator.line_num)
+        if lvalue and lvalue.modable():
+            return lvalue.set_to(right, il_code, self.operator)
+        else:
+            descrip = "expression on left of '=' is not assignable"
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
 
     def _make_nonarith_plus_code(self, left, right, il_code):
         """Make code for + operator for non-arithmetic operands."""
@@ -615,7 +539,7 @@ class BinaryOperatorNode(ExpressionNode):
                                 self.operator.line_num)
 
         # Cast the integer operand to a long for multiplication.
-        l_arith_op = self.raw_cast(arith_op, ctypes.unsig_longint, il_code)
+        l_arith_op = set_type(arith_op, ctypes.unsig_longint, il_code)
 
         # Amount to shift the pointer by
         shift = ILValue(ctypes.unsig_longint)
@@ -638,10 +562,10 @@ class BinaryOperatorNode(ExpressionNode):
         # other's pointer type.
         if (left.ctype.type_type == CType.POINTER and
                 right.null_ptr_const):
-            right = self.raw_cast(right, left.ctype, il_code)
+            right = set_type(right, left.ctype, il_code)
         elif (right.ctype.type_type == CType.POINTER and
                   left.null_ptr_const):
-            left = self.raw_cast(left, right.ctype, il_code)
+            left = set_type(left, right.ctype, il_code)
 
         # If both operands are not pointer types, warn!
         if (left.ctype.type_type != CType.POINTER or
@@ -653,9 +577,9 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg == ctypes.void:
-            right = self.raw_cast(right, left.ctype, il_code)
+            right = set_type(right, left.ctype, il_code)
         elif right.ctype.arg == ctypes.void:
-            left = self.raw_cast(left, right.ctype, il_code)
+            left = set_type(left, right.ctype, il_code)
 
         # If both types are still incompatible, warn!
         elif not left.ctype.compatible(right.ctype):
@@ -718,17 +642,37 @@ class DerefNode(ExpressionNode):
         self.expr = expr
         self.op = op
 
+        # Cache the expression IL value, so calls to make_code_raw or lvalue
+        # only calculate the expression once. This is important in
+        # expressions like
+        #
+        #     *func() += 1;
+        #
+        # where evaluating the expression multiple times can produce
+        # additional side effects.
+        self._cache_lvalue = None
+
     def make_code_raw(self, il_code, symbol_table):
         """Make code for getting the value at the address."""
-        addr = self.expr.make_code(il_code, symbol_table)
+        lvalue = self.lvalue(il_code, symbol_table)
 
-        if addr.ctype.type_type != CType.POINTER:
-            descrip = "operand of unary '*' must have pointer type"
-            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
-
-        out = ILValue(addr.ctype.arg)
-        il_code.add(il_commands.ReadAt(out, addr))
+        out = ILValue(lvalue.il_value.ctype.arg)
+        il_code.add(il_commands.ReadAt(out, lvalue.il_value))
         return out
+
+    def lvalue(self, il_code, symbol_table):
+        """Return the LValue form of this identifier, or None."""
+        if not self._cache_lvalue:
+            addr = self.expr.make_code(il_code, symbol_table)
+
+            if addr.ctype.type_type != CType.POINTER:
+                descrip = "operand of unary '*' must have pointer type"
+                raise CompilerError(descrip, self.op.file_name,
+                                    self.op.line_num)
+
+            self._cache_lvalue = LValue(LValue.INDIRECT, addr)
+
+        return self._cache_lvalue
 
 
 class FunctionCallNode(ExpressionNode):
@@ -793,8 +737,8 @@ class FunctionCallNode(ExpressionNode):
                 # integer.
                 def c(arg):
                     a = arg.make_code(il_code, symbol_table)
-                    self.check_cast(a, ctypes.integer, None)
-                    return self.raw_cast(a, ctypes.integer, il_code)
+                    check_cast(a, ctypes.integer, None)
+                    return set_type(a, ctypes.integer, il_code)
                 cast_args = list(map(c, self.args))
 
             output = ILValue(il_func.ctype.ret)
