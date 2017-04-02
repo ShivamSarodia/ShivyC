@@ -18,7 +18,9 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Implement better lvalue treatment
+1) Implement array subscripting
+
+2) Implement functions
 
 --------------------------------------------------------------------------------
 
@@ -47,7 +49,6 @@ FEATURES
 
 1  - Implement more control statements
 0     - for-loops
-1     - while-loops
 0     - break/continue
 1     - else
 
@@ -65,6 +66,8 @@ FEATURES
 1     - Support literal strings (like "hello")
 0  - Support hex/octal literal consts
 0  - Support literal suffixed consts (like 123ul for unsigned long)
+
+1  - Implement extern global variables
 
 0  - Implement sizeof operator
 
