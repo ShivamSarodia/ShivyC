@@ -18,14 +18,12 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Add tests for the imm64 cases
+1) Implement better lvalue treatment
 
 --------------------------------------------------------------------------------
 
 MAIN PROJECTS
 -------------
-
-0  - Implement array type variables
 
 1  - Implement functions
 1     - Implement function call
@@ -41,6 +39,7 @@ FEATURES
 1  - Better declaration parsing
 1     - Allow `int a = 5;`
 0     - Allow `int a, b;`
+0     - Allow declaration of pointer to array `int (*a)[3]`
 
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
@@ -56,6 +55,7 @@ FEATURES
 0     - Comparison (>, <, >=, <=)
 0     - Assignment (*=, +=, /=, etc)
 1     - Increment/decrement (prefix/postfix ++ and --)
+0     - Postfix array reference ( p[3] )
 1     - Boolean (&&, ||, !)
 0     - Bitwise (&, |, ~, >>, <<)
 0     - Ternary operator
