@@ -731,13 +731,63 @@ class ArraySubscriptNode(ExpressionNode):
         self.arg = arg
         self.op = op
 
+        # Cache the expression IL value. Explained further in DerefNode
+        # constructor.
+        self._cache_lvalue = None
+
     def make_code_raw(self, il_code, symbol_table):
         """Make code for this node."""
-        raise NotImplementedError
+        lvalue = self.lvalue(il_code, symbol_table)
+
+        out = ILValue(lvalue.il_value.ctype.arg)
+        il_code.add(il_commands.ReadAt(out, lvalue.il_value))
+        return out
 
     def lvalue(self, il_code, symbol_table):
         """Return the LValue form of this node."""
-        raise NotImplementedError
+
+        # One operand should be pointer to complete object type, and the
+        # other should be any integer type.
+        # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
+
+        # Return a cached value if one exists
+        if self._cache_lvalue:
+            return self._cache_lvalue
+
+        head_val = self.head.make_code(il_code, symbol_table)
+        arg_val = self.arg.make_code(il_code, symbol_table)
+
+        # Otherwise, compute the lvalue
+        if (head_val.ctype.type_type == CType.POINTER and
+             arg_val.ctype.type_type == CType.ARITH):
+            arith, point = arg_val, head_val
+
+        elif (head_val.ctype.type_type == CType.ARITH and
+              arg_val.ctype.type_type == CType.POINTER):
+            arith, point = head_val, arg_val
+
+        else:
+            descrip = "invalid operand types for array subscriping"
+            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
+
+        # Cast the integer operand to a long for multiplication.
+        l_arith = set_type(arith, ctypes.unsig_longint, il_code)
+
+        # Amount to shift the pointer by
+        shift = ILValue(ctypes.unsig_longint)
+
+        # ILValue for the output pointer
+        out = ILValue(point.ctype)
+
+        # Size of pointed-to object as a literal IL value
+        size = ILValue(ctypes.unsig_longint)
+        il_code.add_literal(size, str(point.ctype.arg.size))
+
+        il_code.add(il_commands.Mult(shift, l_arith, size))
+        il_code.add(il_commands.Add(out, point, shift))
+
+        self._cache_lvalue = LValue(LValue.INDIRECT, out)
+        return self._cache_lvalue
 
 
 class FunctionCallNode(ExpressionNode):
