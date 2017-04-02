@@ -3,8 +3,8 @@ int main() {
   a = b = 10;
   c = a;
   d = b;
-  e = c;
-  f = d;
+  (e) = c;
+  ((f)) = d;
   g = 20;
 
   // Force variables to be on stack

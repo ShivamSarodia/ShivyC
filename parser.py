@@ -224,7 +224,7 @@ class Parser:
                 else:
                     return None
 
-            except KeyError:
+            except IndexError:
                 return None
 
     def parse_expression(self, index):
