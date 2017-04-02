@@ -709,6 +709,37 @@ class DerefNode(ExpressionNode):
         return self._cache_lvalue
 
 
+class ArraySubscriptNode(ExpressionNode):
+    """Expression produced by array subscripting.
+
+       arr[n]
+
+    head (expression) - expression in position `arr` above
+    arg (expression) - expression in position `n` above
+    op (Token) - the first open square bracket token
+
+    """
+
+    def __init__(self, head, arg, op):
+        """Initialize node."""
+        super().__init__()
+
+        self.assert_symbol(head, Node.EXPRESSION)
+        self.assert_symbol(arg, Node.EXPRESSION)
+
+        self.head = head
+        self.arg = arg
+        self.op = op
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+        raise NotImplementedError
+
+    def lvalue(self, il_code, symbol_table):
+        """Return the LValue form of this node."""
+        raise NotImplementedError
+
+
 class FunctionCallNode(ExpressionNode):
     """Expression produced by calling a function.
 

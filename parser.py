@@ -305,11 +305,12 @@ class Parser:
                            (binary_operators[self.tokens[i].kind] >
                             binary_operators[stack[-2].item.kind]))
 
-                  # Make sure next token is not beginning a function call,
-                  # because function call has higher precedence than all binary
-                  # operators.
+                  # Make sure next token is not beginning a function call or
+                  # array subscript, because these have higher precedence than
+                  # all binary operators.
                   and not (i < len(self.tokens) and
-                           self.tokens[i].kind == token_kinds.open_paren)
+                           (self.tokens[i].kind == token_kinds.open_paren or
+                            self.tokens[i].kind == token_kinds.open_sq_brack))
 
                   # Make sure this and next token are not both assignment
                   # tokens, because assignment tokens are right associative.
@@ -334,11 +335,14 @@ class Parser:
                   isinstance(stack[-2].item, Token) and
                   stack[-2].item.kind in unary_prefix_operators
 
-                  # Make sure next token is not beginning a function call,
-                  # because function call has higher precedence than
-                  # address-of operator.
+                  # Make sure next token is not beginning a function call or
+                  # array subscript, because function call has
+                  # higher precedence than address-of operator.
                   and not (i < len(self.tokens) and
-                           self.tokens[i].kind == token_kinds.open_paren)):
+                           (self.tokens[i].kind ==
+                                token_kinds.open_paren or
+                            self.tokens[i].kind ==
+                                token_kinds.open_sq_brack))):
 
                 expr = stack[-1]
                 op = stack[-2]
@@ -366,6 +370,26 @@ class Parser:
                 stack.append(
                     StackItem(tree.FunctionCallNode(func.item, arg_items),
                               size))
+
+            # If the top of the stack matches an array subscript, reduce it
+            # to an array subscript node.
+            elif (len(stack) >= 4 and
+                  isinstance(stack[-4].item, tree.Node) and
+                  isinstance(stack[-3].item, Token) and
+                  stack[-3].item.kind == token_kinds.open_sq_brack and
+                  isinstance(stack[-2].item, tree.Node) and
+                  isinstance(stack[-1].item, Token) and
+                  stack[-1].item.kind == token_kinds.close_sq_brack):
+
+                head = stack[-4]
+                arg = stack[-2]
+                op = stack[-3]
+
+                del stack[-4:]
+                stack.append(
+                    StackItem(tree.ArraySubscriptNode(head.item, arg.item,
+                                                      op.item),
+                              head.length + arg.length + 2))
 
             # If the top of the stack matches ( expr ), reduce it to a
             # ParenExpr node. This check must be after function call parsing,
@@ -396,6 +420,8 @@ class Parser:
                       self.tokens[i].kind != token_kinds.identifier and
                       self.tokens[i].kind != token_kinds.open_paren and
                       self.tokens[i].kind != token_kinds.close_paren and
+                      self.tokens[i].kind != token_kinds.open_sq_brack and
+                      self.tokens[i].kind != token_kinds.close_sq_brack and
                       self.tokens[i].kind != token_kinds.comma and
                       self.tokens[i].kind != token_kinds.amp and
                       self.tokens[i].kind not in binary_operators.keys()):

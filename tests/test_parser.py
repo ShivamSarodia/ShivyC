@@ -542,6 +542,20 @@ class ExpressionTests(ParserTestUtil):
 
         self.assertExprParsesTo(tokens, t)
 
+    def test_array_subsc(self):  # noqa: D400, D403
+        """a[b]"""
+        tokens = [Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.identifier, "b"),
+                  Token(token_kinds.close_sq_brack)]
+
+        t = tree.ArraySubscriptNode(
+            tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+            tree.IdentifierNode(Token(token_kinds.identifier, "b")),
+            Token(token_kinds.open_sq_brack))
+
+        self.assertExprParsesTo(tokens, t)
+
 
 class DeclarationTests(ParserTestUtil):
     """Tests declaration parsing."""
