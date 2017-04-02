@@ -193,248 +193,15 @@ class Parser:
         index = self._expect_semicolon(index)
         return (tree.ExprStatementNode(node), index)
 
-    def match_function_call(self, stack):
-        """Check if top of stack is a function call.
-
-        On success, returns tuple (function name, [arguments]). On failure,
-        returns None. The function name and arguments are each of type
-        StackItem.
-
-        """
-        if len(stack) < 3: return None
-
-        i = -1
-        args = []
-
-        # Expect top of stack to be `)`
-        if (not isinstance(stack[i].item, Token) or
-              stack[i].item.kind != token_kinds.close_paren):
-            return None
-
-        i -= 1
-
-        # If next elements match ['EXPR', '('], we have a function with no
-        # arguments.
-        if (isinstance(stack[i].item, Token) and
-            stack[i].item.kind == token_kinds.open_paren and
-              isinstance(stack[i - 1].item, tree.Node)):
-            return (stack[i - 1], args[::-1])
-
-        while True:
-            try:
-                # Next element must be an expression.
-                if isinstance(stack[i].item, tree.Node):
-                    args.append(stack[i])
-                else:
-                    return None
-
-                i -= 1
-
-                # Next elements can be either a comma or ['EXPR', '(']
-                if (isinstance(stack[i].item, Token) and
-                      stack[i].item.kind == token_kinds.comma):
-                    i -= 1
-                elif (isinstance(stack[i].item, Token) and
-                      stack[i].item.kind == token_kinds.open_paren and
-                      isinstance(stack[i - 1].item, tree.Node)):
-                    return (stack[i - 1], args[::-1])
-                else:
-                    return None
-
-            except IndexError:
-                return None
-
     def parse_expression(self, index):
         """Parse an expression.
 
-        We parse expressions using a shift-reduce parser. We try to comprehend
-        as much as possible of self.tokens past the index as being an
-        expression, and the index returned is the first token that could not be
-        parsed into the expression. If literally none of it could be parsed as
-        an expression, raises an exception like usual.
+        The index returned is of the first token that could not be parsed
+        into the expression. If none could be parsed, an exception is raised as
+        usual.
 
         """
-        # Dictionay of key-value pairs {TokenKind: precedence} where higher
-        # precedence is higher.
-        binary_operators = {token_kinds.plus: 11,
-                            token_kinds.star: 12,
-                            token_kinds.slash: 12,
-                            token_kinds.twoequals: 8,
-                            token_kinds.notequal: 8,
-                            token_kinds.equals: 1}
-
-        # Dictionary of unary prefix operators {TokenKind: tree.Node}
-        unary_prefix_operators = {token_kinds.amp: tree.AddrOfNode,
-                                  token_kinds.star: tree.DerefNode}
-
-        # The set of assignment_tokens (because these are right-associative)
-        assignment_operators = {token_kinds.equals}
-
-        # An item in the parsing stack. The item is either a Node or Token,
-        # where the node must generate an expression, and the length is the
-        # number of tokens consumed in generating this node.
-        StackItem = namedtuple("StackItem", ['item', 'length'])
-        stack = []
-
-        # TODO: clean up  the if-statements here
-        i = index
-        while True:
-            # If the top of the stack is a number, reduce it to an expression
-            # node
-            if (stack and isinstance(stack[-1].item, Token) and
-                    stack[-1].item.kind == token_kinds.number):
-                stack[-1] = StackItem(tree.NumberNode(stack[-1].item), 1)
-
-            # If the top of the stack is an identifier, reduce it to
-            # an identifier node
-            elif (stack and isinstance(stack[-1].item, Token) and
-                  stack[-1].item.kind == token_kinds.identifier):
-                stack[-1] = StackItem(tree.IdentifierNode(stack[-1].item), 1)
-
-            # If the top of the stack matches a binary operator, reduce it to
-            # an expression node.
-            elif (len(stack) >= 3 and isinstance(stack[-1].item, tree.Node) and
-                  isinstance(stack[-2].item, Token) and
-                  stack[-2].item.kind in binary_operators.keys() and
-                  isinstance(stack[-3].item, tree.Node)
-
-                  # Make sure next token is not a higher precedence binary
-                  # operator.
-                  and not (i < len(self.tokens) and
-                           self.tokens[i].kind in binary_operators.keys() and
-                           (binary_operators[self.tokens[i].kind] >
-                            binary_operators[stack[-2].item.kind]))
-
-                  # Make sure next token is not beginning a function call or
-                  # array subscript, because these have higher precedence than
-                  # all binary operators.
-                  and not (i < len(self.tokens) and
-                           (self.tokens[i].kind == token_kinds.open_paren or
-                            self.tokens[i].kind == token_kinds.open_sq_brack))
-
-                  # Make sure this and next token are not both assignment
-                  # tokens, because assignment tokens are right associative.
-                  and not (i < len(self.tokens) and
-                           stack[-2].item.kind in assignment_operators and
-                           self.tokens[i].kind in assignment_operators)):
-                left_expr = stack[-3]
-                right_expr = stack[-1]
-                operator = stack[-2]
-
-                # Remove these last 3 elements
-                del stack[-3:]
-                stack.append(
-                    StackItem(
-                        tree.BinaryOperatorNode(left_expr.item, operator.item,
-                                                right_expr.item), left_expr.
-                        length + operator.length + right_expr.length))
-
-            # If the top of the stack matches a unary prefix operator, reduce
-            # it to an expression node.
-            elif (len(stack) >= 2 and isinstance(stack[-1].item, tree.Node) and
-                  isinstance(stack[-2].item, Token) and
-                  stack[-2].item.kind in unary_prefix_operators
-
-                  # Make sure next token is not beginning a function call or
-                  # array subscript, because function call has
-                  # higher precedence than address-of operator.
-                  and not (i < len(self.tokens) and
-                           (self.tokens[i].kind ==
-                                token_kinds.open_paren or
-                            self.tokens[i].kind ==
-                                token_kinds.open_sq_brack))):
-
-                expr = stack[-1]
-                op = stack[-2]
-                node = unary_prefix_operators[op.item.kind]
-
-                del stack[-2:]
-                stack.append(StackItem(node(expr.item, op.item),
-                                       1 + expr.length))
-
-            # If the top of the stack matches an identifier followed by a pair
-            # of parentheses, reduce it to a function call node.
-            elif self.match_function_call(stack):
-                func, args = self.match_function_call(stack)
-
-                # Compute number of tokens to delete
-                if not args: num_delete = 3
-                else: num_delete = 2 + 2 * len(args)
-
-                # Compute size
-                size = sum(el.length for el in stack[-num_delete:])
-
-                arg_items = list(map(lambda x: x.item, args))
-
-                del stack[-num_delete:]
-                stack.append(
-                    StackItem(tree.FunctionCallNode(func.item, arg_items),
-                              size))
-
-            # If the top of the stack matches an array subscript, reduce it
-            # to an array subscript node.
-            elif (len(stack) >= 4 and
-                  isinstance(stack[-4].item, tree.Node) and
-                  isinstance(stack[-3].item, Token) and
-                  stack[-3].item.kind == token_kinds.open_sq_brack and
-                  isinstance(stack[-2].item, tree.Node) and
-                  isinstance(stack[-1].item, Token) and
-                  stack[-1].item.kind == token_kinds.close_sq_brack):
-
-                head = stack[-4]
-                arg = stack[-2]
-                op = stack[-3]
-
-                del stack[-4:]
-                stack.append(
-                    StackItem(tree.ArraySubscriptNode(head.item, arg.item,
-                                                      op.item),
-                              head.length + arg.length + 2))
-
-            # If the top of the stack matches ( expr ), reduce it to a
-            # ParenExpr node. This check must be after function call parsing,
-            # because otherwise f(5) would get reduced prematurely.
-            elif (len(stack) >= 3 and isinstance(stack[-1].item, Token) and
-                  stack[-1].item.kind == token_kinds.close_paren and
-                  isinstance(stack[-2].item, tree.Node) and
-                  isinstance(stack[-3].item, Token) and
-                  stack[-3].item.kind == token_kinds.open_paren):
-                expr = stack[-2]
-
-                del stack[-3:]
-                stack.append(
-                    StackItem(tree.ParenExprNode(expr.item), expr.length + 2))
-
-            else:
-                # If we're at the end of the token list, or we've reached a
-                # token that can never appear in an expression, stop reading.
-                # Note we must update this every time the parser is expanded to
-                # accept more identifiers.
-
-                # Printing stack here is helpful for debugging.
-                # print(stack)
-
-                if i == len(self.tokens):
-                    break
-                elif (self.tokens[i].kind != token_kinds.number and
-                      self.tokens[i].kind != token_kinds.identifier and
-                      self.tokens[i].kind != token_kinds.open_paren and
-                      self.tokens[i].kind != token_kinds.close_paren and
-                      self.tokens[i].kind != token_kinds.open_sq_brack and
-                      self.tokens[i].kind != token_kinds.close_sq_brack and
-                      self.tokens[i].kind != token_kinds.comma and
-                      self.tokens[i].kind != token_kinds.amp and
-                      self.tokens[i].kind not in binary_operators.keys()):
-                    break
-
-                stack.append(StackItem(self.tokens[i], 1))
-                i += 1
-
-        if stack and isinstance(stack[0].item, tree.Node):
-            return (stack[0].item, index + stack[0].length)
-        else:
-            err = "expected expression"
-            raise ParserError(err, index, self.tokens, ParserError.GOT)
+        return ExpressionParser(self.tokens).parse(index)
 
     type_tokens = {token_kinds.void_kw: ctypes.void,
                    token_kinds.bool_kw: ctypes.bool_t,
@@ -546,3 +313,289 @@ class Parser:
         if (not self.best_error or
                 error.amount_parsed >= self.best_error.amount_parsed):
             self.best_error = error
+
+
+class ExpressionParser:
+    """Class for parsing expressions.
+
+    The Parser class above dispatches to this ExpressionParser class for
+    parsing expressions. The ExpressionParser implements a shift-reduce parser.
+
+    """
+
+    # Dictionay of key-value pairs {TokenKind: precedence} where higher
+    # precedence is higher.
+    binary_operators = {token_kinds.plus: 11,
+                        token_kinds.star: 12,
+                        token_kinds.slash: 12,
+                        token_kinds.twoequals: 8,
+                        token_kinds.notequal: 8,
+                        token_kinds.equals: 1}
+
+    # Dictionary of unary prefix operators {TokenKind: tree.Node}
+    unary_prefix_operators = {token_kinds.amp: tree.AddrOfNode,
+                              token_kinds.star: tree.DerefNode}
+
+    # The set of tokens that indicate that a postfix operator follows. For
+    # example, the open parenthesis indicates a function call follows,
+    # and an open square bracket indicates an array subscript follows. These
+    # have highest priority.
+    posfix_operator_begin = {token_kinds.open_paren,
+                             token_kinds.open_sq_brack}
+
+    # The set of assignment_tokens (because these are right-associative)
+    assignment_operators = {token_kinds.equals}
+
+    # The set of all token kinds that can be in an expression but are not in
+    # binary_operators or unary_prefix_operators. Used to determine when
+    # parsing can stop.
+    valid_tokens = {token_kinds.number, token_kinds.identifier,
+                    token_kinds.open_paren, token_kinds.close_paren,
+                    token_kinds.open_sq_brack, token_kinds.close_sq_brack,
+                    token_kinds.comma}
+
+    # An item in the parsing stack. The item is either a Node or Token,
+    # where the node must generate an expression, and the length is the
+    # number of tokens consumed in generating this node.
+    StackItem = namedtuple("StackItem", ['item', 'length'])
+
+    def __init__(self, tokens):
+        """Initialize parser."""
+        self.tokens = tokens
+        self.s = []
+
+    def parse(self, index):
+        """Parse an expression from the given tokens.
+
+        We parse expressions using a shift-reduce parser. We try to comprehend
+        as much as possible of self.tokens past the index as being an
+        expression, and the index returned is the first token that could not be
+        parsed into the expression. If literally none of it could be parsed as
+        an expression, raises an exception like usual.
+        """
+        # TODO: clean up  the if-statements here
+        i = index
+        while True:
+            # Try all of the possible matches
+            if not (self.try_match_number() or
+                    self.try_match_identifier() or
+                    self.try_match_bin_op(self.tokens[i:]) or
+                    self.try_match_unary_prefix(self.tokens[i:]) or
+                    self.try_match_function_call() or
+                    self.try_match_array_subsc() or
+                    self.try_match_paren_expr()):
+
+                # None of the known patterns match!
+
+                # Printing stack here is helpful for debugging.
+                # print(stack)
+
+                # If we're at the end of the token list, or we've reached a
+                # token that can never appear in an expression, stop reading.
+                if i == len(self.tokens):
+                    break
+                elif (self.tokens[i].kind not in self.valid_tokens and
+                      self.tokens[i].kind not in self.binary_operators and
+                      self.tokens[i].kind not in self.unary_prefix_operators):
+                    break
+
+                # Shift one more token onto the stack
+                self.s.append(self.StackItem(self.tokens[i], 1))
+                i += 1
+
+        if self.s and isinstance(self.s[0].item, tree.Node):
+            return (self.s[0].item, index + self.s[0].length)
+        else:
+            err = "expected expression"
+            raise ParserError(err, index, self.tokens, ParserError.GOT)
+
+    def try_match_number(self):
+        """Try matching the top of the stack to a number node.
+
+        Return True on successful match, False otherwise.
+        """
+        if self.match_kind(-1, token_kinds.number):
+            self.reduce(tree.NumberNode(self.s[-1].item), 1)
+            return True
+        return False
+
+    def try_match_identifier(self):
+        """Try matching the top of the stack to an identifier node.
+
+        Return True on successful match, False otherwise.
+        """
+        if self.match_kind(-1, token_kinds.identifier):
+            self.reduce(tree.IdentifierNode(self.s[-1].item), 1)
+            return True
+        return False
+
+    def try_match_bin_op(self, buffer):
+        """Try matching the top of the stack to a binary operator node.
+
+        If the next token indicates a higher-precedence operator, do not
+        match the bin op in this function.
+
+        """
+        # Ensure last three nodes match to permit precedence calculations.
+        if not (self.match_node(-1) and
+                self.match_kind_in(-2, self.binary_operators) and
+                self.match_node(-3)):
+            return False
+
+        if not buffer:
+            higher_prec_bin = False
+            higher_prec_post = False
+            another_assignment = False
+        else:
+            next = buffer[0]
+
+            # is next token a higher precedence binary operator?
+            higher_prec_bin = (next.kind in self.binary_operators and
+                               (self.binary_operators[next.kind] >
+                                self.binary_operators[self.s[-2].item.kind]))
+
+            # is next token a high-precedence postfix operator?
+            higher_prec_post = next.kind in self.posfix_operator_begin
+
+            # is both this token and next token an assignment operator,
+            # because assignment operators are right associative?
+            another_assignment = ((self.s[-2].item.kind in
+                                   self.assignment_operators) and
+                                  (next.kind in self.assignment_operators))
+
+        if not (higher_prec_bin or
+                higher_prec_post or
+                another_assignment):
+
+            node = tree.BinaryOperatorNode(self.s[-3].item,
+                                           self.s[-2].item,
+                                           self.s[-1].item)
+            self.reduce(node, 3)
+            return True
+
+        return False
+
+    def try_match_unary_prefix(self, buffer):
+        """Try matching the top of the stack to prefix unary operator node."""
+
+        if not (self.match_node(-1) and
+                self.match_kind_in(-2, self.unary_prefix_operators)):
+            return False
+
+        # Make sure next token is not a postfix operator.
+        if not buffer or buffer[0].kind not in self.posfix_operator_begin:
+            node = self.unary_prefix_operators[self.s[-2].item.kind]
+            self.reduce(node(self.s[-1].item, self.s[-2].item), 2)
+            return True
+
+        return False
+
+    def try_match_function_call(self):
+        """Try matching the top of the stack to a function call node."""
+
+        i = -1
+        args = []
+
+        # Expect top of stack to be `)`
+        if not self.match_kind(i, token_kinds.close_paren):
+            return False
+
+        i -= 1
+
+        # If next elements match ['EXPR', '('], we have a function with no
+        # arguments.
+        if (self.match_kind(i, token_kinds.open_paren) and
+             self.match_node(i - 1)):
+            func = self.s[i - 1].item
+            args = [arg.item for arg in args[::-1]]
+        else:
+            while True:
+                try:
+                    # Next element must be an expression.
+                    if self.match_node(i):
+                        args.append(self.s[i])
+                    else:
+                        return False
+
+                    i -= 1
+
+                    # Next elements can be either a comma or ['EXPR', '(']
+                    if self.match_kind(i, token_kinds.comma):
+                        i -= 1
+                    elif (self.match_kind(i, token_kinds.open_paren) and
+                          self.match_node(i - 1)):
+                        func = self.s[i - 1].item
+                        args = [arg.item for arg in args[::-1]]
+                        break
+                    else:
+                        return False
+
+                except IndexError:
+                    return False
+
+        node = tree.FunctionCallNode(func, args)
+        self.reduce(node, -i + 1)
+        return True
+
+    def try_match_array_subsc(self):
+        """Try matching an array subscript postfix operator."""
+        if (self.match_kind(-1, token_kinds.close_sq_brack) and
+            self.match_node(-2) and
+            self.match_kind(-3, token_kinds.open_sq_brack) and
+             self.match_node(-4)):
+
+            node = tree.ArraySubscriptNode(self.s[-4].item,
+                                           self.s[-2].item,
+                                           self.s[-3].item)
+            self.reduce(node, 4)
+            return True
+
+        return False
+
+    def try_match_paren_expr(self):
+        """Try matching a parenthesized expression."""
+
+        if (self.match_kind(-3, token_kinds.open_paren) and
+            self.match_node(-2) and
+             self.match_kind(-1, token_kinds.close_paren)):
+
+            node = tree.ParenExprNode(self.s[-2].item)
+            self.reduce(node, 3)
+            return True
+
+        return False
+
+    def match_kind(self, index, kind):
+        """Check whether the index-th element in the stack is of given kind."""
+        try:
+            item = self.s[index].item
+            return isinstance(item, Token) and item.kind == kind
+        except IndexError:
+            return False
+
+    def match_kind_in(self, index, kinds):
+        """Check whether index-th element in stack is of one of given kinds."""
+        try:
+            item = self.s[index].item
+            return isinstance(item, Token) and item.kind in kinds
+        except IndexError:
+            return False
+
+    def match_node(self, index):
+        """Check whether the index-th element in the stack is a Node."""
+        try:
+            return isinstance(self.s[index].item, tree.Node)
+        except IndexError:
+            return False
+
+    def reduce(self, node, num):
+        """Perform a reduce operation on the stack.
+
+        node (Node) - Node to reduce into
+        num (int) - Number of elements to reduce and replace with new Node
+
+        """
+        length = sum(i.length for i in self.s[-num:])
+
+        del self.s[-num:]
+        self.s.append(self.StackItem(node, length))

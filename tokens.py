@@ -60,6 +60,9 @@ class Token:
         """Require equality of both token kind and content."""
         return self.kind == other.kind and self.content == other.content
 
+    def __repr__(self):
+        return self.content
+
     def __str__(self):
         """Return the token content."""
         return self.content
