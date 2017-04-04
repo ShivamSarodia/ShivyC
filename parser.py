@@ -7,10 +7,10 @@ no fun.
 from collections import namedtuple
 
 import ctypes
+import decl_tree
 import tree
 import token_kinds
 from errors import ParserError, error_collector
-from il_gen import PointerCType, ArrayCType
 from tokens import Token
 
 
@@ -203,58 +203,209 @@ class Parser:
         """
         return ExpressionParser(self.tokens).parse(index)
 
-    type_tokens = {token_kinds.void_kw: ctypes.void,
-                   token_kinds.bool_kw: ctypes.bool_t,
-                   token_kinds.char_kw: ctypes.char,
-                   token_kinds.short_kw: ctypes.short,
-                   token_kinds.int_kw: ctypes.integer,
-                   token_kinds.long_kw: ctypes.longint}
-
     def parse_declaration(self, index):
         """Parse a declaration.
 
-        Ex: int a, b = 5, *c;
-
-        Currently, only simple declarations of a single arithmetic type without
-        an intializer are supported. Signed and unsigned declarations also
-        supported.
+        Example:
+            int *a, (*b)[], c
 
         """
-        # Parse a signed/unsigned declaration or lack thereof
-        signed = True
-        if self._next_token_is(index, token_kinds.signed_kw):
-            signed = True
-            index += 1
-        elif self._next_token_is(index, token_kinds.unsigned_kw):
-            signed = False
-            index += 1
+        specs, index = self.parse_decl_specifiers(index)
 
-        # Parse the type name
-        index = self._expect_type_name(index)
-        ctype = self.type_tokens[self.tokens[index - 1].kind]
-        if not signed:
-            ctype = ctypes.to_unsigned(ctype)
+        # If declaration specifiers are followed directly by semicolon
+        if self._next_token_is(index, token_kinds.semicolon):
+            return tree.DeclarationNode([]), index + 1
 
-        # Parse any number of stars to indicate pointer type
-        while self._next_token_is(index, token_kinds.star):
-            ctype = PointerCType(ctype)
-            index += 1
+        decls = []
+        while True:
+            end = self.find_decl_end(index)
+            t = decl_tree.Root(specs, self.parse_declarator(index, end))
+            decls.append(t)
 
-        # Parse the identifier name
-        index = self._match_token(index, token_kinds.identifier,
-                                  "expected identifier", ParserError.AFTER)
-        variable_name = self.tokens[index - 1]
+            # Expect a comma, break if there isn't one
+            if self._next_token_is(end, token_kinds.comma):
+                index = end + 1
+            else:
+                break
 
-        # Parse an array declaration
-        if (self._next_token_is(index, token_kinds.open_sq_brack) and
-            self._next_token_is(index + 1, token_kinds.number) and
-             self._next_token_is(index + 2, token_kinds.close_sq_brack)):
-            ctype = ArrayCType(ctype, int(self.tokens[index + 1].content))
-            index += 3
+        self._expect_semicolon(end)
+        return tree.DeclarationNode(decls), end + 1
 
-        index = self._expect_semicolon(index)
+    def parse_decl_specifiers(self, index):
+        """Parse a declaration specifier.
 
-        return tree.DeclarationNode(variable_name, ctype), index
+        Examples:
+            int
+            const char
+            typedef int
+
+        """
+        decl_specifiers = (list(ctypes.simple_types.keys()) +
+                           [token_kinds.signed_kw, token_kinds.unsigned_kw])
+
+        specs = []
+        while True:
+            for spec in decl_specifiers:
+                if self._next_token_is(index, spec):
+                    specs.append(self.tokens[index])
+                    index += 1
+                    break
+            else:
+                # If the for loop did not break, quit the while loop
+                break
+
+        if specs:
+            return specs, index
+        else:
+            raise ParserError("expected declaration specifier", index,
+                              self.tokens, ParserError.AT)
+
+    def _find_pair_forward(self, index,
+                           open=token_kinds.open_paren,
+                           close=token_kinds.close_paren,
+                           mess="mismatched parentheses in declaration"):
+        """Find the closing parenthesis for the opening at given index.
+
+        index - position to start search, should be of kind `open`
+        open - token kind representing the open parenthesis
+        close - token kind representing the close parenthesis
+        mess - message for error on mismatch
+        """
+        depth = 0
+        for i in range(index, len(self.tokens)):
+            if self.tokens[i].kind == open:
+                depth += 1
+            elif self.tokens[i].kind == close:
+                depth -= 1
+
+            if depth == 0:
+                break
+        else:
+            # if loop did not break, no close paren was found
+            raise ParserError(mess, index, self.tokens, ParserError.AT)
+        return i
+
+    def _find_pair_backward(self, index,
+                            open=token_kinds.open_paren,
+                            close=token_kinds.close_paren,
+                            mess="mismatched parentheses in declaration"):
+        """Find the opening parenthesis for the closing at given index.
+
+        Same parameters as _find_pair_forward above.
+        """
+        depth = 0
+        for i in range(index, -1, -1):
+            if self.tokens[i].kind == close:
+                depth += 1
+            elif self.tokens[i].kind == open:
+                depth -= 1
+
+            if depth == 0:
+                break
+        else:
+            # if loop did not break, no open paren was found
+            raise ParserError(mess, index, self.tokens, ParserError.AT)
+        return i
+
+    def find_decl_end(self, index):
+        """Find the end of the declarator that starts at given index.
+
+        If a valid declarator starts at the given index, this function is
+        guaranteed to return the correct end point. Returns an index one
+        greater than the last index in this declarator.
+        """
+        if (self._next_token_is(index, token_kinds.star) or
+             self._next_token_is(index, token_kinds.identifier)):
+            return self.find_decl_end(index + 1)
+        elif self._next_token_is(index, token_kinds.open_paren):
+            close = self._find_pair_forward(index)
+            return self.find_decl_end(close + 1)
+        elif self._next_token_is(index, token_kinds.open_sq_brack):
+            mess = "mismatched square brackets in declaration"
+            close = self._find_pair_forward(index, token_kinds.open_sq_brack,
+                                            token_kinds.close_sq_brack, mess)
+            return self.find_decl_end(close + 1)
+        else:
+            # Unknown token. If this declaration is correctly formatted,
+            # then this must be the end of the declaration.
+            return index
+
+    def parse_declarator(self, start, end):
+        """Parse the given tokens that comprises a declarator.
+
+        This function parses both declarator and abstract-declarators. For
+        an abstract declarator, the Identifier node at the leaf of the
+        generated tree has the identifier None.
+
+        Expects the declarator to start at start and end at end-1 inclusive.
+        Returns a decl_tree.Node.
+        """
+        if start == end:
+            return decl_tree.Identifier(None)
+        elif (start + 1 == end and
+              self.tokens[start].kind == token_kinds.identifier):
+            return decl_tree.Identifier(self.tokens[start])
+
+        # First and last elements make a parenthesis pair
+        elif (self.tokens[start].kind == token_kinds.open_paren and
+              self._find_pair_forward(start) == end - 1):
+            return self.parse_declarator(start + 1, end - 1)
+
+        elif self.tokens[start].kind == token_kinds.star:
+            return decl_tree.Pointer(self.parse_declarator(start + 1, end))
+
+        # Last element indicates a function type
+        elif self.tokens[end - 1].kind == token_kinds.close_paren:
+            open_paren = self._find_pair_backward(end - 1)
+            params, index = self.parse_parameter_list(open_paren + 1)
+            if index == end - 1:
+                return decl_tree.Function(
+                    params, self.parse_declarator(start, open_paren))
+
+        # Last element indicates an array type
+        elif self.tokens[end - 1].kind == token_kinds.close_sq_brack:
+            first = self.tokens[end - 3].kind == token_kinds.open_sq_brack
+            number = self.tokens[end - 2].kind == token_kinds.number
+            if first and number:
+                return decl_tree.Array(int(self.tokens[end - 2].content),
+                                       self.parse_declarator(start, end - 3))
+
+        raise ParserError("faulty declaration syntax", start,
+                          self.tokens, ParserError.AT)
+
+    def parse_parameter_list(self, index):
+        """Parse a function parameter list.
+
+        Returns a list of decl_tree arguments and the index right after the
+        last argument token. This index should be the index of a closing
+        parenthesis, but that check is left to the caller.
+
+        index - index right past the opening parenthesis
+        """
+        # List of decl_tree arguments
+        params = []
+
+        # No arguments
+        if self._next_token_is(index, token_kinds.close_paren):
+            return params, index
+
+        while True:
+            # Try parsing declaration specifiers, quit if no more exist
+            specs, index = self.parse_decl_specifiers(index)
+
+            end = self.find_decl_end(index)
+            params.append(
+                decl_tree.Root(specs, self.parse_declarator(index, end)))
+
+            index = end
+
+            # Expect a comma, and break if there isn't one
+            if self._next_token_is(index, token_kinds.comma):
+                index += 1
+            else:
+                break
+
+        return params, index
 
     def _expect_type_name(self, index):
         """Expect a type name at self.tokens[index].
@@ -373,7 +524,6 @@ class ExpressionParser:
         parsed into the expression. If literally none of it could be parsed as
         an expression, raises an exception like usual.
         """
-        # TODO: clean up  the if-statements here
         i = index
         while True:
             # Try all of the possible matches

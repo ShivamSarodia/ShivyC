@@ -5,12 +5,14 @@ that generates code in our three-address IL.
 
 """
 
+
 import ctypes
+import decl_tree
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
 from il_gen import CType, ILValue, ILCode, LValue, check_cast, set_type
-from il_gen import PointerCType, FunctionCType
+from il_gen import ArrayCType, PointerCType, FunctionCType
 from tokens import Token
 
 
@@ -867,38 +869,82 @@ class FunctionCallNode(ExpressionNode):
 class DeclarationNode(Node):
     """Line of a general variable declaration(s).
 
-    For example:  int a = 3, *b, c[] = {3, 2, 5};
-
-    Currently, only supports declaration of a single integer or char variable
-    with no initializer.
-
-    variable_name (Token(identifier)) - The identifier representing the new
-    variable name.
-    ctype (CType) - The ctype of this variable
+    decls (List(decl_tree.Node)) - list of declaration trees
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, variable_name, ctype):
+    def __init__(self, decls):
         """Initialize node."""
         super().__init__()
-
-        self.assert_kind(variable_name, token_kinds.identifier)
-
-        self.variable_name = variable_name
-        self.ctype = ctype
+        self.decls = decls
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
 
         This function does not generate any IL code; it just adds the declared
-        variable to the symbol table.
+        variable(s) to the symbol table.
 
         """
-        if self.ctype == ctypes.void:
-            raise CompilerError("variable of void type declared",
-                                self.variable_name.file_name,
-                                self.variable_name.line_num)
+        for decl in self.decls:
+            try:
+                ctype, identifier = self.make_ctype(decl)
+                if not identifier:
+                    descrip = "missing identifier name in declaration"
+                    raise CompilerError(descrip, decl.specs[0].file_name,
+                                        decl.specs[0].line_num)
 
-        symbol_table.add(self.variable_name, self.ctype, il_code)
+                if ctype == ctypes.void:
+                    descrip = "variable of void type declared"
+                    raise CompilerError(descrip, identifier.file_name,
+                                        identifier.line_num)
+
+            except CompilerError as e:
+                error_collector.add(e)
+                continue
+
+            symbol_table.add(identifier, ctype, il_code)
+
+    def make_ctype(self, decl, prev_ctype=None):
+        """Generate a ctype from the given declaration.
+
+        Return a `ctype, identifier token` pair.
+        """
+        if isinstance(decl, decl_tree.Root):
+            ctype = self.make_specs_ctype(decl.specs)
+            return self.make_ctype(decl.child, ctype)
+        elif isinstance(decl, decl_tree.Pointer):
+            return self.make_ctype(decl.child, PointerCType(prev_ctype))
+        elif isinstance(decl, decl_tree.Array):
+            return self.make_ctype(decl.child, ArrayCType(prev_ctype, decl.n))
+        elif isinstance(decl, decl_tree.Function):
+            args = [self.make_ctype(decl) for decl in decl.args]
+            return self.make_ctype(decl.child, FunctionCType(args, prev_ctype))
+        elif isinstance(decl, decl_tree.Identifier):
+            return prev_ctype, decl.identifier
+
+    def make_specs_ctype(self, specs):
+        """Make a ctype out of the provided list of declaration specifiers."""
+
+        spec_kinds = [spec.kind for spec in specs]
+        base_type_list = list(set(ctypes.simple_types.keys()) &
+                              set(spec_kinds))
+        if len(base_type_list) == 0:
+            base_type = ctypes.integer
+        elif len(base_type_list) == 1:
+            base_type = ctypes.simple_types[base_type_list[0]]
+        else:
+            descrip = "two or more data types in declaration specifiers"
+            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+
+        signed_list = list({token_kinds.signed_kw, token_kinds.unsigned_kw} &
+                            set(spec_kinds))
+
+        if len(signed_list) == 1 and signed_list[0] == token_kinds.unsigned_kw:
+            base_type = ctypes.to_unsigned(base_type)
+        elif len(signed_list) > 1:
+            descrip = "both signed and unsigned in declaration specifiers"
+            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+
+        return base_type

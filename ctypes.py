@@ -1,5 +1,6 @@
 """All of the C types recognized by the compiler."""
 
+import token_kinds
 from il_gen import VoidCType, IntegerCType
 
 void = VoidCType()
@@ -23,6 +24,14 @@ longint = IntegerCType(8, True)
 unsig_longint = IntegerCType(8, False)
 long_max = 9223372036854775807
 long_min = -9223372036854775808
+
+
+simple_types = {token_kinds.void_kw: void,
+                token_kinds.bool_kw: bool_t,
+                token_kinds.char_kw: char,
+                token_kinds.short_kw: short,
+                token_kinds.int_kw: integer,
+                token_kinds.long_kw: longint}
 
 
 # When adding new types, update this function!

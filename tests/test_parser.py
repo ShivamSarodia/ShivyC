@@ -1,9 +1,9 @@
 """Tests for the parser phase of the compiler."""
-import ctypes
+
 import tree
 import token_kinds
+from decl_tree import Root, Pointer, Array, Function, Identifier
 from errors import error_collector
-from il_gen import PointerCType, ArrayCType
 from parser import Parser
 from tokens import Token
 from tests.test_utils import TestUtils
@@ -128,9 +128,10 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.integer)
-        ])  # yapf: disable
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                 Identifier(Token(token_kinds.identifier, "var")))])
+        ])
 
     def test_equals_in_main(self):  # noqa: D400, D403
         """int main() { a = 10; }"""
@@ -566,10 +567,11 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.integer)
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                 Identifier(Token(token_kinds.identifier, "var")))]
+            )
         ])
-
 
     def test_basic_char_declaration(self):  # noqa: D400, D403
         """char var;"""
@@ -577,9 +579,11 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.char)
-        ])  # yapf: disable
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.char_kw)],
+                 Identifier(Token(token_kinds.identifier, "var")))]
+            )
+        ])
 
     def test_unsigned_int_declaration(self):  # noqa: D400, D403
         """unsigned int var;"""
@@ -588,94 +592,179 @@ class DeclarationTests(ParserTestUtil):
                   Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.unsig_int)
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.unsigned_kw),
+                       Token(token_kinds.int_kw)],
+                 Identifier(Token(token_kinds.identifier, "var")))]
+            )
         ])
 
-
-    def test_unsigned_char_declaration(self):  # noqa: D400, D403
-        """unsigned char var;"""
-        tokens = [Token(token_kinds.unsigned_kw),
-                  Token(token_kinds.char_kw),
-                  Token(token_kinds.identifier, "var"),
-                  Token(token_kinds.semicolon)]
-        self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.unsig_char)
-        ])  # yapf: disable
-
-    def test_signed_int_declaration(self):  # noqa: D400, D403
-        """signed int var;"""
-        tokens = [Token(token_kinds.signed_kw),
-                  Token(token_kinds.char_kw),
-                  Token(token_kinds.identifier, "var"),
-                  Token(token_kinds.semicolon)]
-        self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.char)
-        ])  # yapf: disable
-
-    def test_signed_char_declaration(self):  # noqa: D400, D403
-        """signed char var;"""
-        tokens = [Token(token_kinds.signed_kw),
-                  Token(token_kinds.char_kw),
-                  Token(token_kinds.identifier, "var"),
-                  Token(token_kinds.semicolon)]
-        self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "var"),
-                                 ctypes.char)
-        ])  # yapf: disable
 
     def test_pointer_declaration(self):  # noqa: D400, D403
         """int** a;"""
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.star),
                   Token(token_kinds.star),
-                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.identifier, "var"),
                   Token(token_kinds.semicolon)]
 
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 PointerCType(PointerCType(ctypes.integer)))
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Pointer(Pointer(
+                          Identifier(Token(token_kinds.identifier, "var")))))]
+            )
         ])
 
-    def test_void_pointer_declaration(self):  # noqa: D400, D403
-        """void* a;"""
-        tokens = [Token(token_kinds.void_kw),
-                  Token(token_kinds.star),
-                  Token(token_kinds.identifier, "a"),
-                  Token(token_kinds.semicolon)]
-
-        self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 PointerCType(ctypes.void))
-        ])
 
     def test_array_declaration(self):  # noqa: D400, D403
         """int arr[3];"""
         tokens = [Token(token_kinds.int_kw),
-                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.identifier, "var"),
                   Token(token_kinds.open_sq_brack),
                   Token(token_kinds.number, "3"),
                   Token(token_kinds.close_sq_brack),
                   Token(token_kinds.semicolon)]
 
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 ArrayCType(ctypes.integer, 3))
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Array(3,
+                            Identifier(Token(token_kinds.identifier, "var"))))]
+            )
         ])
 
-    def test_pointer_array_declaration(self):  # noqa: D400, D403
-        """int* arr[3];"""
+    def test_array_of_pointers_declaration(self):  # noqa: D400, D403
+        """int *var[3];"""
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.star),
-                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.identifier, "var"),
                   Token(token_kinds.open_sq_brack),
                   Token(token_kinds.number, "3"),
                   Token(token_kinds.close_sq_brack),
                   Token(token_kinds.semicolon)]
 
+        tok = Token(token_kinds.identifier, "var")
         self.assertParsesTo(tokens, [
-            tree.DeclarationNode(Token(token_kinds.identifier, "a"),
-                                 ArrayCType(PointerCType(ctypes.integer), 3))
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Pointer(Array(3, Identifier(tok))))]
+            )
         ])
+
+    def test_pointer_to_array_declaration(self):  # noqa: D400, D403
+        """int (*var)[3];"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.semicolon)]
+
+        tok = Token(token_kinds.identifier, "var")
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Array(3, Pointer(Identifier(tok))))]
+            )
+        ])
+
+    def test_multiple_declarations(self):  # noqa: D400, D403
+        """int (*var1)[3], *var2[3], var3;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "var1"),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.comma),
+
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "var2"),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.comma),
+
+                  Token(token_kinds.identifier, "var3"),
+
+                  Token(token_kinds.semicolon)]
+
+        tok1 = Token(token_kinds.identifier, "var1")
+        tok2 = Token(token_kinds.identifier, "var2")
+        tok3 = Token(token_kinds.identifier, "var3")
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Array(3, Pointer(Identifier(tok1)))),
+                 Root([Token(token_kinds.int_kw)],
+                      Pointer(Array(3, Identifier(tok2)))),
+                 Root([Token(token_kinds.int_kw)], Identifier(tok3))]
+            )
+        ])
+
+    def test_function_declaration(self):  # noqa: D400, D403
+        """int *var(int, unsigned int* a, long *[5], long (*)[5]);"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.open_paren),
+
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.comma),
+
+                  Token(token_kinds.unsigned_kw),
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.comma),
+
+                  Token(token_kinds.long_kw),
+                  Token(token_kinds.star),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "5"),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.comma),
+
+                  Token(token_kinds.long_kw),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.star),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.number, "5"),
+                  Token(token_kinds.close_sq_brack),
+
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.semicolon)]
+
+        var = Token(token_kinds.identifier, "var")
+        a = Token(token_kinds.identifier, "a")
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Pointer(Function([
+                          Root([Token(token_kinds.int_kw)], Identifier(None)),
+                          Root([Token(token_kinds.unsigned_kw),
+                                Token(token_kinds.int_kw)],
+                               Pointer(Identifier(a))),
+                          Root([Token(token_kinds.long_kw)],
+                               Pointer(Array(5, Identifier(None)))),
+                          Root([Token(token_kinds.long_kw)],
+                               Array(5, Pointer(Identifier(None)))),
+                      ], Identifier(var))))]
+            )
+        ])
+
+    def test_no_declaration(self):  # noqa: D400, D403
+        """int;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [tree.DeclarationNode([])])
