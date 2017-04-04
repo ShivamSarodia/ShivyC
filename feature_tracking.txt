@@ -18,9 +18,22 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Implement functions
+1) Improve pointer decaying, etc.
+   Make code like:
 
-2) Proper declaration parsing
+   int main() {
+       int (*p)[10];
+       (*p)[0];
+       return 0;
+   }
+
+   work properly, and code like multidimentional arrays.
+
+2) Global declarations
+   - Including global function declarations
+   - Allow extern declarations
+
+3) Properly implement function call
 
 --------------------------------------------------------------------------------
 
@@ -30,7 +43,6 @@ MAIN PROJECTS
 1  - Implement functions
 1     - Implement function call
 1       - Proper pointer decaying and register allocation hints
-1     - Implement function declaration
 0     - Implement function definition
 
 --------------------------------------------------------------------------------
