@@ -18,22 +18,11 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Improve pointer decaying, etc.
-   Make code like:
-
-   int main() {
-       int (*p)[10];
-       (*p)[0];
-       return 0;
-   }
-
-   work properly, and code like multidimentional arrays.
-
-2) Global declarations
+1) Global declarations
    - Including global function declarations
    - Allow extern declarations
 
-3) Properly implement function call
+2) Properly implement function call
 
 --------------------------------------------------------------------------------
 
@@ -50,10 +39,7 @@ MAIN PROJECTS
 FEATURES
 --------
 
-1  - Better declaration parsing
-1     - Allow `int a = 5;`
-0     - Allow `int a, b;`
-0     - Allow declaration of pointer to array `int (*a)[3]`
+0  - Better declaration initializer parsing
 
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
