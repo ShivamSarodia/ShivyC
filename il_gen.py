@@ -36,7 +36,7 @@ class VoidCType(CType):
 
     def __init__(self):
         """Initialize type."""
-        super().__init__(0, CType.VOID)
+        super().__init__(1, CType.VOID)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
@@ -109,6 +109,9 @@ class PointerCType(CType):
         # Used for testing
         return other.type_type == self.type_type and self.arg == other.arg
 
+    def __hash__(self):
+        return hash((self.type_type, self.arg))
+
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
         return (other.type_type == CType.POINTER and
@@ -136,6 +139,9 @@ class ArrayCType(CType):
         # Used for testing
         return (other.type_type == self.type_type and self.el == other.el
                 and self.n == other.n)
+
+    def __hash__(self):
+        return hash((self.type_type, self.el, self.n))
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
@@ -327,6 +333,14 @@ class LValue:
         else:
             return self.il_value
 
+    def ctype(self):
+        """Return the ctype of this lvalue."""
+
+        if self.lvalue_type == self.DIRECT:
+            return self.il_value.ctype
+        else:
+            return self.il_value.ctype.arg
+
 
 class SymbolTable:
     """Symbol table for the IL -> AST phase.
@@ -414,11 +428,11 @@ def check_cast(il_value, ctype, token):
 
     # Cast between arithmetic types is always okay
     if (ctype.type_type == CType.ARITH and
-                il_value.ctype.type_type == CType.ARITH):
+         il_value.ctype.type_type == CType.ARITH):
         return
 
     elif (ctype.type_type == CType.POINTER and
-                  il_value.ctype.type_type == CType.POINTER):
+          il_value.ctype.type_type == CType.POINTER):
 
         # Cast between compatible pointer types okay
         if ctype.compatible(il_value.ctype):
@@ -442,7 +456,7 @@ def check_cast(il_value, ctype, token):
 
     # Cast from pointer to boolean okay
     elif (ctype == ctypes.bool_t and
-                  il_value.ctype.type_type == CType.POINTER):
+          il_value.ctype.type_type == CType.POINTER):
         return
 
     else:

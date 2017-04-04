@@ -41,7 +41,7 @@ int main() {
   array[3] = 10;
   array[4] = array[1] + array[3];
 
-  int sum;
+  int sum; sum = 0;
   int i; i = 0;
   while(i != 5) {
     sum = sum + array[i];
@@ -49,6 +49,19 @@ int main() {
   }
 
   if(sum != 15 + 35 + 20 + 10 + 35 + 10) return 18;
+
+  // Test multidimentional arrays
+  int array5[5][6];
+  array5[2][3] = 10;
+  if(array5[2][3] != 10) return 19;
+
+  void *p1, *p2;
+  p1 = (&array5[0] + 1);
+  p2 = &array5[0];
+  p2 = p2 + 6 * 4;
+  if(p1 != p2) {
+    return 20;
+  }
 
   return 0;
 }

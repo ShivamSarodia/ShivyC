@@ -95,21 +95,13 @@ class ExpressionNode(Node):
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node and return decayed version of result."""
-        return self._decay(self.make_code_raw(il_code, symbol_table), il_code)
 
-    def _decay(self, il_value, il_code):
-        """Decay given ILValue if needed.
-
-        If given ILValue is of function type or array type, decays it into a
-        pointer and emits code necessary to do so.
-        """
-        if il_value.ctype.type_type == CType.ARRAY:
-            new_type = PointerCType(il_value.ctype.el)
-            out = ILValue(new_type)
-            il_code.add(il_commands.AddrOf(out, il_value))
-            return out
+        lvalue = self.lvalue(il_code, symbol_table)
+        if lvalue and lvalue.ctype().type_type == CType.ARRAY:
+            addr = lvalue.addr(il_code)
+            return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
         else:
-            return il_value
+            return self.make_code_raw(il_code, symbol_table)
 
     def expr_ctype(self, symbol_table):
         """Return the undecayed CType of this expression.
