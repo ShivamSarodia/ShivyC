@@ -29,7 +29,10 @@ class ParserTestUtil(TestUtils):
 
         """
         ast_root = Parser(self._token_wrap_main(tokens)).parse()
-        self.assertEqual(ast_root, tree.MainNode(tree.CompoundNode(nodes)))
+        self.assertEqual(ast_root,
+                         tree.RootNode([
+                             tree.MainNode(tree.CompoundNode(nodes))
+                         ]))
 
     def assertParserError(self, tokens, descrip):
         """Assert the given tokens create a compiler error.
@@ -79,17 +82,17 @@ class GeneralTests(ParserTestUtil):
         ])  # yapf: disable
 
     def test_extra_tokens_at_end_after_main_function(self):  # noqa: D400, D403
-        """int main() { return 15; } int"""
+        """int main() { return 15; } a"""
         tokens = [
             Token(token_kinds.int_kw), Token(token_kinds.main),
             Token(token_kinds.open_paren), Token(token_kinds.close_paren),
             Token(token_kinds.open_brack), Token(token_kinds.return_kw),
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon),
-            Token(token_kinds.close_brack), Token(token_kinds.int_kw)
+            Token(token_kinds.close_brack), Token(token_kinds.identifier, "a")
         ]
 
         Parser(tokens).parse()
-        self.assertIssues(["unexpected token at 'int'"])
+        self.assertIssues(["unexpected token at 'a'"])
 
     def test_missing_semicolon_and_end_brace(self):  # noqa: D400, D403
         """int main() { return 15"""
@@ -121,6 +124,55 @@ class GeneralTests(ParserTestUtil):
 
         Parser(tokens).parse()
         self.assertIssues(["expected '}' after ';'"])
+
+    def test_declaration_before_and_after_main(self):  # noqa: D400, D403
+        """int a; int main() { int b; } int c;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "a"),
+                  Token(token_kinds.semicolon),
+
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.main),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.open_brack),
+
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "b"),
+                  Token(token_kinds.semicolon),
+
+                  Token(token_kinds.close_brack),
+
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "c"),
+                  Token(token_kinds.semicolon)]
+
+        a_tok = Token(token_kinds.identifier, "a")
+        b_tok = Token(token_kinds.identifier, "b")
+        c_tok = Token(token_kinds.identifier, "c")
+
+        ast_root = Parser(tokens).parse()
+        self.assertEqual(ast_root,
+                         tree.RootNode([
+
+                             tree.DeclarationNode(
+                                 [Root([Token(token_kinds.int_kw)],
+                                  Identifier(a_tok))],
+                                 [None]),
+
+                             tree.MainNode(
+                                 tree.CompoundNode([tree.DeclarationNode(
+                                     [Root([Token(token_kinds.int_kw)],
+                                      Identifier(b_tok))],
+                                     [None])]
+                                 )),
+
+                             tree.DeclarationNode(
+                                 [Root([Token(token_kinds.int_kw)],
+                                       Identifier(c_tok))],
+                                 [None]),
+                         ]))
+
 
     def test_declaration_in_main(self):  # noqa: D400, D403
         """int main() { int var; }"""

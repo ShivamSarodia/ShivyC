@@ -50,19 +50,43 @@ class Parser:
 
         """
         try:
-            node, index = self.parse_main(0)
+            node, index = self.parse_root(0)
         except ParserError as e:
             self._log_error(e)
             error_collector.add(self.best_error)
             return None
 
-        # Ensure there's no tokens left at after the main function
-        if self.tokens[index:]:
-            descrip = "unexpected token"
-            error_collector.add(
-                ParserError(descrip, index, self.tokens, ParserError.AT))
-
         return node
+
+    def parse_root(self, index):
+        """Parse the entire compilation unit."""
+        nodes = []
+        while True:
+            try:
+                node, index = self.parse_main(index)
+                nodes.append(node)
+            except ParserError as e:
+                self._log_error(e)
+            else:
+                continue
+
+            try:
+                node, index = self.parse_declaration(index)
+                nodes.append(node)
+            except ParserError as e:
+                self._log_error(e)
+            else:
+                continue
+
+            # If neither parse attempt above worked, break
+            break
+
+        # If there are tokens that remain unparsed, complain
+        if not self.tokens[index:]:
+            return tree.RootNode(nodes), index
+        else:
+            descrip = "unexpected token"
+            raise ParserError(descrip, index, self.tokens, ParserError.AT)
 
     def parse_main(self, index):
         """Parse a main function containing block items.

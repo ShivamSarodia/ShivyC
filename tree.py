@@ -30,6 +30,7 @@ class Node:
     """
 
     # Enum for symbols produced by a node
+    ROOT = 0
     MAIN_FUNCTION = 1
     STATEMENT = 2
     DECLARATION = 3
@@ -126,6 +127,29 @@ class ExpressionNode(Node):
         stored in the ILCode object when generating code.
         """
         raise NotImplementedError
+
+
+class RootNode(Node):
+    """General rule for the root node of the entire compilation unit.
+
+    nodes (List(Node)) - list of nodes for which to make code
+    """
+
+    symbol = Node.ROOT
+
+    def __init__(self, nodes):
+        """Initialize node."""
+        super().__init__()
+
+        self.nodes = nodes
+
+    def make_code(self, il_code, symbol_table):
+        """Make code for the root."""
+        for node in self.nodes:
+            try:
+                node.make_code(il_code, symbol_table)
+            except CompilerError as e:
+                error_collector.add(e)
 
 
 class MainNode(Node):
