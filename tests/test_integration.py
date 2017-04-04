@@ -74,6 +74,7 @@ class MetaIntegrationTests(type):
                                             error_collector.issues))
 
                     self.assertListEqual(clean_issues, clean_actual)
+                    self.assertEqual(subprocess.call(["./out"]), ret_val)
 
             return test_function
 
