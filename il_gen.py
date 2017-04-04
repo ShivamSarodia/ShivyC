@@ -397,13 +397,14 @@ class SymbolTable:
 
         identifier (Token) - Identifier to add, for error purposes.
         ctype (CType) - C type of the identifier we're adding.
-
+        return (ILValue) - the ILValue added
         """
         name = identifier.content
         if name not in self.tables[-1]:
             il_value = ILValue(ctype)
             il_code.add_variable(il_value)
             self.tables[-1][name] = il_value
+            return il_value
         else:
             descrip = "redefinition of '{}'"
             raise CompilerError(descrip.format(name),

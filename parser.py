@@ -214,22 +214,32 @@ class Parser:
 
         # If declaration specifiers are followed directly by semicolon
         if self._next_token_is(index, token_kinds.semicolon):
-            return tree.DeclarationNode([]), index + 1
+            return tree.DeclarationNode([], []), index + 1
 
         decls = []
+        inits = []
         while True:
             end = self.find_decl_end(index)
             t = decl_tree.Root(specs, self.parse_declarator(index, end))
             decls.append(t)
 
+            index = end
+            if self._next_token_is(index, token_kinds.equals):
+                # Parse initializer expression
+                # Currently, only simple initializers are supported
+                expr, index = self.parse_expression(index + 1)
+                inits.append(expr)
+            else:
+                inits.append(None)
+
             # Expect a comma, break if there isn't one
-            if self._next_token_is(end, token_kinds.comma):
-                index = end + 1
+            if self._next_token_is(index, token_kinds.comma):
+                index += 1
             else:
                 break
 
-        self._expect_semicolon(end)
-        return tree.DeclarationNode(decls), end + 1
+        self._expect_semicolon(index)
+        return tree.DeclarationNode(decls, inits), index + 1
 
     def parse_decl_specifiers(self, index):
         """Parse a declaration specifier.

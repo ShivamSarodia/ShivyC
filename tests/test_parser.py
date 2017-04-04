@@ -130,7 +130,8 @@ class GeneralTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
-                 Identifier(Token(token_kinds.identifier, "var")))])
+                 Identifier(Token(token_kinds.identifier, "var")))],
+                [None])
         ])
 
     def test_equals_in_main(self):  # noqa: D400, D403
@@ -569,7 +570,8 @@ class DeclarationTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
-                 Identifier(Token(token_kinds.identifier, "var")))]
+                 Identifier(Token(token_kinds.identifier, "var")))],
+                [None]
             )
         ])
 
@@ -581,7 +583,30 @@ class DeclarationTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(
                 [Root([Token(token_kinds.char_kw)],
-                 Identifier(Token(token_kinds.identifier, "var")))]
+                 Identifier(Token(token_kinds.identifier, "var")))],
+                [None]
+            )
+        ])
+
+    def test_int_declaration_with_init(self):  # noqa: D400, D403
+        """int var = 3 + 4;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.equals),
+                  Token(token_kinds.number, "3"),
+                  Token(token_kinds.plus),
+                  Token(token_kinds.number, "4"),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Identifier(Token(token_kinds.identifier, "var")))],
+                [tree.BinaryOperatorNode(
+                    tree.NumberNode(Token(token_kinds.number, "3")),
+                    Token(token_kinds.plus),
+                    tree.NumberNode(Token(token_kinds.number, "4")),
+                )]
             )
         ])
 
@@ -595,7 +620,8 @@ class DeclarationTests(ParserTestUtil):
             tree.DeclarationNode(
                 [Root([Token(token_kinds.unsigned_kw),
                        Token(token_kinds.int_kw)],
-                 Identifier(Token(token_kinds.identifier, "var")))]
+                 Identifier(Token(token_kinds.identifier, "var")))],
+                [None]
             )
         ])
 
@@ -612,7 +638,8 @@ class DeclarationTests(ParserTestUtil):
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
                       Pointer(Pointer(
-                          Identifier(Token(token_kinds.identifier, "var")))))]
+                          Identifier(Token(token_kinds.identifier, "var")))))],
+                [None]
             )
         ])
 
@@ -630,7 +657,9 @@ class DeclarationTests(ParserTestUtil):
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
                       Array(3,
-                            Identifier(Token(token_kinds.identifier, "var"))))]
+                            Identifier(Token(token_kinds.identifier,
+                                             "var"))))],
+                [None]
             )
         ])
 
@@ -648,7 +677,8 @@ class DeclarationTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
-                      Pointer(Array(3, Identifier(tok))))]
+                      Pointer(Array(3, Identifier(tok))))],
+                [None]
             )
         ])
 
@@ -668,7 +698,8 @@ class DeclarationTests(ParserTestUtil):
         self.assertParsesTo(tokens, [
             tree.DeclarationNode(
                 [Root([Token(token_kinds.int_kw)],
-                      Array(3, Pointer(Identifier(tok))))]
+                      Array(3, Pointer(Identifier(tok))))],
+                [None]
             )
         ])
 
@@ -705,7 +736,8 @@ class DeclarationTests(ParserTestUtil):
                       Array(3, Pointer(Identifier(tok1)))),
                  Root([Token(token_kinds.int_kw)],
                       Pointer(Array(3, Identifier(tok2)))),
-                 Root([Token(token_kinds.int_kw)], Identifier(tok3))]
+                 Root([Token(token_kinds.int_kw)], Identifier(tok3))],
+                [None, None, None]
             )
         ])
 
@@ -758,7 +790,8 @@ class DeclarationTests(ParserTestUtil):
                                Pointer(Array(5, Identifier(None)))),
                           Root([Token(token_kinds.long_kw)],
                                Array(5, Pointer(Identifier(None)))),
-                      ], Identifier(var))))]
+                      ], Identifier(var))))],
+                [None]
             )
         ])
 
@@ -767,4 +800,4 @@ class DeclarationTests(ParserTestUtil):
         tokens = [Token(token_kinds.int_kw),
                   Token(token_kinds.semicolon)]
 
-        self.assertParsesTo(tokens, [tree.DeclarationNode([])])
+        self.assertParsesTo(tokens, [tree.DeclarationNode([], [])])

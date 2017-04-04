@@ -862,15 +862,18 @@ class DeclarationNode(Node):
     """Line of a general variable declaration(s).
 
     decls (List(decl_tree.Node)) - list of declaration trees
+    inits (List(ExpressionNode)) - list of initializer expressions, or None
+    if a variable is not initialized
 
     """
 
     symbol = Node.DECLARATION
 
-    def __init__(self, decls):
+    def __init__(self, decls, inits):
         """Initialize node."""
         super().__init__()
         self.decls = decls
+        self.inits = inits
 
     def make_code(self, il_code, symbol_table):
         """Make code for this declaration.
@@ -879,7 +882,7 @@ class DeclarationNode(Node):
         variable(s) to the symbol table.
 
         """
-        for decl in self.decls:
+        for decl, init in zip(self.decls, self.inits):
             try:
                 ctype, identifier = self.make_ctype(decl)
                 if not identifier:
@@ -892,11 +895,22 @@ class DeclarationNode(Node):
                     raise CompilerError(descrip, identifier.file_name,
                                         identifier.line_num)
 
+                var = symbol_table.add(identifier, ctype, il_code)
+
+                # Initialize variable if needed
+                if init:
+                    init_val = init.make_code(il_code, symbol_table)
+                    lval = LValue(LValue.DIRECT, var)
+                    if lval.modable():
+                        lval.set_to(init_val, il_code, identifier)
+                    else:
+                        descrip = "declared variable is not of assignable type"
+                        raise CompilerError(descrip, identifier.file_name,
+                                            identifier.line_num)
+
             except CompilerError as e:
                 error_collector.add(e)
                 continue
-
-            symbol_table.add(identifier, ctype, il_code)
 
     def make_ctype(self, decl, prev_ctype=None):
         """Generate a ctype from the given declaration.
