@@ -1,29 +1,22 @@
 int main() {
-  int a; int b;
-  a = 5; b = 10;
+  int a = 5, b = 10;
 
-  int c;
-  c = a + b;
+  int c = a + b;
   if(c != 15) return 1;
 
-  int d;
-  d = c + 5;
+  int d = c + 5;
   if(d != 20) return 2;
 
-  int e;
-  e = 2 + 4;
+  int e = 2 + 4;
   if(e != 6) return 3;
 
-  int f;
-  f = e + d;
+  int f = e + d;
   if(f != 26) return 4;
 
-  int g;
-  g = f + f + e;
+  int g = f + f + e;
   if(g != 58) return 5;
 
-  int i;
-  i = g + g;
+  int i = g + g;
   i = i + i;
 
   if(i != 232) return 6;
@@ -38,18 +31,15 @@ int main() {
   long never_dead;
   never_dead = 1099511627776;
 
-  long j;
-  j = 1099511627776;
+  long j = 1099511627776;
   never_dead = j + 1099511627776;
   if(never_dead != 1099511627776 + 1099511627776) return 7;
 
-  long k;
-  k = 1099511627776;
+  long k = 1099511627776;
   never_dead = 1099511627776 + k;
   if(never_dead != 1099511627776 + 1099511627776) return 8;
 
-  long not_dead;
-  not_dead = 1099511627776;
+  long not_dead = 1099511627776;
   never_dead = not_dead + 1099511627776;
   if(never_dead != 1099511627776 + 1099511627776) return 9;
 

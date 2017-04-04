@@ -41,8 +41,7 @@ int main() {
   array[3] = 10;
   array[4] = array[1] + array[3];
 
-  int sum; sum = 0;
-  int i; i = 0;
+  int sum = 0, i = 0;
   while(i != 5) {
     sum = sum + array[i];
     i = i + 1;

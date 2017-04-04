@@ -15,8 +15,7 @@ int main() {
   unsigned long ul;
 
   // Until negative literals are supported, this is how we insert -1.
-  int neg_one;
-  neg_one = 4294967295;
+  int neg_one = 4294967295;
 
   c = neg_one;
   if(c != neg_one) return 1;
@@ -62,21 +61,19 @@ int main() {
   if(l + 1 != 0) return 13;
 
   // Test integer promotion
-  char c1; char c2; char c3; char c4;
-  c1 = 30; c2 = 40; c3 = 10;
+  char c1 = 30, c2 = 40, c3 = 10, c4;
   c4 = (c1 * c2) / c3;
   if(c4 != 120) return 14;
 
-  unsigned short us1; unsigned short us2; unsigned short us3; unsigned short us4;
+  unsigned short us1 = 30, us2 = 40, us3 = 10, us4;
   us1 = 30; us2 = 40; us3 = 10;
   us4 = (us1 * us2) / us3;
   if(us4 != 120) return 15;
 
   // Test integer conversion
-  long l1; int i1;
+  long l1 = 1073741824, i1;
   // Because large immediate values are not yet supported, we split up
   // l1 in this way. l1 = 2^32.
-  l1 = 1073741824;
   l1 = l1 + l1 + l1 + l1;
   if(l1 * 2 / 8 != 1073741824) return 16;
 

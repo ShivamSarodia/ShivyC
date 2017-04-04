@@ -2,8 +2,7 @@ int main() {
   // These tests are pretty finicky, as they reply on these variables being
   // declared on the stack with a particular order/alignment.
 
-  int a; int b; int c;
-  a = 5; b = 10; c = 15;
+  int a = 5, b = 10, c = 15;
 
   // This line forces the register allocator to declare a, b, and c on the stack
   // in the desired order.

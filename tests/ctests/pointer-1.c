@@ -1,16 +1,14 @@
 // For testing dereference operator on left-side of assignment, see pointer-2.c
 
 int main() {
-  int a;
-  a = 10;
+  int a = 10;
   if(*(&a) != 10) return 1;
 
-  long b;
-  b = 20;
+  long b = 20;
   if(*(&b) + 50 != 70) return 2;
 
   // Assignment of compatible pointer types
-  int* c; int *d;
+  int* c = &a; int *d;
   c = &a;
   c = d;
 
@@ -19,23 +17,20 @@ int main() {
   if(&(*c) != &a) return 5;
 
   // Assignment of non-void to void
-  void* v;
-  v = &a;
+  void* v = &a;
 
   // Assignment of void to non-void
-  int* e;
-  e = v;
+  int* e = v;
 
   // Assignment of null pointer constant
   v = 0;
   e = 0;
 
-  // Issue: 35: warning: assignment from incompatible pointer type
+  // Issue: 31: warning: assignment from incompatible pointer type
   int *f; unsigned int *g;
   f = g;
 
-  _Bool h;
-  h = &a; // Value is checked at very end of this main() function
+  _Bool h = &a;  // Value is checked at very end of this main() function
 
   // Address-of operator where output is on the stack
   int* i_on_stack; int j;

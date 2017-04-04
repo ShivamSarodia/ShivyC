@@ -1,15 +1,13 @@
 // Tests dereference operator on left-side of assignment.
 
 int main() {
-  int* p1;
-  int a;
-  a = 1;
+  int a = 1;
+  int* p1 = &a;
 
-  p1 = &a;
   *p1 = 2;
   if(a != 2) return 1;
 
-  int b;
+  int b = 0;
   *(&b) = 3;
   if(b != 3) return 2;
 
@@ -20,10 +18,8 @@ int main() {
   p3 = &c + 2;
   if(*p2 != *p3) return 3;
 
-  char d;
-  long e;
-  e = 3;
-  d = 4;
+  char d = 4;
+  long e = 3;
   *(&d) = e;
   if(d != 3) return 4;
 

@@ -1,5 +1,5 @@
 int main() {
-  int a; int b; long c; unsigned int d;
+  int a = 5, b = 10; long c; unsigned int d;
 
   a = 5; b = 10;
   if(a == b) return 1;
@@ -23,8 +23,7 @@ int main() {
   // Issue: 24: warning: comparison between distinct pointer types
   if(&a == &d) return 9;
 
-  void* v;
-  v = &a;
+  void* v = &a;
   if(v == 0) return 10;
   if(0 == v) return 11;
   if(v == &b) return 12;

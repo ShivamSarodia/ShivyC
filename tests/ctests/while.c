@@ -1,13 +1,11 @@
 int main() {
-  int a;
-  a = 0;
+  int a = 0;
   while(a != 5) a = a + 1;
 
   if(a != 5) return 1;
 
-  int b;
+  int b = 0;
   a = 0;
-  b = 0;
   while(a != 5) {
     b = b + a;
     a = a + 1;
@@ -20,8 +18,7 @@ int main() {
   while(b == 100) return 4;
 
   // While statement runs once
-  int num_times_run;
-  num_times_run = 0;
+  int num_times_run = 0;
   while(b == 10) {
     b = b + 1;
     num_times_run = num_times_run + 1;
