@@ -2,13 +2,12 @@ language: python
 python:
  - "3.5"
 install:
- - pip install codeclimate-test-reporter
+ - pip install codecov
 addons:
   apt:
     packages:
     - nasm
     - binutils
     - gcc
-    - codecov
 script: coverage run -m unittest discover
 after_success: codecov
