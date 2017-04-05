@@ -9,5 +9,6 @@ addons:
     - nasm
     - binutils
     - gcc
+    - codecov
 script: coverage run -m unittest discover
-after_success: codeclimate-test-reporter
+after_success: codecov
