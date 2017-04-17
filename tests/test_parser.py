@@ -847,6 +847,22 @@ class DeclarationTests(ParserTestUtil):
             )
         ])
 
+
+    def test_static_int_declaration(self):  # noqa: D400, D403
+        """static int var;"""
+        tokens = [Token(token_kinds.static_kw),
+                  Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.semicolon)]
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.static_kw),
+                       Token(token_kinds.int_kw)],
+                 Identifier(Token(token_kinds.identifier, "var")))],
+                [None]
+            )
+        ])
+
     def test_no_declaration(self):  # noqa: D400, D403
         """int;"""
         tokens = [Token(token_kinds.int_kw),

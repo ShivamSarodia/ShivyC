@@ -167,9 +167,10 @@ class ILCode:
         """Initialize IL code."""
         self.commands = []
         self.label_num = 0
-        self.externs = []
+
+        self.variables = []
+        self.externs = {}
         self.literals = {}
-        self.variables = {}
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -179,31 +180,37 @@ class ILCode:
         """
         self.commands.append(command)
 
-    def add_extern(self, name):
-        """Add a new extern name to the IL code. Passed on to generating ASM.
+    def register_local_var(self, il_value):
+        """Add a stack variable.
 
-        name (str) - name to be added as extern
+        Using this function, register every variable which needs local stack
+        allocation. Note that while variables registered with this function
+        are called "stack variables" above, the register allocator may opt
+        to place them in registers if appropriate.
 
+        il_value - ILValue to register as a variable
         """
-        if name not in self.externs:
-            self.externs.append(name)
+        if il_value not in self.variables:
+            self.variables.append(il_value)
 
-    def add_literal(self, il_value, value):
-        """Add a new literal to the IL code.
+    def register_extern_var(self, il_value, name):
+        """Register an extern variable.
+
+        Using this function, register every extern variable. Do not also
+        call register_local_var on this ILValue.
+
+        il_value (ILValue) - IL value to register as an extern variable
+        name (str) - name of the extern variable
+        """
+        self.externs[il_value] = name
+
+    def register_literal_var(self, il_value, value):
+        """Register a literal IL value.
 
         il_value - ILValue object that has a literal value
         value - Literal value to store in the ILValue
-
         """
         self.literals[il_value] = value
-
-    def add_variable(self, il_value, pos=None):
-        """Add a variable, potentially with a preassigned position.
-
-        il_value - ILValue to add
-        pos - The preassigned place for this variable, or None otherwise.
-        """
-        self.variables[il_value] = pos
 
     def get_label(self):
         """Return a unique label identifier string."""
@@ -392,7 +399,7 @@ class SymbolTable:
                                 identifier.file_name,
                                 identifier.line_num)
 
-    def add(self, identifier, ctype, il_code):
+    def add(self, identifier, ctype):
         """Add an identifier with the given name and type to the symbol table.
 
         identifier (Token) - Identifier to add, for error purposes.
@@ -402,7 +409,6 @@ class SymbolTable:
         name = identifier.content
         if name not in self.tables[-1]:
             il_value = ILValue(ctype)
-            il_code.add_variable(il_value)
             self.tables[-1][name] = il_value
             return il_value
         else:

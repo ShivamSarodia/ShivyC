@@ -21,6 +21,10 @@ return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)
 while_kw = TokenKind("while", keyword_kinds)
 
+auto_kw = TokenKind("auto", keyword_kinds)
+static_kw = TokenKind("static", keyword_kinds)
+extern_kw = TokenKind("extern", keyword_kinds)
+
 plus = TokenKind("+", symbol_kinds)
 star = TokenKind("*", symbol_kinds)
 slash = TokenKind("/", symbol_kinds)

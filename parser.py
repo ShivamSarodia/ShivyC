@@ -275,7 +275,9 @@ class Parser:
 
         """
         decl_specifiers = (list(ctypes.simple_types.keys()) +
-                           [token_kinds.signed_kw, token_kinds.unsigned_kw])
+                           [token_kinds.signed_kw, token_kinds.unsigned_kw,
+                            token_kinds.auto_kw, token_kinds.static_kw,
+                            token_kinds.extern_kw])
 
         specs = []
         while True:

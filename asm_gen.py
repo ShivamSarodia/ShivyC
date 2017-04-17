@@ -271,7 +271,7 @@ class ASMGen:
         """Generate ASM code."""
 
         # Copy the externs from IL Code into ASM code
-        for extern in self.il_code.externs:
+        for extern in set(self.il_code.externs.values()):
             self.asm_code.add_extern(extern)
 
         # Get global spotmap and free values
@@ -401,9 +401,9 @@ class ASMGen:
                 # If literal, assign it a preassigned literal spot
                 s = Spot(Spot.LITERAL, self.il_code.literals[value])
                 global_spotmap[value] = s
-            elif self.il_code.variables.get(value, None):
-                # If variable with preassigned spot, assign and continue
-                s = Spot(Spot.MEM, self.il_code.variables[value])
+            elif value in self.il_code.externs:
+                # If extern, assign assign spot and continue
+                s = Spot(Spot.MEM, (self.il_code.externs[value], 0))
                 global_spotmap[value] = s
             elif (self.arguments.variables_on_stack and
                   value in self.il_code.variables):  # pragma: no cover

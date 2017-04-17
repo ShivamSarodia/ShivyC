@@ -928,7 +928,7 @@ class Call(ILCommand):
 
         # TODO: Fix this hack! Once pointers are implemented there will
         # hopefully be a better way to call functions.
-        asm_code.add_command("call", spotmap[self.func].detail)
+        asm_code.add_command("call", spotmap[self.func].detail[0])
 
         ret_asm = spotmap[self.ret].asm_str(self.func.ctype.ret.size)
         rax_asm = spots.RAX.asm_str(self.func.ctype.ret.size)

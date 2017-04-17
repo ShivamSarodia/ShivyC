@@ -84,6 +84,15 @@ class Node:
         """
         raise NotImplementedError
 
+    def make_code_global(self, il_code, symbol_table):
+        """Make code for this node when it is used at global scope.
+
+        By default, this function just calls make_code. However, because
+        global declarations behave differently than local declarations,
+        declaration nodes have override the implementation of make_code_global.
+        """
+        return self.make_code(il_code, symbol_table)
+
 
 class ExpressionNode(Node):
     """General class for representing an expression node in the AST.
@@ -147,7 +156,7 @@ class RootNode(Node):
         """Make code for the root."""
         for node in self.nodes:
             try:
-                node.make_code(il_code, symbol_table)
+                node.make_code_global(il_code, symbol_table)
             except CompilerError as e:
                 error_collector.add(e)
 
@@ -277,7 +286,7 @@ class NumberNode(ExpressionNode):
             raise CompilerError(descrip, self.number.file_name,
                                 self.number.line_num)
 
-        il_code.add_literal(il_value, v)
+        il_code.register_literal_var(il_value, v)
 
         # Literal integer 0 is a null pointer constant
         if v == 0:
@@ -604,7 +613,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         # Size of pointed-to object as a literal IL value
         size = ILValue(ctypes.unsig_longint)
-        il_code.add_literal(size, str(pointer_op.ctype.arg.size))
+        il_code.register_literal_var(size, str(pointer_op.ctype.arg.size))
 
         il_code.add(il_commands.Mult(shift, l_arith_op, size))
         il_code.add(il_commands.Add(out, pointer_op, shift))
@@ -799,7 +808,7 @@ class ArraySubscriptNode(ExpressionNode):
 
         # Size of pointed-to object as a literal IL value
         size = ILValue(ctypes.unsig_longint)
-        il_code.add_literal(size, str(point.ctype.arg.size))
+        il_code.register_literal_var(size, str(point.ctype.arg.size))
 
         il_code.add(il_commands.Mult(shift, l_arith, size))
         il_code.add(il_commands.Add(out, point, shift))
@@ -843,8 +852,8 @@ class FunctionCallNode(ExpressionNode):
                 # If function not found, generate a default one and mark as
                 # extern.
                 il_func = ILValue(FunctionCType(None, ctypes.integer))
-                il_code.add_variable(il_func, self.func.identifier.content)
-                il_code.add_extern(self.func.identifier.content)
+                il_code.register_extern_var(
+                    il_func, self.func.identifier.content)
 
                 # Log a warning
                 descrip = "implicit declaration of function '{}'"
@@ -899,16 +908,22 @@ class DeclarationNode(Node):
         self.decls = decls
         self.inits = inits
 
-    def make_code(self, il_code, symbol_table):
+    # Storage class specifiers for declarations
+    AUTO = 0
+    STATIC = 1
+    EXTERN = 2
+
+    def _make_code(self, il_code, symbol_table, global_level):
         """Make code for this declaration.
 
-        This function does not generate any IL code; it just adds the declared
-        variable(s) to the symbol table.
-
+        global_level (Bool) - Whether this is a global declaration or local
+        declaration. If this is a global declaration, expects
+        initialization to be a compile-time constant. Also, adds the global
+        variable to the ILCode object.
         """
         for decl, init in zip(self.decls, self.inits):
             try:
-                ctype, identifier = self.make_ctype(decl)
+                ctype, identifier, storage = self.make_ctype(decl)
                 if not identifier:
                     descrip = "missing identifier name in declaration"
                     raise CompilerError(descrip, decl.specs[0].file_name,
@@ -919,10 +934,26 @@ class DeclarationNode(Node):
                     raise CompilerError(descrip, identifier.file_name,
                                         identifier.line_num)
 
-                var = symbol_table.add(identifier, ctype, il_code)
+                var = symbol_table.add(identifier, ctype)
+
+                if storage == self.AUTO:
+                    il_code.register_local_var(var)
+                elif storage == self.EXTERN:
+                    il_code.register_extern_var(var, identifier.content)
+                elif storage == self.STATIC:
+                    raise NotImplementedError("static variables unsupported")
 
                 # Initialize variable if needed
                 if init:
+                    if global_level:
+                        raise NotImplementedError(
+                            "global variable initialization unsupported")
+
+                    if storage == self.EXTERN:
+                        descrip = "extern variable has initializer"
+                        raise CompilerError(descrip, identifier.file_name,
+                                            identifier.line_num)
+
                     init_val = init.make_code(il_code, symbol_table)
                     lval = LValue(LValue.DIRECT, var)
                     if lval.modable():
@@ -936,27 +967,57 @@ class DeclarationNode(Node):
                 error_collector.add(e)
                 continue
 
-    def make_ctype(self, decl, prev_ctype=None):
+    def make_code(self, il_code, symbol_table):
+        """Make code for this declaration.
+
+        This function does not generate any IL code; it just adds the declared
+        variable(s) to the symbol table.
+
+        """
+        return self._make_code(il_code, symbol_table, False)
+
+    def make_code_global(self, il_code, symbol_table):
+        """Make code for this declaration if it is global.
+
+        This function adds the declared variable(s) to the symbol table and
+        registers them with the ILCode object.
+        """
+        return self._make_code(il_code, symbol_table, True)
+
+    def make_ctype(self, decl, prev_ctype=None, storage=0):
         """Generate a ctype from the given declaration.
 
-        Return a `ctype, identifier token` pair.
+        Return a `ctype, identifier token, storage class` triple.
+
+        decl - Node of decl_tree to parse. See decl_tree.py for explanation
+        about decl_trees.
+        prev_ctype - The ctype formed from all parts of the tree above the
+        current one.
+        storage - The storage class of this declaration.
         """
         if isinstance(decl, decl_tree.Root):
-            ctype = self.make_specs_ctype(decl.specs)
-            return self.make_ctype(decl.child, ctype)
+            ctype, storage = self.make_specs_ctype(decl.specs)
+            return self.make_ctype(decl.child, ctype, storage)
         elif isinstance(decl, decl_tree.Pointer):
-            return self.make_ctype(decl.child, PointerCType(prev_ctype))
+            return self.make_ctype(decl.child, PointerCType(prev_ctype),
+                                   storage)
         elif isinstance(decl, decl_tree.Array):
-            return self.make_ctype(decl.child, ArrayCType(prev_ctype, decl.n))
+            return self.make_ctype(decl.child, ArrayCType(prev_ctype, decl.n),
+                                   storage)
         elif isinstance(decl, decl_tree.Function):
             args = [self.make_ctype(decl) for decl in decl.args]
-            return self.make_ctype(decl.child, FunctionCType(args, prev_ctype))
+            return self.make_ctype(decl.child,
+                                   FunctionCType(args, prev_ctype),
+                                   storage)
         elif isinstance(decl, decl_tree.Identifier):
-            return prev_ctype, decl.identifier
+            return prev_ctype, decl.identifier, storage
 
     def make_specs_ctype(self, specs):
-        """Make a ctype out of the provided list of declaration specifiers."""
+        """Make a ctype out of the provided list of declaration specifiers.
 
+        Return a `ctype, storage class` pair, where storage class is one of
+        the above values.
+        """
         spec_kinds = [spec.kind for spec in specs]
         base_type_list = list(set(ctypes.simple_types.keys()) &
                               set(spec_kinds))
@@ -977,4 +1038,23 @@ class DeclarationNode(Node):
             descrip = "both signed and unsigned in declaration specifiers"
             raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
 
-        return base_type
+        # Create set of storage class specifiers that are present
+        storage_class_set = {token_kinds.auto_kw,
+                             token_kinds.static_kw,
+                             token_kinds.extern_kw}
+        storage_class_single = storage_class_set & set(spec_kinds)
+
+        if len(storage_class_single) == 0:
+            storage = self.AUTO
+        elif len(storage_class_single) == 1:
+            if token_kinds.static_kw in storage_class_single:
+                storage = self.STATIC
+            elif token_kinds.extern_kw in storage_class_single:
+                storage = self.EXTERN
+            else:  # must be `auto` kw
+                storage = self.AUTO
+        else:
+            descrip = "two or more storage classes in declaration specifiers"
+            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+
+        return base_type, storage
