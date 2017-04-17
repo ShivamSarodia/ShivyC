@@ -939,24 +939,38 @@ class DeclarationNode(Node):
 
                 var = symbol_table.add(identifier, ctype)
 
-                if storage == self.AUTO:
-                    il_code.register_local_var(var)
-                elif storage == self.EXTERN:
+                # Variables declared to be EXTERN
+                if storage == self.EXTERN:
                     il_code.register_extern_var(var, identifier.content)
+
+                    # Extern variable should not have initializer
+                    if init:
+                        descrip = "extern variable has initializer"
+                        raise CompilerError(
+                            descrip, identifier.file_name, identifier.line_num)
+
+                # Variables declared to be static
                 elif storage == self.STATIC:
+                    # These should be in .data section, but not global
                     raise NotImplementedError("static variables unsupported")
+
+                # Global variables
+                elif global_level:
+                    # Global functions are extern by default
+                    if ctype.type_type == CType.FUNCTION:
+                        il_code.register_extern_var(var, identifier.content)
+                    else:
+                        # These should be common if uninitialized, or data if
+                        # initialized
+                        raise NotImplementedError(
+                            "non-extern global variables unsupported")
+
+                # Local variables
+                else:
+                    il_code.register_local_var(var)
 
                 # Initialize variable if needed
                 if init:
-                    if global_level:
-                        raise NotImplementedError(
-                            "global variable initialization unsupported")
-
-                    if storage == self.EXTERN:
-                        descrip = "extern variable has initializer"
-                        raise CompilerError(descrip, identifier.file_name,
-                                            identifier.line_num)
-
                     init_val = init.make_code(il_code, symbol_table)
                     lval = LValue(LValue.DIRECT, var)
                     if lval.modable():

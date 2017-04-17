@@ -1,6 +1,9 @@
 extern void* stdout;
 extern int does_not_exist;
 
+int func(void);
+extern int func2(void);
+
 int main() {
   auto char* p;
   p = stdout;
