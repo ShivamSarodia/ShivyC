@@ -30,5 +30,10 @@ int main() {
   if(&b == v) return 13;
   if(v != &a) return 14;
 
+  // Test imm64 operands
+  long e = 17179869184;
+  if(e != 17179869184) return 15;
+  if(17179869184 != e) return 16;
+
   return 0;
 }

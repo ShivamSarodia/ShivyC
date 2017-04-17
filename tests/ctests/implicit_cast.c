@@ -89,6 +89,15 @@ int main() {
   i3 = 4;
   if(i3 * l2 / i3 != 2147483644) return 18;
 
+  // Test signed/unsigned conversion when signed is bigger
+  long l3 = 100; unsigned int i4 = 100;
+  if(l3 != i4) {
+    return 20;
+  }
+  if(i4 != l3) {
+    return 21;
+  }
+
   b = 0;
   if(b) return 19;
 

@@ -443,24 +443,6 @@ class Parser:
 
         return params, index
 
-    def _expect_type_name(self, index):
-        """Expect a type name at self.tokens[index].
-
-        If one is found, return index+1. Otherwise, raise an appropriate
-        ParserError.
-
-        """
-        err = "expected type name"
-
-        type_tokens = list(self.type_tokens.keys())
-        for tok in type_tokens[:-1]:
-            try:
-                return self._match_token(index, tok, err, ParserError.GOT)
-            except ParserError as e:
-                self._log_error(e)
-
-        return self._match_token(index, type_tokens[-1], err, ParserError.GOT)
-
     def _expect_semicolon(self, index):
         """Expect a semicolon at self.tokens[index].
 
@@ -574,7 +556,7 @@ class ExpressionParser:
                 # None of the known patterns match!
 
                 # Printing stack here is helpful for debugging.
-                # print(stack)
+                # print(self.s)
 
                 # If we're at the end of the token list, or we've reached a
                 # token that can never appear in an expression, stop reading.
@@ -696,27 +678,23 @@ class ExpressionParser:
             args = [arg.item for arg in args[::-1]]
         else:
             while True:
-                try:
-                    # Next element must be an expression.
-                    if self.match_node(i):
-                        args.append(self.s[i])
-                    else:
-                        return False
+                # Next element must be an expression.
+                if self.match_node(i):
+                    args.append(self.s[i])
+                else:
+                    return False
 
+                i -= 1
+
+                # Next elements can be either a comma or ['EXPR', '(']
+                if self.match_kind(i, token_kinds.comma):
                     i -= 1
-
-                    # Next elements can be either a comma or ['EXPR', '(']
-                    if self.match_kind(i, token_kinds.comma):
-                        i -= 1
-                    elif (self.match_kind(i, token_kinds.open_paren) and
-                          self.match_node(i - 1)):
-                        func = self.s[i - 1].item
-                        args = [arg.item for arg in args[::-1]]
-                        break
-                    else:
-                        return False
-
-                except IndexError:
+                elif (self.match_kind(i, token_kinds.open_paren) and
+                      self.match_node(i - 1)):
+                    func = self.s[i - 1].item
+                    args = [arg.item for arg in args[::-1]]
+                    break
+                else:
                     return False
 
         node = tree.FunctionCallNode(func, args)

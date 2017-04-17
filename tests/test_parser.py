@@ -308,6 +308,19 @@ class GeneralTests(ParserTestUtil):
 
         self.assertParserError(tokens, "expected ')' after 'a'")
 
+    def test_end_binop(self):  # noqa: D400, D403
+        """int main() { a + b"""
+        tokens = [
+            Token(token_kinds.int_kw), Token(token_kinds.main),
+            Token(token_kinds.open_paren), Token(token_kinds.close_paren),
+            Token(token_kinds.open_brack),
+            Token(token_kinds.identifier, "a"),
+            Token(token_kinds.plus),
+            Token(token_kinds.identifier, "b")]
+
+        Parser(tokens).parse()
+        self.assertIssues(["expected semicolon after 'b'"])
+
 
 class ExpressionTests(ParserTestUtil):
     """Tests expression parsing."""
@@ -847,6 +860,22 @@ class DeclarationTests(ParserTestUtil):
             )
         ])
 
+    def test_function_declaration_no_args(self):  # noqa: D400, D403
+        """int var();"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.close_paren),
+                  Token(token_kinds.semicolon)]
+
+        var = Token(token_kinds.identifier, "var")
+        self.assertParsesTo(tokens, [
+            tree.DeclarationNode(
+                [Root([Token(token_kinds.int_kw)],
+                      Function([], Identifier(var)))],
+                [None]
+            )
+        ])
 
     def test_static_int_declaration(self):  # noqa: D400, D403
         """static int var;"""
@@ -862,6 +891,27 @@ class DeclarationTests(ParserTestUtil):
                 [None]
             )
         ])
+
+    def test_mismatched_parens(self):  # noqa: D400, D403
+        """int (var;"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.open_paren),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParserError(
+            tokens, "mismatched parentheses in declaration at '('")
+
+    def test_missing_array_size(self):  # noqa: D400, D403
+        """int var[];"""
+        tokens = [Token(token_kinds.int_kw),
+                  Token(token_kinds.identifier, "var"),
+                  Token(token_kinds.open_sq_brack),
+                  Token(token_kinds.close_sq_brack),
+                  Token(token_kinds.semicolon)]
+
+        self.assertParserError(
+            tokens, "faulty declaration syntax at 'var'")
 
     def test_no_declaration(self):  # noqa: D400, D403
         """int;"""

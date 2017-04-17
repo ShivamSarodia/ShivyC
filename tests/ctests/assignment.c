@@ -1,5 +1,5 @@
 int main() {
-  int a; int b; int c; int d; int e; int f; int g; int h;
+  signed a; int b; int c; int d; int e; int f; int g; int h;
   a = b = 10;
   c = a;
   d = b;

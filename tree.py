@@ -11,7 +11,7 @@ import decl_tree
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import CType, ILValue, ILCode, LValue, check_cast, set_type
+from il_gen import CType, ILValue, LValue, check_cast, set_type
 from il_gen import ArrayCType, PointerCType, FunctionCType
 from tokens import Token
 
@@ -113,13 +113,16 @@ class ExpressionNode(Node):
         else:
             return self.make_code_raw(il_code, symbol_table)
 
-    def expr_ctype(self, symbol_table):
-        """Return the undecayed CType of this expression.
-
-        This function produces errors and warnings just as make_code does.
-        """
-        dummy = ILCode()
-        return self.make_code_raw(dummy, symbol_table).ctype
+    # This function is not yet necessary. But it will be used for sizeof
+    # implementation.
+    #
+    # def expr_ctype(self, symbol_table):
+    #     """Return the undecayed CType of this expression.
+    #
+    #     This function produces errors and warnings just as make_code does.
+    #     """
+    #     dummy = ILCode()
+    #     return self.make_code_raw(dummy, symbol_table).ctype
 
     def lvalue(self, il_code, symbol_table):
         """Return an LValue object corresponding to this, or None."""

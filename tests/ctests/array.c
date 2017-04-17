@@ -39,7 +39,7 @@ int main() {
   // Test array subscripting
   array[1] = 35;
   array[3] = 10;
-  array[4] = array[1] + array[3];
+  4[array] = 1[array] + array[3];
 
   int sum = 0, i = 0;
   while(i != 5) {
