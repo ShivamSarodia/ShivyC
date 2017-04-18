@@ -26,6 +26,14 @@ class CType:
         self.size = size
         self.type_type = type_type
 
+    def compatible(self, other):
+        """Check whether given `other` C type is compatible with self."""
+        raise NotImplementedError
+
+    def is_object_type(self):
+        """Check whether this is an object type."""
+        raise NotImplementedError
+
 
 class VoidCType(CType):
     """Represents a void C type.
@@ -41,6 +49,10 @@ class VoidCType(CType):
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
         return other == self
+
+    def is_object_type(self):
+        """Check if this is an object type."""
+        return False
 
 
 class IntegerCType(CType):
@@ -66,6 +78,10 @@ class IntegerCType(CType):
         """Return True iff other is a compatible type to self."""
         return other == self
 
+    def is_object_type(self):
+        """Check if this is an object type."""
+        return True
+
 
 class FunctionCType(CType):
     """Represents a function C type.
@@ -87,7 +103,25 @@ class FunctionCType(CType):
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        raise NotImplementedError
+
+        # TODO: This is not implemented correctly. Function pointer
+        # compatibility rules are confusing.
+
+        if other.type_type != CType.FUNCTION:
+            return False
+        elif len(self.args) != len(other.args):
+            return False
+        elif any(not a1.compatible(a2) for a1, a2 in
+                 zip(self.args, other.args)):
+            return False
+        elif not self.ret.compatible(other.ret):
+            return False
+
+        return True
+
+    def is_object_type(self):
+        """Check if this is an object type."""
+        return False
 
 
 class PointerCType(CType):
@@ -116,6 +150,10 @@ class PointerCType(CType):
         """Return True iff other is a compatible type to self."""
         return (other.type_type == CType.POINTER and
                 self.arg.compatible(other.arg))
+
+    def is_object_type(self):
+        """Check if this is an object type."""
+        return True
 
 
 class ArrayCType(CType):
@@ -148,6 +186,10 @@ class ArrayCType(CType):
         return (other.type_type == CType.ARRAY and
                 self.el.compatible(other.el) and
                 self.n == other.n)
+
+    def is_object_type(self):
+        """Check if this is an object type."""
+        return True
 
 
 class ILCode:
@@ -445,10 +487,13 @@ def check_cast(il_value, ctype, token):
         if ctype.compatible(il_value.ctype):
             return
 
-        # Cast between void pointer and pointer okay
-        elif ctypes.void in {ctype.arg, il_value.ctype.arg}:
+        # Cast between void pointer and pointer to object type okay
+        elif ctype.arg == ctypes.void and il_value.ctype.arg.is_object_type():
+            return
+        elif ctype.arg.is_object_type() and il_value.ctype.arg == ctypes.void:
             return
 
+        # Warn on any other kind of pointer cast
         else:
             descrip = "assignment from incompatible pointer type"
             error_collector.add(

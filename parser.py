@@ -676,6 +676,7 @@ class ExpressionParser:
              self.match_node(i - 1)):
             func = self.s[i - 1].item
             args = [arg.item for arg in args[::-1]]
+            tok = self.s[i].item
         else:
             while True:
                 # Next element must be an expression.
@@ -693,11 +694,12 @@ class ExpressionParser:
                       self.match_node(i - 1)):
                     func = self.s[i - 1].item
                     args = [arg.item for arg in args[::-1]]
+                    tok = self.s[i].item
                     break
                 else:
                     return False
 
-        node = tree.FunctionCallNode(func, args)
+        node = tree.FunctionCallNode(func, args, tok)
         self.reduce(node, -i + 1)
         return True
 

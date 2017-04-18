@@ -890,49 +890,78 @@ class SetAt(ILCommand):
 class Call(ILCommand):
     """Call a given function.
 
-    func - Name of the function to call as a function IL value
+    func - Pointer to function
     args - Arguments of the function, in left-to-right order. Must match the
     parameter types the function expects.
-    ret - IL value to save the return value. Must match the function return
-    value.
-
+    ret - If function has non-void return type, IL value to save the return
+    value. Its type must match the function return value.
     """
+
+    arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX, spots.R8, spots.R9]
 
     def __init__(self, func, args, ret): # noqa D102
         self.func = func
         self.args = args
         self.ret = ret
+        self.void_return = (self.func.ctype.arg.ret.type_type == CType.VOID)
+
+        if len(self.args) > len(self.arg_regs):
+            raise NotImplementedError("too many arguments")
 
     def inputs(self): # noqa D102
         return [self.func] + self.args
 
     def outputs(self): # noqa D102
-        return [self.ret]
+        return [] if self.void_return else [self.ret]
+
+    def clobber(self): # noqa D102
+        # All caller-saved registers are clobbered by function call
+        return [spots.RAX, spots.RCX, spots.RDX, spots.RSI, spots.RDI,
+                spots.R8, spots.R9, spots.R10, spots.R11]
+
+    def abs_spot_pref(self): # noqa D102
+        prefs = {} if self.void_return else {self.ret: [spots.RAX]}
+        for arg, reg in zip(self.args, self.arg_regs):
+            prefs[arg] = [reg]
+
+        return prefs
+
+    def abs_spot_conf(self): # noqa D102
+        # We don't want the function pointer to be in the same register as
+        # an argument will be placed into.
+        return {self.func: self.arg_regs[0:len(self.args)]}
+
+    def indir_write(self): # noqa D102
+        return self.args
+
+    def indir_read(self): # noqa D102
+        return self.args
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        # Registers ordered from first to last for arguments.
-        regs = [spots.RDI, spots.RSI, spots.RDX]
+        size = self.func.ctype.arg.ret.size
 
-        # Reverse the registers to go from last to first, so we can pop() out
-        # registers.
-        regs.reverse()
-        for arg in self.args:
-            if arg.ctype.type_type != CType.ARITH:
-                raise NotImplementedError("only integer arguments supported")
-            elif not regs:
-                raise NotImplementedError("too many arguments")
+        # Check if function pointer spot will be clobbered by moving the
+        # arguments into the correct registers.
+        if spotmap[self.func] in self.arg_regs[0:len(self.args)]:
+            # Get a register which isn't one of the unallowed registers.
+            r = get_reg([], self.arg_regs[0:len(self.args)])
+            asm_code.add_command("mov", r.asm_str(size),
+                                 spotmap[self.func].asm_str(size))
 
-            reg = regs.pop()
+        for arg, reg in zip(self.args, self.arg_regs):
+            if spotmap[arg] == reg:
+                continue
+
             asm_code.add_command("mov", reg.asm_str(arg.ctype.size),
                                  spotmap[arg].asm_str(arg.ctype.size))
 
-        # TODO: Fix this hack! Once pointers are implemented there will
-        # hopefully be a better way to call functions.
-        asm_code.add_command("call", spotmap[self.func].detail[0])
+        asm_code.add_command(
+            "call", spotmap[self.func].asm_str(self.func.ctype.size))
 
-        ret_asm = spotmap[self.ret].asm_str(self.func.ctype.ret.size)
-        rax_asm = spots.RAX.asm_str(self.func.ctype.ret.size)
-        asm_code.add_command("mov", ret_asm, rax_asm)
+        if spotmap[self.ret] != spots.RAX and not self.void_return:
+            ret_asm = spotmap[self.ret].asm_str(size)
+            rax_asm = spots.RAX.asm_str(size)
+            asm_code.add_command("mov", ret_asm, rax_asm)
 
     def __str__(self):  # pragma: no cover
         return self.to_str("CALL", self.args, self.ret)

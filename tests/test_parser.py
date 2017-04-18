@@ -486,7 +486,7 @@ class ExpressionTests(ParserTestUtil):
                 Token(token_kinds.plus),
                 tree.FunctionCallNode(
                     tree.IdentifierNode(Token(token_kinds.identifier, "f")),
-                    [])
+                    [], Token(token_kinds.open_paren))
             ),
             Token(token_kinds.plus),
             tree.IdentifierNode(Token(token_kinds.identifier, "b")))
@@ -510,7 +510,8 @@ class ExpressionTests(ParserTestUtil):
                 Token(token_kinds.plus),
                 tree.FunctionCallNode(
                     tree.IdentifierNode(Token(token_kinds.identifier, "f")),
-                    [tree.IdentifierNode(Token(token_kinds.identifier, "c"))])
+                    [tree.IdentifierNode(Token(token_kinds.identifier, "c"))],
+                    Token(token_kinds.open_paren))
             ),
             Token(token_kinds.plus),
             tree.IdentifierNode(Token(token_kinds.identifier, "b")))
@@ -537,7 +538,8 @@ class ExpressionTests(ParserTestUtil):
                 tree.FunctionCallNode(
                     tree.IdentifierNode(Token(token_kinds.identifier, "f")),
                     [tree.IdentifierNode(Token(token_kinds.identifier, "c")),
-                     tree.IdentifierNode(Token(token_kinds.identifier, "d"))])
+                     tree.IdentifierNode(Token(token_kinds.identifier, "d"))],
+                    Token(token_kinds.open_paren))
             ),
             Token(token_kinds.plus),
             tree.IdentifierNode(Token(token_kinds.identifier, "b")))
@@ -570,7 +572,8 @@ class ExpressionTests(ParserTestUtil):
                     [tree.IdentifierNode(Token(token_kinds.identifier, "c")),
                      tree.IdentifierNode(Token(token_kinds.identifier, "d")),
                      tree.IdentifierNode(Token(token_kinds.identifier, "e")),
-                     tree.IdentifierNode(Token(token_kinds.identifier, "g"))])
+                     tree.IdentifierNode(Token(token_kinds.identifier, "g"))],
+                    Token(token_kinds.open_paren))
             ),
             Token(token_kinds.plus),
             tree.IdentifierNode(Token(token_kinds.identifier, "b")))

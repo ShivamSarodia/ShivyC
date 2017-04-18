@@ -18,21 +18,14 @@ Current target: fully compile Count.c from my CS 223 pset
 IMMEDIATE TIMELINE
 ------------------
 
-1) Global declarations
-   - Including global function declarations
-   - Allow extern declarations
 
-2) Properly implement function call
 
 --------------------------------------------------------------------------------
 
 MAIN PROJECTS
 -------------
 
-1  - Implement functions
-1     - Implement function call
-1       - Proper pointer decaying and register allocation hints
-0     - Implement function definition
+
 
 --------------------------------------------------------------------------------
 
@@ -41,9 +34,19 @@ FEATURES
 
 0  - Better declaration initializer parsing
 
+0  - Implement global variables more fully
+0    - static globals, static locals, etc
+
+0  - Better errors/warnings
+0    - Better CompilerError interface
+0    - Include more specific error locations
+
+1  - Include small standard library headers
+
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
        `signed char` as distinct from `char`, etc.
+0    - Implement proper ranking of integers as distinct from just size
 
 1  - Implement more control statements
 0     - for-loops

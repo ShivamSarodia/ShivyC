@@ -699,10 +699,19 @@ class ASMGen:
     def _generate_asm(self, live_vars, spotmap):
         """Generate assembly code."""
 
+        # This is kinda hacky...
+        max_offset = 0
+        for spot in spotmap.values():
+            if spot.spot_type == Spot.MEM and spot.detail[0] == "rbp":
+                max_offset = max(max_offset, -spot.detail[1])
+
+        if max_offset % 16 != 0:
+            max_offset += 16 - max_offset % 16
+
         # Back up rbp and move rsp
         self.asm_code.add_command("push", "rbp")
         self.asm_code.add_command("mov", "rbp", "rsp")
-        self.asm_code.add_command("sub", "rsp", str(0))
+        self.asm_code.add_command("sub", "rsp", str(max_offset))
 
         # Generate code for each command
         for i, command in enumerate(self.il_code):

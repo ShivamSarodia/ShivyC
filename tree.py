@@ -110,6 +110,8 @@ class ExpressionNode(Node):
         if lvalue and lvalue.ctype().type_type == CType.ARRAY:
             addr = lvalue.addr(il_code)
             return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
+        elif lvalue and lvalue.ctype().type_type == CType.FUNCTION:
+            return lvalue.addr(il_code)
         else:
             return self.make_code_raw(il_code, symbol_table)
 
@@ -644,8 +646,10 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg == ctypes.void:
+            check_cast(right, left.ctype, self.operator)
             right = set_type(right, left.ctype, il_code)
         elif right.ctype.arg == ctypes.void:
+            check_cast(left, right.ctype, self.operator)
             left = set_type(left, right.ctype, il_code)
 
         # If both types are still incompatible, warn!
@@ -825,17 +829,14 @@ class FunctionCallNode(ExpressionNode):
 
     For example:     f(3, 4, 5)     (&f)()
 
-    Currently does not support function pointers.
-
-    func (expression) - Expression node describing the function to call. Often
-    just an identifier.
-
+    func (expression) - Pointer to the function to call
     args (List(expression)) - List of expression nodes of each argument to the
     function, from left to right order.
+    tok (Token) - Open parenthesis of the function call, for error reporting.
 
     """
 
-    def __init__(self, func, args):
+    def __init__(self, func, args, tok):
         """Initialize node."""
         super().__init__()
 
@@ -845,53 +846,44 @@ class FunctionCallNode(ExpressionNode):
 
         self.func = func
         self.args = args
+        self.tok = tok
 
     def make_code_raw(self, il_code, symbol_table):
         """Make code for this function call."""
-        if isinstance(self.func, IdentifierNode):
-            try:
-                il_func = self.func.make_code(il_code, symbol_table)
-            except CompilerError:
-                # If function not found, generate a default one and mark as
-                # extern.
-                il_func = ILValue(FunctionCType(None, ctypes.integer))
-                il_code.register_extern_var(
-                    il_func, self.func.identifier.content)
 
-                # Log a warning
-                descrip = "implicit declaration of function '{}'"
-                error_collector.add(
-                    CompilerError(descrip.format(self.func.identifier.content),
-                                  self.func.identifier.file_name,
-                                  self.func.identifier.line_num,
-                                  warning=True))
+        func = self.func.make_code(il_code, symbol_table)
 
-            if il_func.ctype.type_type != CType.FUNCTION:
-                descrip = "called object is not a function '{}'"
-                raise CompilerError(
-                    descrip.format(self.func.identifier.content),
-                    self.func.identifier.file_name,
-                    self.func.identifier.line_num)
-
-            # If the function has a specified argument list, verify it matches
-            # with given arguments and cast if necessary.
-            if il_func.ctype.args:
-                raise NotImplementedError("functions with arguments")
-            else:
-                # Function has unspecified argument list, so cast everything to
-                # integer.
-                def c(arg):
-                    a = arg.make_code(il_code, symbol_table)
-                    check_cast(a, ctypes.integer, None)
-                    return set_type(a, ctypes.integer, il_code)
-                cast_args = list(map(c, self.args))
-
-            output = ILValue(il_func.ctype.ret)
-            il_code.add(il_commands.Call(il_func, cast_args, output))
-
-            return output
+        if (func.ctype.type_type != CType.POINTER or
+             func.ctype.arg.type_type != CType.FUNCTION):
+            descrip = "called object is not a function pointer"
+            raise CompilerError(descrip, self.tok.file_name, self.tok.line_num)
         else:
-            raise NotImplementedError("fancy function call")
+            func_ctype = func.ctype.arg
+
+        if not func_ctype.args:
+            raise NotImplementedError("no prototype called")
+        else:
+            # if only parameter is of type void, expect no arguments
+            if (len(func_ctype.args) == 1 and
+                 func_ctype.args[0].type_type == CType.VOID):
+                arg_types = []
+            else:
+                arg_types = func_ctype.args
+
+            if len(arg_types) != len(self.args):
+                descrip = "incorrect number of arguments for function call"
+                raise CompilerError(descrip, self.tok.file_name,
+                                    self.tok.line_num)
+
+            final_args = []
+            for arg_given, arg_type in zip(self.args, arg_types):
+                arg = arg_given.make_code(il_code, symbol_table)
+                check_cast(arg, arg_type, self.tok)
+                final_args.append(set_type(arg, arg_type, il_code))
+
+            ret = ILValue(func_ctype.ret)
+            il_code.add(il_commands.Call(func, final_args, ret))
+            return ret
 
 
 class DeclarationNode(Node):
@@ -1022,7 +1014,7 @@ class DeclarationNode(Node):
             return self.make_ctype(decl.child, ArrayCType(prev_ctype, decl.n),
                                    storage)
         elif isinstance(decl, decl_tree.Function):
-            args = [self.make_ctype(decl) for decl in decl.args]
+            args = [self.make_ctype(decl)[0] for decl in decl.args]
             return self.make_ctype(decl.child,
                                    FunctionCType(args, prev_ctype),
                                    storage)
