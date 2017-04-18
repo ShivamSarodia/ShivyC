@@ -163,7 +163,7 @@ class Lexer:
                 return
 
             descrip = "unrecognized token at '{}'"
-            error_collector.add(CompilerError(descrip.format(chunk)))
+            raise CompilerError(descrip.format(chunk))
 
     # These match_* functions can safely assume the input token_repr is
     # non-empty.

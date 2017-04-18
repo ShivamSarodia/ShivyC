@@ -2,7 +2,7 @@
 
 
 import token_kinds
-from errors import error_collector
+from errors import error_collector, CompilerError
 from lexer import Lexer
 from tokens import Token
 from tests.test_utils import TestUtils
@@ -73,8 +73,10 @@ class LexerTests(TestUtils):
 
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""
-        Lexer().tokenize_line("1identifier")
-        self.assertIssues(["unrecognized token at '1identifier'"])
+        with self.assertRaises(
+                CompilerError, msg="unrecognized token at '1identifier'"):
+
+                Lexer().tokenize_line("1identifier")
 
     def test_basic_program_one_line(self):
         """Test tokenizing an entire basic program that is one line."""
