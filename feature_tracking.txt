@@ -9,9 +9,10 @@ Main projects - The large-scale changes planned for forseeable future.
 Features - Various smaller-scale changes that need to be implemented
 
 Current target: fully compile Count.c from my CS 223 pset
+Next target: compile the integer/string cs50.c functions
 
-1 - Explicitly required to reach target
-0 - Not explicitly required for target
+1 - Explicitly required to reach current target
+0 - Not explicitly required for current target
 
 --------------------------------------------------------------------------------
 
