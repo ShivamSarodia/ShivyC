@@ -57,5 +57,17 @@ int main() {
   int (*f2)(int) = isalpha;
   if(f2(5)) return 12;
 
+  // Test function pointer casting
+
+  // Issue: 63: warning: assignment from incompatible pointer type
+  int* p1 = isalpha;
+  // Issue: 65: warning: assignment from incompatible pointer type
+  int (*f3)(int, int) = isalpha;
+  // Issue: 67: warning: assignment from incompatible pointer type
+  int (*f4)(int*) = isalpha;
+  // Issue: 69: warning: assignment from incompatible pointer type
+  int* (*f5)(int) = isalpha;
+
+
   return 0;
 }

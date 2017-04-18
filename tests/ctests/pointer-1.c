@@ -19,6 +19,10 @@ int main() {
   // Assignment of non-void to void
   void* v = &a;
 
+  // Assignment of non-void double pointer to void
+  int *q = &a;
+  v = &q;
+
   // Assignment of void to non-void
   int* e = v;
 
@@ -26,7 +30,7 @@ int main() {
   v = 0;
   e = 0;
 
-  // Issue: 31: warning: assignment from incompatible pointer type
+  // Issue: 35: warning: assignment from incompatible pointer type
   int *f; unsigned int *g;
   f = g;
 
