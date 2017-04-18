@@ -29,7 +29,7 @@ class ErrorCollector:
     def show(self):  # pragma: no cover
         """Display all warnings and errors."""
         for issue in self.issues:
-            print(issue)
+            print(issue.term_str())
 
     def clear(self):
         """Clear all warnings and errors. Intended only for testing use."""
@@ -69,15 +69,27 @@ class CompilerError(Exception):
         The returned expression is user friendly and pretty-printable.
 
         """
+        return self.term_str(False)
+
+    def term_str(self, color=True):
+        """Convert this error into string form.
+
+        If color parameter is true, then output terminal color codes.
+        """
+        error_color = "\x1B[31m" if color else ""
+        warn_color = "\x1B[33m" if color else ""
+        reset_color = "\x1B[0m" if color else ""
+        bold_color = "\033[1m" if color else ""
+
         issue_type = "warning" if self.warning else "error"
+        color_code = warn_color if self.warning else error_color
         if self.file_name and self.line_num:
-            return "{}:{}: {}: {}".format(self.file_name, self.line_num,
-                                          issue_type, self.descrip)
-        elif self.file_name:
-            return "{}: {}: {}".format(self.file_name, issue_type,
-                                       self.descrip)
+            return "{}{}:{}: {}{}:{} {}".format(
+                bold_color, self.file_name, self.line_num, color_code,
+                issue_type, reset_color, self.descrip)
         else:
-            return "shivyc: {}: {}".format(issue_type, self.descrip)
+            return "{}shivyc: {}{}:{} {}".format(
+                bold_color, color_code, issue_type, reset_color, self.descrip)
 
 
 class ParserError(CompilerError):
@@ -140,5 +152,3 @@ class ParserError(CompilerError):
             super().__init__(
                 "{} after '{}'".format(message, tokens[index - 1]),
                 tokens[index - 1].file_name, tokens[index - 1].line_num)
-        else:
-            raise ValueError("Unknown error message type")
