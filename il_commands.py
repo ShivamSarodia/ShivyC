@@ -958,7 +958,7 @@ class Call(ILCommand):
         asm_code.add_command(
             "call", spotmap[self.func].asm_str(self.func.ctype.size))
 
-        if spotmap[self.ret] != spots.RAX and not self.void_return:
+        if not self.void_return and spotmap[self.ret] != spots.RAX:
             ret_asm = spotmap[self.ret].asm_str(size)
             rax_asm = spots.RAX.asm_str(size)
             asm_code.add_command("mov", ret_asm, rax_asm)
