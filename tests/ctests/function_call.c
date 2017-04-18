@@ -29,9 +29,9 @@ int main() {
   str1[4] = str2[4] = 0;
   if(strcmp(str1, str2)) return 4;
 
-  // Issue: 33: warning: assignment from incompatible pointer type
+  // Issue: 33: warning: conversion from incompatible pointer type
   int* p = str1;
-  // Issue: 35: warning: assignment from incompatible pointer type
+  // Issue: 35: warning: conversion from incompatible pointer type
   if(strcmp(p, str2)) return 13;
 
   str2[3] = 102;
@@ -49,9 +49,9 @@ int main() {
   if(out[4] != 0) return 10;
 
   // Fun with function pointers!
-  // Issue: 53: warning: assignment from incompatible pointer type
+  // Issue: 53: warning: conversion from incompatible pointer type
   void* f1 = isalpha;
-  // Issue: 55: warning: assignment from incompatible pointer type
+  // Issue: 55: warning: conversion from incompatible pointer type
   if(f1 != isalpha) return 11;
 
   int (*f2)(int) = isalpha;
@@ -59,13 +59,13 @@ int main() {
 
   // Test function pointer casting
 
-  // Issue: 63: warning: assignment from incompatible pointer type
+  // Issue: 63: warning: conversion from incompatible pointer type
   int* p1 = isalpha;
-  // Issue: 65: warning: assignment from incompatible pointer type
+  // Issue: 65: warning: conversion from incompatible pointer type
   int (*f3)(int, int) = isalpha;
-  // Issue: 67: warning: assignment from incompatible pointer type
+  // Issue: 67: warning: conversion from incompatible pointer type
   int (*f4)(int*) = isalpha;
-  // Issue: 69: warning: assignment from incompatible pointer type
+  // Issue: 69: warning: conversion from incompatible pointer type
   int* (*f5)(int) = isalpha;
 
 

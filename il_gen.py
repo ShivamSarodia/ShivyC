@@ -495,7 +495,7 @@ def check_cast(il_value, ctype, token):
 
         # Warn on any other kind of pointer cast
         else:
-            descrip = "assignment from incompatible pointer type"
+            descrip = "conversion from incompatible pointer type"
             error_collector.add(
                 CompilerError(descrip, token.file_name,
                               token.line_num, True))

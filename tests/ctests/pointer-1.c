@@ -30,7 +30,7 @@ int main() {
   v = 0;
   e = 0;
 
-  // Issue: 35: warning: assignment from incompatible pointer type
+  // Issue: 35: warning: conversion from incompatible pointer type
   int *f; unsigned int *g;
   f = g;
 
