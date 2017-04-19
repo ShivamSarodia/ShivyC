@@ -2,6 +2,7 @@ int isalpha(int);
 int div(int, int);
 
 int strcmp(char*, char*);
+char* strcpy(char*, char*);
 char* strncpy(char*, char*, long);
 
 int main() {
@@ -21,37 +22,27 @@ int main() {
   // register, so this test works.
   if(div(50, 5) != 10) return 3;
 
-  char str1[5], str2[5];
-  str1[0] = str2[0] = 100;
-  str1[1] = str2[1] = 101;
-  str1[2] = str2[2] = 102;
-  str1[3] = str2[3] = 103;
-  str1[4] = str2[4] = 0;
+  char str1[6], str2[6];
+  strcpy(str1, "hello");
+  strcpy(str2, "hello");
   if(strcmp(str1, str2)) return 4;
 
-  // Issue: 33: warning: conversion from incompatible pointer type
+  // Issue: 31: warning: conversion from incompatible pointer type
   int* p = str1;
-  // Issue: 35: warning: conversion from incompatible pointer type
+  // Issue: 33: warning: conversion from incompatible pointer type
   if(strcmp(p, str2)) return 13;
 
   str2[3] = 102;
-  if(strcmp(str1, str2) != 1) return 5;
+  if(strcmp(str1, str2) != 6) return 5;
 
-  str2[0] = 106;
-  str2[1] = 107;
-  str2[2] = 108;
+  strcpy(str2, "hey");
   char* out = strncpy(str1, str2, 3);
-
-  if(out[0] != 106) return 6;
-  if(out[1] != 107) return 7;
-  if(out[2] != 108) return 8;
-  if(out[3] != 103) return 9;
-  if(out[4] != 0) return 10;
+  if(strcmp(str1, "heylo")) return 6;
 
   // Fun with function pointers!
-  // Issue: 53: warning: conversion from incompatible pointer type
+  // Issue: 44: warning: conversion from incompatible pointer type
   void* f1 = isalpha;
-  // Issue: 55: warning: conversion from incompatible pointer type
+  // Issue: 46: warning: conversion from incompatible pointer type
   if(f1 != isalpha) return 11;
 
   int (*f2)(int) = isalpha;
@@ -59,13 +50,13 @@ int main() {
 
   // Test function pointer casting
 
-  // Issue: 63: warning: conversion from incompatible pointer type
+  // Issue: 54: warning: conversion from incompatible pointer type
   int* p1 = isalpha;
-  // Issue: 65: warning: conversion from incompatible pointer type
+  // Issue: 56: warning: conversion from incompatible pointer type
   int (*f3)(int, int) = isalpha;
-  // Issue: 67: warning: conversion from incompatible pointer type
+  // Issue: 58: warning: conversion from incompatible pointer type
   int (*f4)(int*) = isalpha;
-  // Issue: 69: warning: conversion from incompatible pointer type
+  // Issue: 60: warning: conversion from incompatible pointer type
   int* (*f5)(int) = isalpha;
 
 
