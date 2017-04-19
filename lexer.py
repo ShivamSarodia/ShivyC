@@ -63,15 +63,15 @@ class Lexer:
             # ignorant to the file-context of the line passed in.
             try:
                 tokens = self.tokenize_line(line_with_info[0])
+                for token in tokens:
+                    token.file_name = line_with_info[1]
+                    token.line_num = line_with_info[2]
+                    all_tokens.append(token)
             except CompilerError as e:
                 e.file_name = line_with_info[1]
                 e.line_num = line_with_info[2]
                 error_collector.add(e)
 
-            for token in tokens:
-                token.file_name = line_with_info[1]
-                token.line_num = line_with_info[2]
-                all_tokens.append(token)
         return all_tokens
 
     def tokenize_line(self, line):
