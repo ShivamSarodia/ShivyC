@@ -146,12 +146,24 @@ def assemble_and_link(binary_name, asm_name, obj_name):
     obj_name (str) - Name of the obj file to output
 
     """
-    subprocess.check_call(["nasm", "-f", "elf64", "-o", obj_name, asm_name])
-    subprocess.check_call([
-        "ld", "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2",
-        "/usr/lib/x86_64-linux-gnu/crt1.o", "/usr/lib/x86_64-linux-gnu/crti.o",
-        "-lc", obj_name, "/usr/lib/x86_64-linux-gnu/crtn.o", "-o", binary_name
-    ])
+    try:
+        subprocess.check_call(
+            ["nasm", "-f", "elf64", "-o", obj_name, asm_name])
+    except subprocess.CalledProcessError:
+        error_collector.add(
+            CompilerError("assembler returned non-zero status"))
+    else:
+        try:
+            subprocess.check_call([
+                "ld", "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2",
+                "/usr/lib/x86_64-linux-gnu/crt1.o",
+                "/usr/lib/x86_64-linux-gnu/crti.o",
+                "-lc", obj_name, "/usr/lib/x86_64-linux-gnu/crtn.o", "-o",
+                binary_name
+            ])
+        except subprocess.CalledProcessError:
+            error_collector.add(
+                CompilerError("linker returned non-zero status"))
 
 
 if __name__ == "__main__":
