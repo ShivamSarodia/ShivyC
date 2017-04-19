@@ -1,5 +1,5 @@
 int isalpha(int);
-int div(int, int);
+int div(); // test function prototype
 
 int strcmp(char*, char*);
 char* strcpy(char*, char*);
@@ -20,16 +20,17 @@ int main() {
   // accepts two integers and returns a struct. It turns out the
   // quotient of this struct is returned in the integer return
   // register, so this test works.
-  if(div(50, 5) != 10) return 3;
+  char c1 = 50, c2 = 5;
+  if(div(c1, c2) != 10) return 3;
 
   char str1[6], str2[6];
   strcpy(str1, "hello");
   strcpy(str2, "hello");
   if(strcmp(str1, str2)) return 4;
 
-  // Issue: 31: warning: conversion from incompatible pointer type
+  // Issue: 32: warning: conversion from incompatible pointer type
   int* p = str1;
-  // Issue: 33: warning: conversion from incompatible pointer type
+  // Issue: 34: warning: conversion from incompatible pointer type
   if(strcmp(p, str2)) return 13;
 
   str2[3] = 102;
@@ -40,9 +41,9 @@ int main() {
   if(strcmp(str1, "heylo")) return 6;
 
   // Fun with function pointers!
-  // Issue: 44: warning: conversion from incompatible pointer type
+  // Issue: 45: warning: conversion from incompatible pointer type
   void* f1 = isalpha;
-  // Issue: 46: warning: conversion from incompatible pointer type
+  // Issue: 47: warning: conversion from incompatible pointer type
   if(f1 != isalpha) return 11;
 
   int (*f2)(int) = isalpha;
@@ -50,13 +51,13 @@ int main() {
 
   // Test function pointer casting
 
-  // Issue: 54: warning: conversion from incompatible pointer type
+  // Issue: 55: warning: conversion from incompatible pointer type
   int* p1 = isalpha;
-  // Issue: 56: warning: conversion from incompatible pointer type
+  // Issue: 57: warning: conversion from incompatible pointer type
   int (*f3)(int, int) = isalpha;
-  // Issue: 58: warning: conversion from incompatible pointer type
+  // Issue: 59: warning: conversion from incompatible pointer type
   int (*f4)(int*) = isalpha;
-  // Issue: 60: warning: conversion from incompatible pointer type
+  // Issue: 61: warning: conversion from incompatible pointer type
   int* (*f5)(int) = isalpha;
 
 

@@ -894,33 +894,60 @@ class FunctionCallNode(ExpressionNode):
              func.ctype.arg.type_type != CType.FUNCTION):
             descrip = "called object is not a function pointer"
             raise CompilerError(descrip, self.tok.file_name, self.tok.line_num)
+
+        if not func.ctype.arg.args:
+            final_args = self._get_args_without_prototype(
+                il_code, symbol_table)
         else:
-            func_ctype = func.ctype.arg
+            final_args = self._get_args_with_prototype(
+                func.ctype.arg, il_code, symbol_table)
 
-        if not func_ctype.args:
-            raise NotImplementedError("no prototype called")
+        ret = ILValue(func.ctype.arg.ret)
+        il_code.add(il_commands.Call(func, final_args, ret))
+        return ret
+
+    def _get_args_without_prototype(self, il_code, symbol_table):
+        """Return list of argument ILValues for function this represents.
+
+        Use _get_args_without_prototype when the function this represents
+        has no prototype. This function only performs integer promotion on the
+        arguments before passing them to the called function.
+        """
+        final_args = []
+        for arg_given in self.args:
+            arg = arg_given.make_code(il_code, symbol_table)
+
+            # perform integer promotions
+            if (arg.ctype.type_type == CType.ARITH and
+                 arg.ctype.size < 4):
+                arg = set_type(arg, ctypes.integer, il_code)
+
+            final_args.append(arg)
+        return final_args
+
+    def _get_args_with_prototype(self, func_ctype, il_code, symbol_table):
+        """Return list of argument ILValues for function this represents.
+
+        Use _get_args_with_prototype when the function this represents
+        has a prototype. This function converts all passed arguments to
+        expected types.
+        """
+        # if only parameter is of type void, expect no arguments
+        if (len(func_ctype.args) == 1 and
+             func_ctype.args[0].type_type == CType.VOID):
+            arg_types = []
         else:
-            # if only parameter is of type void, expect no arguments
-            if (len(func_ctype.args) == 1 and
-                 func_ctype.args[0].type_type == CType.VOID):
-                arg_types = []
-            else:
-                arg_types = func_ctype.args
-
-            if len(arg_types) != len(self.args):
-                descrip = "incorrect number of arguments for function call"
-                raise CompilerError(descrip, self.tok.file_name,
-                                    self.tok.line_num)
-
-            final_args = []
-            for arg_given, arg_type in zip(self.args, arg_types):
-                arg = arg_given.make_code(il_code, symbol_table)
-                check_cast(arg, arg_type, self.tok)
-                final_args.append(set_type(arg, arg_type, il_code))
-
-            ret = ILValue(func_ctype.ret)
-            il_code.add(il_commands.Call(func, final_args, ret))
-            return ret
+            arg_types = func_ctype.args
+        if len(arg_types) != len(self.args):
+            descrip = "incorrect number of arguments for function call"
+            raise CompilerError(descrip, self.tok.file_name,
+                                self.tok.line_num)
+        final_args = []
+        for arg_given, arg_type in zip(self.args, arg_types):
+            arg = arg_given.make_code(il_code, symbol_table)
+            check_cast(arg, arg_type, self.tok)
+            final_args.append(set_type(arg, arg_type, il_code))
+        return final_args
 
 
 class DeclarationNode(Node):
