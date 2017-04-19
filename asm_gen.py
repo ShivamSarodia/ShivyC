@@ -18,6 +18,7 @@ class ASMCode:
         """Initialize ASMCode."""
         self.lines = []
         self.externs = []
+        self.string_literals = []
 
     def add_command(self, command, arg1=None, arg2=None):
         """Add a command to the code.
@@ -51,11 +52,19 @@ class ASMCode:
         name (str) - The name to add.
 
         """
-        self.externs.append("extern " + name)
+        self.externs.append("\textern " + name)
 
     def add_comment(self, comment):
         """Add a comment in the ASM code."""
         self.lines.append(";; " + comment)
+
+    def add_string_literal(self, name, chars):
+        """Add a string literal to the ASM code."""
+        self.string_literals.append(name + ":")
+        data = "db "
+        for char in chars:
+            data += str(char) + ","
+        self.string_literals.append("\t" + data[:-1])
 
     def full_code(self):  # noqa: D202
         """Produce the full assembly code.
@@ -73,19 +82,23 @@ class ASMCode:
             """
             if isinstance(line, str):
                 if line[:2] == ";;":  # this is a comment
-                    return "     " + line
+                    return "\t" + line
                 else:  # this is a label
                     return line + ":"
             else:
-                line_str = "     " + line[0]
+                line_str = "\t" + line[0]
                 if line[1]:
                     line_str += " " + line[1]
                 if line[2]:
                     line_str += ", " + line[2]
                 return line_str
 
-        # This code starts every asm program so far, so we put it here.
-        header = self.externs + ["global main", "", "main:"]
+        header = []
+        if self.string_literals:
+            header += ["\tSECTION .data"] + self.string_literals + [""]
+
+        header += (["\tSECTION .text"] + self.externs +
+                   ["\tglobal main", "", "main:"])
 
         return "\n".join(header + [to_string(line) for line in self.lines])
 
@@ -396,6 +409,8 @@ class ASMGen:
         global_spotmap = {}
         free_values = []
         all_values = self._all_il_values()
+
+        string_literal_number = 0
         for value in all_values:
             if value in self.il_code.literals:
                 # If literal, assign it a preassigned literal spot
@@ -405,6 +420,14 @@ class ASMGen:
                 # If extern, assign assign spot and continue
                 s = Spot(Spot.MEM, (self.il_code.externs[value], 0))
                 global_spotmap[value] = s
+            elif value in self.il_code.string_literals:
+                # Add the string literal representation to the output ASM.
+                name = "__strlit" + str(string_literal_number)
+                string_literal_number += 1
+
+                self.asm_code.add_string_literal(
+                    name, self.il_code.string_literals[value])
+                global_spotmap[value] = Spot(Spot.MEM, (name, 0))
             elif (self.arguments.variables_on_stack and
                   value in self.il_code.variables):  # pragma: no cover
                 # If all variables are allocated on the stack

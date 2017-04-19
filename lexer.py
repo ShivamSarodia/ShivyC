@@ -98,7 +98,17 @@ class Lexer:
         while chunk_end < len(line):
             # Checks if line[chunk_end:] starts with a symbol token kind
             symbol_kind = self.match_symbol_kind_at(line, chunk_end)
-            if symbol_kind:
+
+            # If double quote is seen, add the whole string as a token.
+            if symbol_kind == token_kinds.dquote:
+                chars, length = self.read_string(line[chunk_end + 1:])
+                rep = line[chunk_end:chunk_end + length + 2]
+                tokens.append(Token(token_kinds.string, chars, rep))
+
+                chunk_start = chunk_end + length + 2
+                chunk_end = chunk_start
+
+            elif symbol_kind:
                 symbol_token = Token(symbol_kind)
 
                 self.add_chunk(line[chunk_start:chunk_end], tokens)
@@ -200,3 +210,48 @@ class Lexer:
             return token_repr
         else:
             return None
+
+    def read_string(self, line):
+        """Return a lexed string and its length in input characters.
+
+        line[0] should be the first character after the opening quote of the
+        string to be lexed. This function continues reading characters until
+        an unescaped closing quote is reached. The length returned is the
+        number of input characters that were read, not the length of the
+        string. The latter is the length of the lexed string list.
+
+        The lexed string is a list of integers, where each integer is the
+        ASCII value (between 0 and 128) of the corresponding character in
+        the string. The returned lexed string includes a null-terminator.
+        """
+        i = 0
+        chars = []
+
+        escapes = {"'": 39,
+                   '"': 34,
+                   "?": 63,
+                   "\\": 92,
+                   "a": 7,
+                   "b": 8,
+                   "f": 12,
+                   "n": 10,
+                   "r": 13,
+                   "t": 9,
+                   "v": 11}
+
+        while True:
+            if i >= len(line):
+                # file and line information is added by caller
+                descrip = "missing terminating double quote"
+                raise CompilerError(descrip)
+            elif line[i] == '"':
+                chars.append(0)
+                return chars, i
+            elif (i + 1 < len(line) and
+                  line[i] == "\\" and
+                  line[i + 1] in escapes):
+                    chars.append(escapes[line[i + 1]])
+                    i += 2
+            else:
+                chars.append(ord(line[i]))
+                i += 1

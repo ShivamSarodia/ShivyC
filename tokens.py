@@ -39,20 +39,23 @@ class Token:
 
     kind (TokenKind) - Kind of this token.
 
-    content (str) - Additional content about some tokens. For number tokens,
+    content - Additional content about some tokens. For number tokens,
     this stores the number itself. For identifiers, this stores the identifier
-    name.
+    name. For string, stores a list of its characters.
     file_name (str) - Name of the file from which this token came. This is used
     for error reporting.
     line_num (int) - The line number from which this token came. This is used
     for error reporting.
+    rep (str) - The string representation of this token, if the given
+    content parameter is not sufficient.
 
     """
 
-    def __init__(self, kind, content=""):
+    def __init__(self, kind, content="", rep=""):
         """Initialize this token."""
         self.kind = kind
         self.content = content if content else str(self.kind)
+        self.rep = rep
         self.file_name = None
         self.line_num = None
 
@@ -65,4 +68,4 @@ class Token:
 
     def __str__(self):
         """Return the token content."""
-        return self.content
+        return self.rep if self.rep else self.content

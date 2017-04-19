@@ -71,10 +71,37 @@ class LexerTests(TestUtils):
              Token(token_kinds.twoequals),
              Token(token_kinds.number, "10")])
 
+    def test_simple_string(self):
+        """Test tokenizing simple string."""
+        self.assertEqual(
+            Lexer().tokenize_line('a "ab"'),
+            [Token(token_kinds.identifier, "a"),
+             Token(token_kinds.string, [97, 98, 0])])
+
+    def test_escapes(self):
+        r"""Test tokenizing strings with escapes.
+
+        This is testing the string:
+        " \" \\ \n \\t "
+        without the spaces.
+        """
+        self.assertEqual(
+            Lexer().tokenize_line(r'"\"\\\n\\t"'),
+            [Token(token_kinds.string,
+                   [ord('"'), ord("\\"), ord("\n"), ord("\\"), ord("t"), 0]
+                   )])
+
+    def test_missing_close_quote(self):
+        """Test error on tokenizing an string missing close quotation."""
+        with self.assertRaisesRegex(
+                CompilerError, "missing terminating double quote"):
+
+                Lexer().tokenize_line("\"hello")
+
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""
-        with self.assertRaises(
-                CompilerError, msg="unrecognized token at '1identifier'"):
+        with self.assertRaisesRegex(
+                CompilerError, "unrecognized token at '1identifier'"):
 
                 Lexer().tokenize_line("1identifier")
 

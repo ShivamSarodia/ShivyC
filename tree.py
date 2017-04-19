@@ -300,6 +300,43 @@ class NumberNode(ExpressionNode):
         return il_value
 
 
+class StringNode(ExpressionNode):
+    """Expression that is a string.
+
+    chars (List(integer)) - String this expression represents,
+    as a null-terminated list of the ASCII representations of each
+    character.
+
+    """
+
+    def __init__(self, chars_tok):
+        """Initialize node."""
+        super().__init__()
+        self.chars = chars_tok.content[:]
+
+        # Cache the lvalue.
+        self._cache_lvalue = None
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for a string.
+
+        This function adds the provided string to the IL data section and
+        returns the ILValue representing the string in its array form.
+        """
+        lvalue = self.lvalue(il_code, symbol_table)
+        return lvalue.il_value
+
+    def lvalue(self, il_code, symbol_table):
+        """Return LValue form of the string."""
+
+        if not self._cache_lvalue:
+            il_value = ILValue(ArrayCType(ctypes.char, len(self.chars)))
+            il_code.register_string_literal(il_value, self.chars)
+            self._cache_lvalue = LValue(LValue.DIRECT, il_value)
+
+        return self._cache_lvalue
+
+
 class IdentifierNode(ExpressionNode):
     """Expression that is a single identifier.
 

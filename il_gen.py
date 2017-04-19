@@ -213,6 +213,7 @@ class ILCode:
         self.variables = []
         self.externs = {}
         self.literals = {}
+        self.string_literals = {}
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -253,6 +254,15 @@ class ILCode:
         value - Literal value to store in the ILValue
         """
         self.literals[il_value] = value
+
+    def register_string_literal(self, il_value, chars):
+        """Register a string literal IL value.
+
+        chars (List(int)) - Null-terminated list of character ASCII codes in
+        the string.
+
+        """
+        self.string_literals[il_value] = chars
 
     def get_label(self):
         """Return a unique label identifier string."""

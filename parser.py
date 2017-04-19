@@ -519,9 +519,9 @@ class ExpressionParser:
     # binary_operators or unary_prefix_operators. Used to determine when
     # parsing can stop.
     valid_tokens = {token_kinds.number, token_kinds.identifier,
-                    token_kinds.open_paren, token_kinds.close_paren,
-                    token_kinds.open_sq_brack, token_kinds.close_sq_brack,
-                    token_kinds.comma}
+                    token_kinds.string, token_kinds.open_paren,
+                    token_kinds.close_paren, token_kinds.open_sq_brack,
+                    token_kinds.close_sq_brack, token_kinds.comma}
 
     # An item in the parsing stack. The item is either a Node or Token,
     # where the node must generate an expression, and the length is the
@@ -546,6 +546,7 @@ class ExpressionParser:
         while True:
             # Try all of the possible matches
             if not (self.try_match_number() or
+                    self.try_match_string() or
                     self.try_match_identifier() or
                     self.try_match_bin_op(self.tokens[i:]) or
                     self.try_match_unary_prefix(self.tokens[i:]) or
@@ -584,6 +585,16 @@ class ExpressionParser:
         """
         if self.match_kind(-1, token_kinds.number):
             self.reduce(tree.NumberNode(self.s[-1].item), 1)
+            return True
+        return False
+
+    def try_match_string(self):
+        """Try matching the top of the stack to a string node.
+
+        Return True on successful match, False otherwise.
+        """
+        if self.match_kind(-1, token_kinds.string):
+            self.reduce(tree.StringNode(self.s[-1].item), 1)
             return True
         return False
 
