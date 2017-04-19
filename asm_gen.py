@@ -283,10 +283,6 @@ class ASMGen:
     def make_asm(self):
         """Generate ASM code."""
 
-        # Copy the externs from IL Code into ASM code
-        for extern in set(self.il_code.externs.values()):
-            self.asm_code.add_extern(extern)
-
         # Get global spotmap and free values
         global_spotmap, free_values = self._get_global_spotmap()
 
@@ -417,9 +413,11 @@ class ASMGen:
                 s = Spot(Spot.LITERAL, self.il_code.literals[value])
                 global_spotmap[value] = s
             elif value in self.il_code.externs:
-                # If extern, assign assign spot and continue
+                # If extern, assign assign spot and add the extern to asm code
                 s = Spot(Spot.MEM, (self.il_code.externs[value], 0))
                 global_spotmap[value] = s
+
+                self.asm_code.add_extern(self.il_code.externs[value])
             elif value in self.il_code.string_literals:
                 # Add the string literal representation to the output ASM.
                 name = "__strlit" + str(string_literal_number)
