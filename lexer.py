@@ -33,8 +33,10 @@ def tokenize(code, filename):
     lines = split_to_tagged_lines(code, filename)
     join_extended_lines(lines)
 
+    in_comment = False
     for line in lines:
-        tokens += tokenize_line(line)
+        line_tokens, in_comment = tokenize_line(line, in_comment)
+        tokens += line_tokens
 
     return tokens
 
@@ -94,11 +96,14 @@ def join_extended_lines(lines):
         i += 1
 
 
-def tokenize_line(line):
+def tokenize_line(line, in_comment):
     """Tokenize the given single line.
 
     line - List of Tagged objects.
-    return - List of Token objects.
+    in_comment - Whether the first character in this line is part of a
+    C-style comment body.
+    return - List of Token objects, and boolean indicating whether the next
+    character is part of a comment body.
     """
     tokens = []
 
@@ -114,10 +119,30 @@ def tokenize_line(line):
 
         # Check if line[chunk_end:] starts with a symbol token kind
         symbol_kind = match_symbol_kind_at(line, chunk_end)
+        next = match_symbol_kind_at(line, chunk_end + 1)
+
+        if in_comment:
+            # Next characters end the comment
+            if symbol_kind == token_kinds.star and next == token_kinds.slash:
+                in_comment = False
+                chunk_start = chunk_end + 2
+                chunk_end = chunk_start
+
+            # Skip one character
+            else:
+                chunk_start = chunk_end + 1
+                chunk_end = chunk_start
+
+        # If next characters start a comment, skip over them and set
+        # in_comment to true
+        elif symbol_kind == token_kinds.slash and next == token_kinds.star:
+            in_comment = True
+            chunk_start = chunk_end + 2
+            chunk_end = chunk_start
 
         # If next character is double quotes, we read the whole string as a
         # token
-        if symbol_kind == token_kinds.dquote:
+        elif symbol_kind == token_kinds.dquote:
             chars, end = read_string(line, chunk_end + 1)
             rep = chunk_to_str(line[chunk_end:end + 1])
             tokens.append(Token(token_kinds.string, chars, rep,
@@ -128,8 +153,7 @@ def tokenize_line(line):
 
         # If next two characters are //, we skip the rest of this line as
         # a comment.
-        elif (symbol_kind == token_kinds.slash and
-              match_symbol_kind_at(line, chunk_end + 1) == token_kinds.slash):
+        elif symbol_kind == token_kinds.slash and next == token_kinds.slash:
             break
 
         elif symbol_kind:
@@ -152,7 +176,7 @@ def tokenize_line(line):
     # Flush out anything that is left in the chunk to the output
     add_chunk(line[chunk_start:chunk_end], tokens)
 
-    return tokens
+    return tokens, in_comment
 
 
 def chunk_to_str(chunk):
