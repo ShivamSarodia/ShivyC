@@ -28,6 +28,7 @@ class TokenKind:
         """
         self.text_repr = text_repr
         kinds.append(self)
+        kinds.sort(key=lambda kind: -len(kind.text_repr))
 
     def __str__(self):
         """Return the representation of this token kind."""
@@ -51,13 +52,19 @@ class Token:
 
     """
 
-    def __init__(self, kind, content="", rep=""):
+    def __init__(self, kind, content="", rep="", p=None):
         """Initialize this token."""
         self.kind = kind
+
+        # TODO: Clarify the "content" vs "rep" distinction.
         self.content = content if content else str(self.kind)
         self.rep = rep
-        self.file_name = None
-        self.line_num = None
+        self.p = p
+
+        # TODO: Deprecate the file_name and line_num in favor of using pos.
+        # directly.
+        self.file_name = p.file if p else None
+        self.line_num = p.line if p else None
 
     def __eq__(self, other):
         """Require equality of both token kind and content."""

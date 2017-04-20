@@ -9,8 +9,9 @@ import argparse
 import subprocess
 import sys
 
+import lexer
+
 from errors import error_collector, CompilerError
-from lexer import Lexer
 from parser import Parser
 from il_gen import ILCode
 from il_gen import SymbolTable
@@ -26,12 +27,12 @@ def main():
 
     arguments = get_arguments()
 
-    code_lines = get_code_lines(arguments)
+    code, filename = read_file(arguments)
     if not error_collector.ok():
         error_collector.show()
         return 1
 
-    token_list = Lexer().tokenize(code_lines)
+    token_list = lexer.tokenize(code, filename)
     if not error_collector.ok():
         error_collector.show()
         return 1
@@ -104,17 +105,11 @@ def get_arguments():
     return parser.parse_args()
 
 
-def get_code_lines(arguments):
-    """Open the file(s) in arguments and return lines of code."""
+def read_file(arguments):
+    """Read the file(s) in arguments and return the file contents."""
     try:
         with open(arguments.filename) as c_file:
-            code_lines = []
-            for line_num, line_text in enumerate(c_file):
-                line = line_text.strip()
-                code_lines.append((line.split("//")[0],
-                                   arguments.filename,
-                                   line_num + 1))
-            return code_lines
+            return c_file.read(), arguments.filename
     except IOError:
         descrip = "could not read file: '{}'"
         error_collector.add(CompilerError(descrip.format(arguments.filename)))

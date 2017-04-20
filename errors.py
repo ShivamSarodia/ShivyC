@@ -38,6 +38,24 @@ class ErrorCollector:
 error_collector = ErrorCollector()
 
 
+class Position:
+    """Class representing a position in source code.
+
+    file (str) - Name of file in which this position is located.
+    line (int) - Line number in file at which this position is located.
+    col (int) - Horizontal column at which this position is located
+    full_line (str) - Full text of the line containing this position.
+    Specifically, full_line[col + 1] should be this position.
+    """
+
+    def __init__(self, file, line, col, full_line):
+        """Initialize Position object."""
+        self.file = file
+        self.line = line
+        self.col = col
+        self.full_line = full_line
+
+
 class CompilerError(Exception):
     """Class representing compile-time errors.
 

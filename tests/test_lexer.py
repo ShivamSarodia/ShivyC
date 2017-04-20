@@ -1,9 +1,8 @@
 """Tests for the lexer phase of the compiler."""
 
-
+import lexer
 import token_kinds
 from errors import error_collector, CompilerError
-from lexer import Lexer
 from tokens import Token
 from tests.test_utils import TestUtils
 
@@ -17,40 +16,40 @@ class LexerTests(TestUtils):
 
     def test_empty(self):
         """Test tokenizing an empty string."""
-        self.assertEqual(Lexer().tokenize_line(""), [])
+        self.assertEqual(lexer.tokenize("", ""), [])
 
     def test_just_whitespace(self):
         """Test tokenizing a string of just whitespace."""
-        self.assertEqual(Lexer().tokenize_line("   "), [])
+        self.assertEqual(lexer.tokenize("   ", ""), [])
 
     def test_number(self):
         """Test tokenizing a single number."""
         self.assertEqual(
-            Lexer().tokenize_line("10"), [Token(token_kinds.number, "10")])
+            lexer.tokenize("10", ""), [Token(token_kinds.number, "10")])
 
     def test_easy_identifier(self):
         """Test tokenizing an identifier with only letters."""
         self.assertEqual(
-            Lexer().tokenize_line("identifier"),
+            lexer.tokenize("identifier", ""),
             [Token(token_kinds.identifier, "identifier")])
 
     def test_hard_identifier(self):
         """Test tokenizing an identifier symbols."""
         self.assertEqual(
-            Lexer().tokenize_line("_ident123ifier"),
+            lexer.tokenize("_ident123ifier", ""),
             [Token(token_kinds.identifier, "_ident123ifier")])
 
     def test_extra_whitespace(self):
         """Test tokenizing symbols with whitespace."""
         self.assertEqual(
-            Lexer().tokenize_line("  10    ident123ifier  "),
+            lexer.tokenize("  10    ident123ifier  ", ""),
             [Token(token_kinds.number, "10"),
              Token(token_kinds.identifier, "ident123ifier")])
 
     def test_symbol_splits_keywords(self):
         """Test that the lexer splits on symbols."""
         self.assertEqual(
-            Lexer().tokenize_line("ident1+ident2"),
+            lexer.tokenize("ident1+ident2", ""),
             [Token(token_kinds.identifier, "ident1"),
              Token(token_kinds.plus),
              Token(token_kinds.identifier, "ident2")])
@@ -58,7 +57,7 @@ class LexerTests(TestUtils):
     def test_single_equals(self):
         """Test tokenizing single equals."""
         self.assertEqual(
-            Lexer().tokenize_line("a = 10"),
+            lexer.tokenize("a = 10", ""),
             [Token(token_kinds.identifier, "a"),
              Token(token_kinds.equals),
              Token(token_kinds.number, "10")])
@@ -66,7 +65,7 @@ class LexerTests(TestUtils):
     def test_double_equals(self):
         """Test tokenizing double equals."""
         self.assertEqual(
-            Lexer().tokenize_line("a == 10"),
+            lexer.tokenize("a == 10", ""),
             [Token(token_kinds.identifier, "a"),
              Token(token_kinds.twoequals),
              Token(token_kinds.number, "10")])
@@ -74,7 +73,7 @@ class LexerTests(TestUtils):
     def test_simple_string(self):
         """Test tokenizing simple string."""
         self.assertEqual(
-            Lexer().tokenize_line('a "ab"'),
+            lexer.tokenize('a "ab"', ""),
             [Token(token_kinds.identifier, "a"),
              Token(token_kinds.string, [97, 98, 0])])
 
@@ -86,7 +85,7 @@ class LexerTests(TestUtils):
         without the spaces.
         """
         self.assertEqual(
-            Lexer().tokenize_line(r'"\"\\\n\\t"'),
+            lexer.tokenize(r'"\"\\\n\\t"', ""),
             [Token(token_kinds.string,
                    [ord('"'), ord("\\"), ord("\n"), ord("\\"), ord("t"), 0]
                    )])
@@ -96,14 +95,14 @@ class LexerTests(TestUtils):
         with self.assertRaisesRegex(
                 CompilerError, "missing terminating double quote"):
 
-                Lexer().tokenize_line("\"hello")
+                lexer.tokenize("\"hello", "")
 
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""
         with self.assertRaisesRegex(
                 CompilerError, "unrecognized token at '1identifier'"):
 
-                Lexer().tokenize_line("1identifier")
+                lexer.tokenize("1identifier", "")
 
     def test_basic_program_one_line(self):
         """Test tokenizing an entire basic program that is one line."""
@@ -114,16 +113,4 @@ class LexerTests(TestUtils):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
-        self.assertEqual(Lexer().tokenize_line(content), tokens)
-
-    def test_basic_program_multi_line(self):
-        """Test tokenizing an entire basic program that is multiple lines."""
-        content = [("int main()", "main.c", 1), ("{", "main.c", 2),
-                   ("return 15;", "main.c", 3), ("}", "main.c", 4)]
-        tokens = [Token(token_kinds.int_kw), Token(token_kinds.main),
-                  Token(token_kinds.open_paren),
-                  Token(token_kinds.close_paren),
-                  Token(token_kinds.open_brack), Token(token_kinds.return_kw),
-                  Token(token_kinds.number, "15"),
-                  Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
-        self.assertEqual(Lexer().tokenize(content), tokens)
+        self.assertEqual(lexer.tokenize(content, ""), tokens)
