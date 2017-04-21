@@ -410,17 +410,19 @@ class ParenExprNode(ExpressionNode):
 
 
 class IfStatementNode(Node):
-    """If statement.
+    """If/else statement.
 
     conditional - Condition expression of the if statement.
     statement - Statement to be executed by the if statement. Note this is
     very often a compound-statement blocked out with curly braces.
+    else_statement - Statement to be executed in the else block, or None if
+    there is no else block.
 
     """
 
     symbol = Node.STATEMENT
 
-    def __init__(self, conditional, statement):
+    def __init__(self, conditional, statement, else_statement):
         """Initialize node."""
         super().__init__()
 
@@ -429,15 +431,28 @@ class IfStatementNode(Node):
 
         self.conditional = conditional
         self.statement = statement
+        self.else_statement = else_statement
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node."""
         try:
-            label = il_code.get_label()
+            else_label = il_code.get_label()
             condition = self.conditional.make_code(il_code, symbol_table)
-            il_code.add(il_commands.JumpZero(condition, label))
+            il_code.add(il_commands.JumpZero(condition, else_label))
             self.statement.make_code(il_code, symbol_table)
-            il_code.add(il_commands.Label(label))
+
+            if self.else_statement:
+                end_label = il_code.get_label()
+                il_code.add(il_commands.Jump(end_label))
+            else:
+                end_label = None
+
+            il_code.add(il_commands.Label(else_label))
+
+            if self.else_statement:
+                self.else_statement.make_code(il_code, symbol_table)
+                il_code.add(il_commands.Label(end_label))
+
         except CompilerError as e:
             error_collector.add(e)
 

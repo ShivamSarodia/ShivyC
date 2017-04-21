@@ -241,11 +241,33 @@ class GeneralTests(ParserTestUtil):
                 tree.IdentifierNode(Token(token_kinds.identifier, "a")),
                 tree.ReturnNode(tree.NumberNode(
                     Token(token_kinds.number, "10")),
-                    Token(token_kinds.return_kw))
-            ),
+                    Token(token_kinds.return_kw)), None),
             tree.ReturnNode(
                 tree.NumberNode(Token(token_kinds.number, "5")),
                 Token(token_kinds.return_kw))
+        ])  # yapf: disable
+
+    def test_if_else_statement(self):  # noqa: D400, D403'
+        """if(a) return 10; else return 2;"""
+        tokens = [
+            Token(token_kinds.if_kw), Token(token_kinds.open_paren),
+            Token(token_kinds.identifier, "a"), Token(token_kinds.close_paren),
+            Token(token_kinds.return_kw), Token(token_kinds.number, "10"),
+            Token(token_kinds.semicolon),
+
+            Token(token_kinds.else_kw), Token(token_kinds.return_kw),
+            Token(token_kinds.number, "2"), Token(token_kinds.semicolon)
+        ]
+
+        self.assertParsesTo(tokens, [
+            tree.IfStatementNode(
+                tree.IdentifierNode(Token(token_kinds.identifier, "a")),
+                tree.ReturnNode(tree.NumberNode(
+                    Token(token_kinds.number, "10")),
+                    Token(token_kinds.return_kw)),
+                tree.ReturnNode(tree.NumberNode(
+                    Token(token_kinds.number, "2")),
+                    Token(token_kinds.return_kw)))
         ])  # yapf: disable
 
     def test_compound_if_statement(self):  # noqa: D400, D403
@@ -271,8 +293,7 @@ class GeneralTests(ParserTestUtil):
                     tree.ReturnNode(tree.NumberNode(
                         Token(token_kinds.number, "20")),
                         Token(token_kinds.return_kw))
-                ])
-            ),
+                ]), None),
             tree.ReturnNode(
                 tree.NumberNode(Token(token_kinds.number, "25")),
                 Token(token_kinds.return_kw))

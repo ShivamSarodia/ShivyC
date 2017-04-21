@@ -19,6 +19,7 @@ void_kw = TokenKind("void", keyword_kinds)
 
 return_kw = TokenKind("return", keyword_kinds)
 if_kw = TokenKind("if", keyword_kinds)
+else_kw = TokenKind("else", keyword_kinds)
 while_kw = TokenKind("while", keyword_kinds)
 
 auto_kw = TokenKind("auto", keyword_kinds)

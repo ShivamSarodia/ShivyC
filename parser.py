@@ -182,14 +182,12 @@ class Parser:
         index = self._expect_semicolon(index)
         return (tree.ReturnNode(node, return_kw), index)
 
-    def _parse_if_while(self, index, tok_kind):
-        """Parse an if/while statement. For statement_type, see below."""
+    def parse_if_statement(self, index):
+        """Parse an if statement."""
 
-        nodes = {token_kinds.if_kw: tree.IfStatementNode,
-                 token_kinds.while_kw: tree.WhileStatementNode}
-
-        descrip = "expected keyword '{}'".format(tok_kind.text_repr),
-        index = self._match_token(index, tok_kind, descrip, ParserError.GOT)
+        descrip = "expected keyword '{}'".format(token_kinds.if_kw.text_repr),
+        index = self._match_token(index, token_kinds.if_kw, descrip,
+                                  ParserError.GOT)
         index = self._match_token(index, token_kinds.open_paren,
                                   "expected '('", ParserError.AFTER)
         conditional, index = self.parse_expression(index)
@@ -197,15 +195,34 @@ class Parser:
                                   "expected ')'", ParserError.AFTER)
         statement, index = self.parse_statement(index)
 
-        return (nodes[tok_kind](conditional, statement), index)
+        # If there is an else that follows, parse that too.
+        is_else = self._next_token_is(index, token_kinds.else_kw)
+        if not is_else:
+            else_statement = None
+        else:
+            descrip = "expected keyword '{}'".format(
+                token_kinds.else_kw.text_repr)
+            index = self._match_token(index, token_kinds.else_kw, descrip,
+                                      ParserError.GOT)
+            else_statement, index = self.parse_statement(index)
 
-    def parse_if_statement(self, index):
-        """Parse an if statement."""
-        return self._parse_if_while(index, token_kinds.if_kw)
+        return (tree.IfStatementNode(conditional, statement, else_statement),
+                index)
 
     def parse_while_statement(self, index):
         """Parse a while statement."""
-        return self._parse_if_while(index, token_kinds.while_kw)
+        descrip = "expected keyword '{}'".format(
+            token_kinds.while_kw.text_repr),
+        index = self._match_token(index, token_kinds.while_kw, descrip,
+                                  ParserError.GOT)
+        index = self._match_token(index, token_kinds.open_paren,
+                                  "expected '('", ParserError.AFTER)
+        conditional, index = self.parse_expression(index)
+        index = self._match_token(index, token_kinds.close_paren,
+                                  "expected ')'", ParserError.AFTER)
+        statement, index = self.parse_statement(index)
+
+        return tree.WhileStatementNode(conditional, statement), index
 
     def parse_expr_statement(self, index):
         """Parse a statement that is an expression.
