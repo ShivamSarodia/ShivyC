@@ -17,5 +17,10 @@ int main() {
   if(&b + 1 != &a) return 7;
   if(1 + &b != &a) return 8;
 
+  if(&a - &b != 1) return 9;
+  if(&a - &c != 2) return 10;
+  if(&a - 1 != &b) return 11;
+  if(&a - 2 != &c) return 12;
+
   return 0;
 }

@@ -27,6 +27,7 @@ static_kw = TokenKind("static", keyword_kinds)
 extern_kw = TokenKind("extern", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
+minus = TokenKind("-", symbol_kinds)
 star = TokenKind("*", symbol_kinds)
 slash = TokenKind("/", symbol_kinds)
 equals = TokenKind("=", symbol_kinds)

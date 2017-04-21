@@ -179,11 +179,14 @@ class _AddMult(ILCommand):
     Contains function that implements the shared code between these.
     """
 
-    def _shared_asm(self, inst, out, arg1, arg2, spotmap, get_reg, asm_code):
-        """Make the shared ASM for ADD and MULT.
+    def _shared_asm(self, inst, comm, out, arg1, arg2, spotmap, get_reg,
+                    asm_code):
+        """Make the shared ASM for ADD, MULT, and SUB.
 
         inst (str) - the instruction, for ADD it is "add" and for MULT it is
         "imul"
+        comm (Bool) - whether the instruction is commutative. if not,
+        a "neg" instruction is inserted when the order is flipped.
         """
         ctype = arg1.ctype
         output_asm = spotmap[out].asm_str(ctype.size)
@@ -212,6 +215,10 @@ class _AddMult(ILCommand):
                 temp2_asm = temp2.asm_str(ctype.size)
                 asm_code.add_command("mov", temp2_asm, arg1_asm)
                 asm_code.add_command(inst, temp_asm, temp2_asm)
+
+            if not comm:
+                asm_code.add_command("neg", temp_asm)
+
         else:
             if (not self._is_imm64(spotmap[arg1]) and
                  not self._is_imm64(spotmap[arg2])):
@@ -225,6 +232,9 @@ class _AddMult(ILCommand):
                   self._is_imm64(spotmap[arg2])):
                 asm_code.add_command("mov", temp_asm, arg2_asm)
                 asm_code.add_command(inst, temp_asm, arg1_asm)
+                if not comm:
+                    asm_code.add_command("neg", temp_asm)
+
             else:  # both are imm64
                 temp2 = get_reg([], [temp])
                 temp2_asm = temp2.asm_str(ctype.size)
@@ -261,11 +271,39 @@ class Add(_AddMult):
         return {self.output: [self.arg1, self.arg2]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        self._shared_asm("add", self.output, self.arg1, self.arg2,
+        self._shared_asm("add", True, self.output, self.arg1, self.arg2,
                          spotmap, get_reg, asm_code)
 
     def __str__(self):    # pragma: no cover
         return self.to_str("ADD", [self.arg1, self.arg2], self.output)
+
+
+class Subtr(_AddMult):
+    """SUBTR - Subtracts arg1 and arg2, then saves to output.
+
+    ILValues output, arg1, and arg2 must all have types of the same size.
+    """
+
+    def __init__(self, output, arg1, arg2): # noqa D102
+        self.out = output
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+    def inputs(self): # noqa D102
+        return [self.arg1, self.arg2]
+
+    def outputs(self): # noqa D102
+        return [self.out]
+
+    def rel_spot_pref(self): # noqa D102
+        return {self.out: [self.arg1]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
+        self._shared_asm("sub", False, self.out, self.arg1, self.arg2,
+                         spotmap, get_reg, asm_code)
+
+    def __str__(self):    # pragma: no cover
+        return self.to_str("SUBTR", [self.arg1, self.arg2], self.out)
 
 
 class Mult(_AddMult):
@@ -343,7 +381,7 @@ class Mult(_AddMult):
 
         # Signed multiplication
         else:
-            self._shared_asm("imul", self.output, self.arg1, self.arg2,
+            self._shared_asm("imul", True, self.output, self.arg1, self.arg2,
                              spotmap, get_reg, asm_code)
 
     def __str__(self):    # pragma: no cover

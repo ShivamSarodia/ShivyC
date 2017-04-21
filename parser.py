@@ -512,6 +512,7 @@ class ExpressionParser:
     # Dictionay of key-value pairs {TokenKind: precedence} where higher
     # precedence is higher.
     binary_operators = {token_kinds.plus: 11,
+                        token_kinds.minus: 11,
                         token_kinds.star: 12,
                         token_kinds.slash: 12,
                         token_kinds.twoequals: 8,

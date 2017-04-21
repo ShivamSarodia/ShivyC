@@ -9,4 +9,7 @@ int main() {
 
   // Issue: 11: error: invalid operand types for binary division
   a / b;
+
+  // Issue: 14: error: invalid operand types for binary subtraction
+  3 - a;
 }

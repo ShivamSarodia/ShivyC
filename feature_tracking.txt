@@ -53,7 +53,6 @@ FEATURES
 1  - Implement more control statements
 0     - for-loops
 0     - break/continue
-1     - else
 
 1  - Implement more operators
 0     - Comparison (>, <, >=, <=)

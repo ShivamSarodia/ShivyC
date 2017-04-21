@@ -527,7 +527,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If arithmetic type
         if (left.ctype.type_type == CType.ARITH and
-              right.ctype.type_type == CType.ARITH):
+             right.ctype.type_type == CType.ARITH):
             return self._make_integer_code(right, left, il_code)
 
         # If operator is == or !=
@@ -538,6 +538,9 @@ class BinaryOperatorNode(ExpressionNode):
         # If operator is addition
         elif self.operator.kind == token_kinds.plus:
             return self._make_nonarith_plus_code(left, right, il_code)
+
+        elif self.operator.kind == token_kinds.minus:
+            return self._make_nonarith_minus_code(left, right, il_code)
 
         # If operator is multiplication or division
         elif self.operator.kind in {token_kinds.star, token_kinds.slash}:
@@ -615,6 +618,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         # Mapping from a token_kind to the ILCommand it corresponds to.
         cmd_map = {token_kinds.plus: il_commands.Add,
+                   token_kinds.minus: il_commands.Subtr,
                    token_kinds.star: il_commands.Mult,
                    token_kinds.slash: il_commands.Div,
                    token_kinds.twoequals: il_commands.EqualCmp,
@@ -649,10 +653,10 @@ class BinaryOperatorNode(ExpressionNode):
         # other should be any integer type.
         # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
         if (left.ctype.type_type == CType.POINTER and
-                    right.ctype.type_type == CType.ARITH):
+             right.ctype.type_type == CType.ARITH):
             arith_op, pointer_op = right, left
         elif (right.ctype.type_type == CType.POINTER and
-                      left.ctype.type_type == CType.ARITH):
+               left.ctype.type_type == CType.ARITH):
             arith_op, pointer_op = left, right
         else:
             descrip = "invalid operand types for binary addition"
@@ -675,6 +679,48 @@ class BinaryOperatorNode(ExpressionNode):
         il_code.add(il_commands.Mult(shift, l_arith_op, size))
         il_code.add(il_commands.Add(out, pointer_op, shift))
         return out
+
+    def _make_nonarith_minus_code(self, left, right, il_code):
+        """Make code for - operator for non-arithmetic operands."""
+
+        # Both operands are pointers to compatible object types
+        if (left.ctype.type_type == CType.POINTER and
+            right.ctype.type_type == CType.POINTER and
+             left.ctype.compatible(right.ctype)):
+
+            # Get raw difference in pointer values
+            raw = ILValue(ctypes.longint)
+            il_code.add(il_commands.Subtr(raw, left, right))
+
+            # Divide by size of object
+            out = ILValue(ctypes.longint)
+            size = ILValue(ctypes.longint)
+            il_code.register_literal_var(size, str(left.ctype.arg.size))
+            il_code.add(il_commands.Div(out, raw, size))
+
+            return out
+
+        # Left operand is pointer to complete object type, and right operand
+        # is integer.
+        elif (left.ctype.type_type == CType.POINTER and
+              right.ctype.type_type == CType.ARITH):
+
+            out = ILValue(left.ctype)
+            raw = set_type(right, ctypes.longint, il_code)
+
+            # Multiply by size of objects
+            shift = ILValue(ctypes.longint)
+            size = ILValue(ctypes.longint)
+            il_code.register_literal_var(size, str(left.ctype.arg.size))
+            il_code.add(il_commands.Mult(shift, raw, size))
+
+            il_code.add(il_commands.Subtr(out, left, shift))
+            return out
+
+        else:
+            descrip = "invalid operand types for binary subtraction"
+            raise CompilerError(descrip, self.operator.file_name,
+                                self.operator.line_num)
 
     def _make_nonarith_equality_code(self, left, right, il_code):
         """Make code for == and != operators for non-arithmetic operands."""
