@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 import lexer
+import preproc
 
 from errors import error_collector, CompilerError
 from parser import Parser
@@ -33,6 +34,11 @@ def main():
         return 1
 
     token_list = lexer.tokenize(code, filename)
+    if not error_collector.ok():
+        error_collector.show()
+        return 1
+
+    token_list = preproc.process(token_list, filename)
     if not error_collector.ok():
         error_collector.show()
         return 1

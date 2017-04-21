@@ -38,11 +38,12 @@ FEATURES
 0  - Implement global variables more fully
 0    - static globals, static locals, etc
 
+0  - Implement full preprocessor
+     - Fix small bugs in current preprocessor implementation
+
 0  - Better errors/warnings
 0    - Better CompilerError interface
 0    - Include more specific error locations
-
-1  - Include small standard library headers
 
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
@@ -58,18 +59,14 @@ FEATURES
 0     - Comparison (>, <, >=, <=)
 0     - Assignment (*=, +=, /=, etc)
 1     - Increment/decrement (prefix/postfix ++ and --)
-0     - Postfix array reference ( p[3] )
 1     - Boolean (&&, ||, !)
 0     - Bitwise (&, |, ~, >>, <<)
 0     - Ternary operator
 
 1  - Better literal support
 1     - Support literal chars (like 'c')
-1     - Support literal strings (like "hello")
 0  - Support hex/octal literal consts
 0  - Support literal suffixed consts (like 123ul for unsigned long)
-
-1  - Implement extern global variables
 
 0  - Implement sizeof operator
 
