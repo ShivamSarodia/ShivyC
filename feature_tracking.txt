@@ -50,7 +50,7 @@ FEATURES
        `signed char` as distinct from `char`, etc.
 0    - Implement proper ranking of integers as distinct from just size
 
-1  - Implement more control statements
+0  - Implement more control statements
 0     - for-loops
 0     - break/continue
 
