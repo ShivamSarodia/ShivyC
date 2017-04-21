@@ -9,7 +9,7 @@ import re
 
 import token_kinds
 
-from errors import CompilerError, Position
+from errors import CompilerError, Position, error_collector
 from tokens import Token
 from token_kinds import symbol_kinds, keyword_kinds
 
@@ -25,8 +25,6 @@ def tokenize(code, filename):
     separate line in the input program.
     return - List of Token objects.
     """
-    tokens = []
-
     # Store tokens as they are generated
     tokens = []
 
@@ -35,8 +33,11 @@ def tokenize(code, filename):
 
     in_comment = False
     for line in lines:
-        line_tokens, in_comment = tokenize_line(line, in_comment)
-        tokens += line_tokens
+        try:
+            line_tokens, in_comment = tokenize_line(line, in_comment)
+            tokens += line_tokens
+        except CompilerError as e:
+            error_collector.add(e)
 
     return tokens
 
@@ -114,31 +115,66 @@ def tokenize_line(line, in_comment):
     chunk_start = 0
     chunk_end = 0
 
-    while chunk_end < len(line):
-        # TODO: Lex include directives properly
+    # Flag that is set True if the line begins with `#` and `include`,
+    # perhaps with comments and whitespace in between.
+    include_line = False
+    # Flag that is set True if the line is an include directive and the
+    # filename has been seen and succesfully parsed.
+    seen_filename = False
 
-        # Check if line[chunk_end:] starts with a symbol token kind
+    while chunk_end < len(line):
         symbol_kind = match_symbol_kind_at(line, chunk_end)
         next = match_symbol_kind_at(line, chunk_end + 1)
 
+        # Set include_line flag True as soon as a `#include` is detected.
+        if match_include_command(tokens):
+            include_line = True
+
         if in_comment:
-            # Next characters end the comment
+            # If next characters end the comment...
             if symbol_kind == token_kinds.star and next == token_kinds.slash:
                 in_comment = False
                 chunk_start = chunk_end + 2
                 chunk_end = chunk_start
-
-            # Skip one character
+            # Otherwise, just skip one character.
             else:
                 chunk_start = chunk_end + 1
                 chunk_end = chunk_start
 
-        # If next characters start a comment, skip over them and set
-        # in_comment to true
+        # If next characters start a comment, process previous chunk and set
+        # in_comment to true.
         elif symbol_kind == token_kinds.slash and next == token_kinds.star:
+            add_chunk(line[chunk_start:chunk_end], tokens)
             in_comment = True
-            chunk_start = chunk_end + 2
+
+        # If next two characters are //, we skip the rest of this line.
+        elif symbol_kind == token_kinds.slash and next == token_kinds.slash:
+            break
+
+        # Skip spaces and process previous chunk.
+        elif line[chunk_end].c.isspace():
+            add_chunk(line[chunk_start:chunk_end], tokens)
+            chunk_start = chunk_end + 1
             chunk_end = chunk_start
+
+        # If this is an include line, and not a comment or whitespace,
+        # expect the line to match an include filename.
+        elif include_line:
+
+            # If the filename has already been seen, there should be no more
+            # tokens.
+            if seen_filename:
+                descrip = "extra tokens at end of include directive"
+                raise CompilerError(descrip, line[chunk_end].p.file,
+                                    line[chunk_end].p.line)
+
+            filename, end = read_include_filename(line, chunk_end)
+            chunk_start = end + 1
+            chunk_end = chunk_start
+
+            tokens.append(Token(token_kinds.include_file, filename,
+                                p=line[end].p))
+            seen_filename = True
 
         # If next character is double quotes, we read the whole string as a
         # token
@@ -151,11 +187,8 @@ def tokenize_line(line, in_comment):
             chunk_start = end + 1
             chunk_end = chunk_start
 
-        # If next two characters are //, we skip the rest of this line as
-        # a comment.
-        elif symbol_kind == token_kinds.slash and next == token_kinds.slash:
-            break
-
+        # If next character is another symbol, add previous chunk and then
+        # add the symbol.
         elif symbol_kind:
             symbol_token = Token(symbol_kind, p=line[chunk_end].p)
 
@@ -165,16 +198,16 @@ def tokenize_line(line, in_comment):
             chunk_start = chunk_end + len(symbol_kind.text_repr)
             chunk_end = chunk_start
 
-        elif line[chunk_end].c.isspace():
-            add_chunk(line[chunk_start:chunk_end], tokens)
-            chunk_start = chunk_end + 1
-            chunk_end = chunk_start
-
+        # Include another character in the chunk.
         else:
             chunk_end += 1
 
     # Flush out anything that is left in the chunk to the output
     add_chunk(line[chunk_start:chunk_end], tokens)
+
+    # Catch a `#include` on a line by itself.
+    if (include_line or match_include_command(tokens)) and not seen_filename:
+        read_include_filename(line, chunk_end)
 
     return tokens, in_comment
 
@@ -208,6 +241,14 @@ def match_symbol_kind_at(content, start):
             pass
 
     return None
+
+
+def match_include_command(tokens):
+    """Check if end of `tokens` is a `#include` directive."""
+    return (len(tokens) == 2 and
+            tokens[-2].kind == token_kinds.pound and
+            tokens[-1].kind == token_kinds.identifier and
+            tokens[-1].content == "include")
 
 
 def read_string(line, start):
@@ -259,6 +300,38 @@ def read_string(line, start):
         else:
             chars.append(ord(line[i].c))
             i += 1
+
+
+def read_include_filename(line, start):
+    """Read a filename that follows a #include directive.
+
+    Expects line[start] to be one of `<` or `"`, then reads characters until a
+    matching symbol is reached. Then, returns as a string the characters
+    read including the initial and final symbol markers. The index returned
+    is that of the closing token in the filename.
+    """
+    if start < len(line) and line[start].c == '"':
+        end = '"'
+    elif start < len(line) and line[start].c == "<":
+        end = ">"
+    else:
+        descrip = "expected \"FILENAME\" or <FILENAME> after include directive"
+        if start < len(line):
+            tok = line[start]
+        else:
+            tok = line[-1]
+
+        raise CompilerError(descrip, tok.p.file, tok.p.line)
+
+    i = start + 1
+    try:
+        while line[i].c != end:
+            i += 1
+    except IndexError:
+        descrip = "missing terminating character for include filename"
+        raise CompilerError(descrip, line[start].p.file, line[start].p.line)
+
+    return chunk_to_str(line[start:i + 1]), i
 
 
 def add_chunk(chunk, tokens):

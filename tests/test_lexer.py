@@ -2,7 +2,7 @@
 
 import lexer
 import token_kinds
-from errors import error_collector, CompilerError
+from errors import error_collector
 from tokens import Token
 from tests.test_utils import TestUtils
 
@@ -92,17 +92,13 @@ class LexerTests(TestUtils):
 
     def test_missing_close_quote(self):
         """Test error on tokenizing an string missing close quotation."""
-        with self.assertRaisesRegex(
-                CompilerError, "missing terminating double quote"):
-
-                lexer.tokenize("\"hello", "")
+        lexer.tokenize("\"hello", "")
+        self.assertIssues(["missing terminating double quote"])
 
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""
-        with self.assertRaisesRegex(
-                CompilerError, "unrecognized token at '1identifier'"):
-
-                lexer.tokenize("1identifier", "")
+        lexer.tokenize("1identifier", "")
+        self.assertIssues(["unrecognized token at '1identifier'"])
 
     def test_basic_program_one_line(self):
         """Test tokenizing an entire basic program that is one line."""
@@ -113,4 +109,12 @@ class LexerTests(TestUtils):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15"),
                   Token(token_kinds.semicolon), Token(token_kinds.close_brack)]
+        self.assertEqual(lexer.tokenize(content, ""), tokens)
+
+    def test_include(self):
+        """Test tokenizing an include statement."""
+        content = '#/*hi*/include/*hey*/"hello hi there/*\"//more comments'
+        tokens = [Token(token_kinds.pound),
+                  Token(token_kinds.identifier, "include"),
+                  Token(token_kinds.include_file, '"hello hi there/*\"')]
         self.assertEqual(lexer.tokenize(content, ""), tokens)
