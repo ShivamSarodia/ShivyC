@@ -521,14 +521,22 @@ class ExpressionParser:
 
     # Dictionary of unary prefix operators {TokenKind: tree.Node}
     unary_prefix_operators = {token_kinds.amp: tree.AddrOfNode,
-                              token_kinds.star: tree.DerefNode}
+                              token_kinds.star: tree.DerefNode,
+                              token_kinds.incr: tree.PreIncrNode,
+                              token_kinds.decr: tree.PreDecrNode}
+
+    # Dictionary of unary postfix operators {TokenKind: tree.Node}
+    unary_postfix_operators = {token_kinds.incr: tree.PostIncrNode,
+                               token_kinds.decr: tree.PostDecrNode}
 
     # The set of tokens that indicate that a postfix operator follows. For
     # example, the open parenthesis indicates a function call follows,
     # and an open square bracket indicates an array subscript follows. These
     # have highest priority.
     posfix_operator_begin = {token_kinds.open_paren,
-                             token_kinds.open_sq_brack}
+                             token_kinds.open_sq_brack,
+                             token_kinds.incr,
+                             token_kinds.decr}
 
     # The set of assignment_tokens (because these are right-associative)
     assignment_operators = {token_kinds.equals}
@@ -568,6 +576,7 @@ class ExpressionParser:
                     self.try_match_identifier() or
                     self.try_match_bin_op(self.tokens[i:]) or
                     self.try_match_unary_prefix(self.tokens[i:]) or
+                    self.try_match_unary_postfix() or
                     self.try_match_function_call() or
                     self.try_match_array_subsc() or
                     self.try_match_paren_expr()):
@@ -686,6 +695,17 @@ class ExpressionParser:
             return True
 
         return False
+
+    def try_match_unary_postfix(self):
+        """Try matching the top of the stack to postfix unary operator node."""
+
+        if not (self.match_node(-2) and
+                self.match_kind_in(-1, self.unary_postfix_operators)):
+            return False
+
+        node = self.unary_postfix_operators[self.s[-1].item.kind]
+        self.reduce(node(self.s[-2].item, self.s[-1].item), 2)
+        return True
 
     def try_match_function_call(self):
         """Try matching the top of the stack to a function call node."""

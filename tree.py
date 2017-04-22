@@ -767,6 +767,113 @@ class BinaryOperatorNode(ExpressionNode):
         return output
 
 
+class _IncrDecr(ExpressionNode):
+    """General helper class for increment and decrement nodes."""
+
+    def _make_code(self, expr, incr, pre, tok, il_code, symbol_table):
+        """Make code for this post/pre-fix incr/decr-ement node.
+
+        expr - Node containing the argument expression
+        incr (bool) - True if this is an increment node, False if it is a
+        decrement node.
+        pre (bool) - True if this is a prefix operator, False if it is a
+        postfix operator.
+        """
+        command = il_commands.Add if incr else il_commands.Subtr
+
+        val = expr.make_code(il_code, symbol_table)
+        lval = expr.lvalue(il_code, symbol_table)
+
+        if not lval or not lval.modable():
+            descrip = "operand of increment operator not a modifiable lvalue"
+            raise CompilerError(descrip, tok.file_name, tok.line_num)
+
+        one = ILValue(val.ctype)
+        if val.ctype.type_type == CType.ARITH:
+            il_code.register_literal_var(one, "1")
+        elif val.ctype.type_type == CType.POINTER:
+            il_code.register_literal_var(one, str(val.ctype.arg.size))
+        else:
+            raise NotImplementedError("Unsupported operands")
+
+        new_val = ILValue(val.ctype)
+
+        if pre:
+            il_code.add(command(new_val, val, one))
+            lval.set_to(new_val, il_code, tok)
+            return new_val
+        else:
+            old_val = ILValue(val.ctype)
+            il_code.add(il_commands.Set(old_val, val))
+            il_code.add(command(new_val, val, one))
+            lval.set_to(new_val, il_code, tok)
+            return old_val
+
+
+class PreIncrNode(_IncrDecr):
+    """A prefix increment node, like `++a`."""
+
+    def __init__(self, expr, tok):
+        """Initialize node."""
+        self.expr = expr
+        self.tok = tok
+
+        super().__init__()
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+        return self._make_code(self.expr, True, True, self.tok, il_code,
+                               symbol_table)
+
+
+class PreDecrNode(_IncrDecr):
+    """A prefix decrement node, like `a--`."""
+
+    def __init__(self, expr, tok):
+        """Initialize node."""
+        self.expr = expr
+        self.tok = tok
+
+        super().__init__()
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+        return self._make_code(self.expr, False, True, self.tok, il_code,
+                               symbol_table)
+
+
+class PostIncrNode(_IncrDecr):
+    """A postfix increment node, like `a++`."""
+
+    def __init__(self, expr, tok):
+        """Initialize node."""
+        self.expr = expr
+        self.tok = tok
+
+        super().__init__()
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+        return self._make_code(self.expr, True, False, self.tok, il_code,
+                               symbol_table)
+
+
+class PostDecrNode(_IncrDecr):
+    """A postfix decrement node, like `a--`."""
+
+    def __init__(self, expr, tok):
+        """Initialize node."""
+        self.expr = expr
+        self.tok = tok
+
+        super().__init__()
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+        return self._make_code(self.expr, False, False, self.tok, il_code,
+                               symbol_table)
+
+
 class AddrOfNode(ExpressionNode):
     """Expression produced by getting the address of a variable.
 

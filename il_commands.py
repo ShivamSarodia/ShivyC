@@ -917,7 +917,7 @@ class SetAt(ILCommand):
         if spotmap[self.addr].spot_type == Spot.REGISTER:
             indir_spot = Spot(Spot.MEM, (spotmap[self.addr].asm_str(8), 0))
         else:
-            r = get_reg()
+            r = get_reg([], [spotmap[self.val]])
             asm_code.add_command("mov", r.asm_str(8), addr_asm)
             indir_spot = Spot(Spot.MEM, (r.asm_str(8), 0))
 
