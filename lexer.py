@@ -179,9 +179,21 @@ def tokenize_line(line, in_comment):
         # If next character is double quotes, we read the whole string as a
         # token
         elif symbol_kind == token_kinds.dquote:
-            chars, end = read_string(line, chunk_end + 1)
+            chars, end = read_string(line, chunk_end + 1, '"', True)
             rep = chunk_to_str(line[chunk_end:end + 1])
             tokens.append(Token(token_kinds.string, chars, rep,
+                                p=line[chunk_end].p))
+
+            chunk_start = end + 1
+            chunk_end = chunk_start
+
+        # If next character is single quote, we read the whole string as a
+        # token again. We will complain in the parser if there are multiple
+        # characters in this character string.
+        elif symbol_kind == token_kinds.squote:
+            chars, end = read_string(line, chunk_end + 1, "'", False)
+            rep = chunk_to_str(line[chunk_end:end + 1])
+            tokens.append(Token(token_kinds.char_string, chars, rep,
                                 p=line[chunk_end].p))
 
             chunk_start = end + 1
@@ -251,7 +263,7 @@ def match_include_command(tokens):
             tokens[-1].content == "include")
 
 
-def read_string(line, start):
+def read_string(line, start, delim, null):
     """Return a lexed string list in input characters.
 
     Also returns the index of the string end quote.
@@ -268,6 +280,8 @@ def read_string(line, start):
 
     line - List of Tagged objects for each character in the line.
     start - Index at which to start reading the string.
+    delim - Delimiter with which the string ends, like `"` or `'`
+    null - Whether to add a null-terminator to the returned character list
     """
     i = start
     chars = []
@@ -286,15 +300,15 @@ def read_string(line, start):
 
     while True:
         if i >= len(line):
-            descrip = "missing terminating double quote"
+            descrip = "missing terminating quote"
             raise CompilerError(
                 descrip, line[start - 1].p.file, line[start - 1].p.line)
-        elif line[i].c == '"':
-            chars.append(0)
+        elif line[i].c == delim:
+            if null: chars.append(0)
             return chars, i
         elif (i + 1 < len(line) and
-                      line[i].c == "\\" and
-                      line[i + 1].c in escapes):
+              line[i].c == "\\" and
+               line[i + 1].c in escapes):
             chars.append(escapes[line[i + 1].c])
             i += 2
         else:

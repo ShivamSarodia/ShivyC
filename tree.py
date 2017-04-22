@@ -268,8 +268,6 @@ class NumberNode(ExpressionNode):
         """Initialize node."""
         super().__init__()
 
-        self.assert_kind(number, token_kinds.number)
-
         self.number = number
 
     def make_code_raw(self, il_code, symbol_table):

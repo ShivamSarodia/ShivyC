@@ -93,7 +93,7 @@ class LexerTests(TestUtils):
     def test_missing_close_quote(self):
         """Test error on tokenizing an string missing close quotation."""
         lexer.tokenize("\"hello", "")
-        self.assertIssues(["missing terminating double quote"])
+        self.assertIssues(["missing terminating quote"])
 
     def test_bad_identifier(self):
         """Test error on tokenizing an identifier starting with digit."""

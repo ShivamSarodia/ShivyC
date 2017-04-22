@@ -41,6 +41,7 @@ amp = TokenKind("&", symbol_kinds)
 pound = TokenKind("#", symbol_kinds)
 
 dquote = TokenKind('"', symbol_kinds)
+squote = TokenKind("'", symbol_kinds)
 
 open_paren = TokenKind("(", symbol_kinds)
 close_paren = TokenKind(")", symbol_kinds)
@@ -55,4 +56,5 @@ semicolon = TokenKind(";", symbol_kinds)
 identifier = TokenKind()
 number = TokenKind()
 string = TokenKind()
+char_string = TokenKind()
 include_file = TokenKind()

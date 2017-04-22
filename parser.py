@@ -10,7 +10,7 @@ import ctypes
 import decl_tree
 import tree
 import token_kinds
-from errors import ParserError, error_collector
+from errors import CompilerError, ParserError, error_collector
 from tokens import Token
 
 
@@ -545,9 +545,10 @@ class ExpressionParser:
     # binary_operators or unary_prefix_operators. Used to determine when
     # parsing can stop.
     valid_tokens = {token_kinds.number, token_kinds.identifier,
-                    token_kinds.string, token_kinds.open_paren,
-                    token_kinds.close_paren, token_kinds.open_sq_brack,
-                    token_kinds.close_sq_brack, token_kinds.comma}
+                    token_kinds.string, token_kinds.char_string,
+                    token_kinds.open_paren, token_kinds.close_paren,
+                    token_kinds.open_sq_brack, token_kinds.close_sq_brack,
+                    token_kinds.comma}
 
     # An item in the parsing stack. The item is either a Node or Token,
     # where the node must generate an expression, and the length is the
@@ -616,13 +617,34 @@ class ExpressionParser:
         return False
 
     def try_match_string(self):
-        """Try matching the top of the stack to a string node.
+        """Try matching the top of the stack to a string or char node.
 
         Return True on successful match, False otherwise.
         """
         if self.match_kind(-1, token_kinds.string):
             self.reduce(tree.StringNode(self.s[-1].item), 1)
             return True
+        elif self.match_kind(-1, token_kinds.char_string):
+            chars = self.s[-1].item.content
+            if len(chars) == 0:
+                descrip = "empty character constant"
+                error_collector.add(
+                    CompilerError(descrip, self.s[-1].item.file_name,
+                                  self.s[-1].item.line_num))
+                self.reduce(tree.NumberNode(None), 1)
+
+            elif len(chars) > 1:
+                descrip = "multiple characters in character constant"
+                error_collector.add(
+                    CompilerError(descrip, self.s[-1].item.file_name,
+                                  self.s[-1].item.line_num))
+                self.reduce(tree.NumberNode(None), 1)
+
+            else:
+                self.reduce(tree.NumberNode(chars[0]), 1)
+
+            return True
+
         return False
 
     def try_match_identifier(self):
