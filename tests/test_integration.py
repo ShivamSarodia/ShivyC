@@ -2,7 +2,7 @@
 
 This module defines a metaclass which generates test cases from files on disk,
 and a test class based off that metaclass. For each file that matches
-"tests/ctests/*.c", a test function is generated.
+"tests/feature_tests/*.c", a test function is generated.
 
 If the C file contains a line of the form:
 
@@ -78,7 +78,7 @@ class MetaIntegrationTests(type):
 
             return test_function
 
-        test_file_names = glob.glob("tests/ctests/*.c")
+        test_file_names = glob.glob("tests/feature_tests/*.c")
         for test_file_name in test_file_names:
             short_name = test_file_name.split("/")[-1][:-2]
             test_func_name = "test_" + short_name
