@@ -525,7 +525,8 @@ class ExpressionParser:
     unary_prefix_operators = {token_kinds.amp: tree.AddrOfNode,
                               token_kinds.star: tree.DerefNode,
                               token_kinds.incr: tree.PreIncrNode,
-                              token_kinds.decr: tree.PreDecrNode}
+                              token_kinds.decr: tree.PreDecrNode,
+                              token_kinds.bool_not: tree.BoolNotNode}
 
     # Dictionary of unary postfix operators {TokenKind: tree.Node}
     unary_postfix_operators = {token_kinds.incr: tree.PostIncrNode,

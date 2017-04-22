@@ -677,8 +677,8 @@ class BinaryOperatorNode(ExpressionNode):
         else:
             jump_command = il_commands.JumpNotZero
 
-        il_code.add(il_commands.Set(out, one if andop else zero))
         left = self.left_expr.make_code(il_code, symbol_table)
+        il_code.add(il_commands.Set(out, one if andop else zero))
         il_code.add(jump_command(left, set_out))
         right = self.right_expr.make_code(il_code, symbol_table)
         il_code.add(jump_command(right, set_out))
@@ -914,6 +914,42 @@ class PostDecrNode(_IncrDecr):
         """Make code for this node."""
         return self._make_code(self.expr, False, False, self.tok, il_code,
                                symbol_table)
+
+
+class BoolNotNode(ExpressionNode):
+    """Expression like `!a`."""
+
+    def __init__(self, expr, op):
+        """Initialize node."""
+        super().__init__()
+
+        self.expr = expr
+        self.op = op
+
+    def make_code_raw(self, il_code, symbol_table):
+        """Make code for this node."""
+
+        # ILValue for storing the output
+        out = ILValue(ctypes.integer)
+
+        # ILValue for zero.
+        zero = ILValue(ctypes.integer)
+        il_code.register_literal_var(zero, "0")
+
+        # ILValue for one.
+        one = ILValue(ctypes.integer)
+        il_code.register_literal_var(one, "1")
+
+        # Label which skips the line which sets out to 0.
+        end = il_code.get_label()
+
+        expr = self.expr.make_code(il_code, symbol_table)
+        il_code.add(il_commands.Set(out, one))
+        il_code.add(il_commands.JumpZero(expr, end))
+        il_code.add(il_commands.Set(out, zero))
+        il_code.add(il_commands.Label(end))
+
+        return out
 
 
 class AddrOfNode(ExpressionNode):
