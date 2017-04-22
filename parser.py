@@ -517,6 +517,8 @@ class ExpressionParser:
                         token_kinds.slash: 12,
                         token_kinds.twoequals: 8,
                         token_kinds.notequal: 8,
+                        token_kinds.bool_and: 4,
+                        token_kinds.bool_or: 3,
                         token_kinds.equals: 1}
 
     # Dictionary of unary prefix operators {TokenKind: tree.Node}

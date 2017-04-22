@@ -516,8 +516,12 @@ class BinaryOperatorNode(ExpressionNode):
         """Make code for this node."""
 
         # If = operator
-        if self.operator == Token(token_kinds.equals):
+        if self.operator.kind == token_kinds.equals:
             return self._make_equals_code(il_code, symbol_table)
+
+        # If boolean && operator
+        elif self.operator.kind == token_kinds.bool_and:
+            return self._make_bool_and_code(il_code, symbol_table)
 
         # Make code for both operands
         left = self.left_expr.make_code(il_code, symbol_table)
@@ -643,6 +647,35 @@ class BinaryOperatorNode(ExpressionNode):
             descrip = "expression on left of '=' is not assignable"
             raise CompilerError(descrip, self.operator.file_name,
                                 self.operator.line_num)
+
+    def _make_bool_and_code(self, il_code, symbol_table):
+        # ILValue for storing the output of this boolean operation
+        out = ILValue(ctypes.integer)
+
+        # ILValue for zero.
+        zero = ILValue(ctypes.integer)
+        il_code.register_literal_var(zero, "0")
+
+        # ILValue for one.
+        one = ILValue(ctypes.integer)
+        il_code.register_literal_var(one, "1")
+
+        # Label which immediately precedes the line which sets out to zero.
+        set_zero = il_code.get_label()
+
+        # Label which skips the line which sets out to zero.
+        end = il_code.get_label()
+
+        il_code.add(il_commands.Set(out, one))
+        left = self.left_expr.make_code(il_code, symbol_table)
+        il_code.add(il_commands.JumpZero(left, set_zero))
+        right = self.right_expr.make_code(il_code, symbol_table)
+        il_code.add(il_commands.JumpZero(right, set_zero))
+        il_code.add(il_commands.Jump(end))
+        il_code.add(il_commands.Label(set_zero))
+        il_code.add(il_commands.Set(out, zero))
+        il_code.add(il_commands.Label(end))
+        return out
 
     def _make_nonarith_plus_code(self, left, right, il_code):
         """Make code for + operator for non-arithmetic operands."""
