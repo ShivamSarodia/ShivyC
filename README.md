@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/ShivamSarodia/ShivyC.svg?branch=master)](https://travis-ci.org/ShivamSarodia/ShivyC)
 [![Code Coverage](https://codecov.io/gh/ShivamSarodia/ShivyC/branch/master/graph/badge.svg)](https://codecov.io/gh/ShivamSarodia/ShivyC)
 
-ShivyC is a small C compiler written in Python 3, targeting Linux x86-64 machines. Seeks to eventually support the entire C11 standard and produce reasonably efficient code, although it's currently far from meeting these long-term goals. For ShivyC's current feature set, see the test files in the [tests/ctests/](tests/ctests/) directory.
+ShivyC is a C compiler written purely in Python 3, targeting Linux x86-64 machines. ShivyC seeks to eventually support the entire C11 standard and produce reasonably efficient code. For ShivyC's current feature set, see the test files in the [tests/general_tests](tests/general_tests) and [tests/feature_tests](tests/feature_tests) directories.
 
 ShivyC is a rewrite from scratch of my older attempt at a C compiler, [ShivC](https://github.com/ShivamSarodia/ShivC), with much more emphasis on feature completeness and code quality. See the ShivC README for more details on the target improvements.
 
@@ -15,7 +15,7 @@ python3 -m unittest discover
 
 ## Implementation Overview
 #### Preprocessor
-ShivyC currently has no preprocessor, besides very primitively parsing out line comments. A decent preprocessor will be implemented.
+ShivyC currently has a very limited preprocessor that parses out comments and expands #include directives. These features are implemented between `lexer.py` and `preproc.py`. A more complete preprocessor will be implemented.
 
 #### Lexer
 The ShivyC lexer is implemented primarily in `lexer.py`. Additionally, `tokens.py` contains definitions of the token classes used in the lexer and `token_kinds.py` contains instances of recognized keyword and symbol tokens.
