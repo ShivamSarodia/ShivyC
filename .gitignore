@@ -2,3 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
+out
+out.o
+out.s
+gcc_out
+a.out
+test.c
+\#*#
