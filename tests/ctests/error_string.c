@@ -4,4 +4,7 @@ int main() {
 
   // Issue: 6: error: multiple characters in character constant
   'ab';
+
+  // Issue: 9: error: multiple characters in character constant
+  '/*';
 }
