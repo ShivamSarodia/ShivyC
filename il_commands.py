@@ -785,8 +785,8 @@ class Jump(ILCommand):
         return self.to_str("JMP", [self.label])
 
 
-class JumpZero(ILCommand):
-    """Jumps to a label if given condition is zero."""
+class _GeneralJumpZero(ILCommand):
+    """General class for jumping to a label based on condition."""
 
     def __init__(self, cond, label): # noqa D102
         self.cond = cond
@@ -811,10 +811,25 @@ class JumpZero(ILCommand):
             cond_asm = spotmap[self.cond].asm_str(self.cond.ctype.size)
 
         asm_code.add_command("cmp", cond_asm, "0")
-        asm_code.add_command("je", self.label)
+        asm_code.add_command(self.command, self.label)
+
+
+class JumpZero(_GeneralJumpZero):
+    """Jumps to a label if given condition is zero."""
+
+    command = "je"
 
     def __str__(self):  # pragma: no cover
         return self.to_str("JZERO", [self.cond, self.label])
+
+
+class JumpNotZero(_GeneralJumpZero):
+    """Jumps to a label if given condition is zero."""
+
+    command = "jne"
+
+    def __str__(self):  # pragma: no cover
+        return self.to_str("JNZERO", [self.cond, self.label])
 
 
 class AddrOf(ILCommand):

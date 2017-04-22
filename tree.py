@@ -521,7 +521,11 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If boolean && operator
         elif self.operator.kind == token_kinds.bool_and:
-            return self._make_bool_and_code(il_code, symbol_table)
+            return self._make_bool_andor_code(True, il_code, symbol_table)
+
+        # If boolean || operator
+        elif self.operator.kind == token_kinds.bool_or:
+            return self._make_bool_andor_code(False, il_code, symbol_table)
 
         # Make code for both operands
         left = self.left_expr.make_code(il_code, symbol_table)
@@ -648,7 +652,9 @@ class BinaryOperatorNode(ExpressionNode):
             raise CompilerError(descrip, self.operator.file_name,
                                 self.operator.line_num)
 
-    def _make_bool_and_code(self, il_code, symbol_table):
+    def _make_bool_andor_code(self, andop, il_code, symbol_table):
+        """Make code if this operation is boolean && or ||."""
+
         # ILValue for storing the output of this boolean operation
         out = ILValue(ctypes.integer)
 
@@ -660,20 +666,25 @@ class BinaryOperatorNode(ExpressionNode):
         one = ILValue(ctypes.integer)
         il_code.register_literal_var(one, "1")
 
-        # Label which immediately precedes the line which sets out to zero.
-        set_zero = il_code.get_label()
+        # Label which immediately precedes the line which sets out to 0 or 1.
+        set_out = il_code.get_label()
 
-        # Label which skips the line which sets out to zero.
+        # Label which skips the line which sets out to 0 or 1.
         end = il_code.get_label()
 
-        il_code.add(il_commands.Set(out, one))
+        if andop:
+            jump_command = il_commands.JumpZero
+        else:
+            jump_command = il_commands.JumpNotZero
+
+        il_code.add(il_commands.Set(out, one if andop else zero))
         left = self.left_expr.make_code(il_code, symbol_table)
-        il_code.add(il_commands.JumpZero(left, set_zero))
+        il_code.add(jump_command(left, set_out))
         right = self.right_expr.make_code(il_code, symbol_table)
-        il_code.add(il_commands.JumpZero(right, set_zero))
+        il_code.add(jump_command(right, set_out))
         il_code.add(il_commands.Jump(end))
-        il_code.add(il_commands.Label(set_zero))
-        il_code.add(il_commands.Set(out, zero))
+        il_code.add(il_commands.Label(set_out))
+        il_code.add(il_commands.Set(out, zero if andop else one))
         il_code.add(il_commands.Label(end))
         return out
 
