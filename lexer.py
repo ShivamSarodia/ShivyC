@@ -4,18 +4,28 @@ The lexing phase takes the entire contents of a raw input file and
 generates a flat list of tokens present in that input file.
 
 """
-from collections import namedtuple
 import re
 
 import token_kinds
 
-from errors import CompilerError, Position, error_collector
+from errors import CompilerError, Position, Range, error_collector
 from tokens import Token
 from token_kinds import symbol_kinds, keyword_kinds
 
-# Create namedtuple for tagged characters. Tagged.c is the character that is
-# tagged, and Tagged.p is the position of the tagged character.
-Tagged = namedtuple("Tagged", ['c', 'p'])
+
+class Tagged:
+    """Class representing tagged characters.
+
+    c (char) - the character that is tagged
+    p (Position) - position of the tagged character
+    r (Range) - a length-one range for the character
+    """
+
+    def __init__(self, c, p):
+        """Initialize object."""
+        self.c = c
+        self.p = p
+        self.r = Range(p, p)
 
 
 def tokenize(code, filename):
@@ -165,36 +175,33 @@ def tokenize_line(line, in_comment):
             # tokens.
             if seen_filename:
                 descrip = "extra tokens at end of include directive"
-                raise CompilerError(descrip, line[chunk_end].p.file,
-                                    line[chunk_end].p.line)
+                raise CompilerError(descrip, line[chunk_end].r)
 
             filename, end = read_include_filename(line, chunk_end)
+            tokens.append(Token(token_kinds.include_file, filename,
+                                r=Range(line[chunk_end].p, line[end].p)))
+
             chunk_start = end + 1
             chunk_end = chunk_start
-
-            tokens.append(Token(token_kinds.include_file, filename,
-                                p=line[end].p))
             seen_filename = True
 
-        # If next character is double quotes, we read the whole string as a
-        # token
-        elif symbol_kind == token_kinds.dquote:
-            chars, end = read_string(line, chunk_end + 1, '"', True)
-            rep = chunk_to_str(line[chunk_end:end + 1])
-            tokens.append(Token(token_kinds.string, chars, rep,
-                                p=line[chunk_end].p))
+        # If next character is a quote, we read the whole string as a token.
+        # We complain in the parser if there are multiple characters in a
+        # character string.
+        elif symbol_kind in {token_kinds.dquote, token_kinds.squote}:
+            if symbol_kind == token_kinds.dquote:
+                quote_str = '"'
+                kind = token_kinds.string
+                add_null = True
+            else:
+                quote_str = "'"
+                kind = token_kinds.char_string
+                add_null = False
 
-            chunk_start = end + 1
-            chunk_end = chunk_start
-
-        # If next character is single quote, we read the whole string as a
-        # token again. We will complain in the parser if there are multiple
-        # characters in this character string.
-        elif symbol_kind == token_kinds.squote:
-            chars, end = read_string(line, chunk_end + 1, "'", False)
+            chars, end = read_string(line, chunk_end + 1, quote_str, add_null)
             rep = chunk_to_str(line[chunk_end:end + 1])
-            tokens.append(Token(token_kinds.char_string, chars, rep,
-                                p=line[chunk_end].p))
+            tokens.append(Token(kind, chars, rep,
+                                r=Range(line[chunk_end].p, line[end].p)))
 
             chunk_start = end + 1
             chunk_end = chunk_start
@@ -202,7 +209,8 @@ def tokenize_line(line, in_comment):
         # If next character is another symbol, add previous chunk and then
         # add the symbol.
         elif symbol_kind:
-            symbol_token = Token(symbol_kind, p=line[chunk_end].p)
+            symbol_token = Token(
+                symbol_kind, r=Range(line[chunk_end].p, line[chunk_end].p))
 
             add_chunk(line[chunk_start:chunk_end], tokens)
             tokens.append(symbol_token)
@@ -301,8 +309,7 @@ def read_string(line, start, delim, null):
     while True:
         if i >= len(line):
             descrip = "missing terminating quote"
-            raise CompilerError(
-                descrip, line[start - 1].p.file, line[start - 1].p.line)
+            raise CompilerError(descrip, line[start - 1].r)
         elif line[i].c == delim:
             if null: chars.append(0)
             return chars, i
@@ -331,11 +338,11 @@ def read_include_filename(line, start):
     else:
         descrip = "expected \"FILENAME\" or <FILENAME> after include directive"
         if start < len(line):
-            tok = line[start]
+            char = line[start]
         else:
-            tok = line[-1]
+            char = line[-1]
 
-        raise CompilerError(descrip, tok.p.file, tok.p.line)
+        raise CompilerError(descrip, char.r)
 
     i = start + 1
     try:
@@ -343,7 +350,7 @@ def read_include_filename(line, start):
             i += 1
     except IndexError:
         descrip = "missing terminating character for include filename"
-        raise CompilerError(descrip, line[start].p.file, line[start].p.line)
+        raise CompilerError(descrip, line[start].r)
 
     return chunk_to_str(line[start:i + 1]), i
 
@@ -360,25 +367,26 @@ def add_chunk(chunk, tokens):
 
     """
     if chunk:
+        range = Range(chunk[0].p, chunk[-1].p)
+
         keyword_kind = match_keyword_kind(chunk)
         if keyword_kind:
-            tokens.append(Token(keyword_kind, p=chunk[0].p))
+            tokens.append(Token(keyword_kind, r=range))
             return
 
         number_string = match_number_string(chunk)
         if number_string:
-            tokens.append(Token(token_kinds.number, number_string,
-                                p=chunk[0].p))
+            tokens.append(Token(token_kinds.number, number_string, r=range))
             return
 
         identifier_name = match_identifier_name(chunk)
         if identifier_name:
-            tokens.append(Token(token_kinds.identifier, identifier_name,
-                                p=chunk[0].p))
+            tokens.append(Token(
+                token_kinds.identifier, identifier_name, r=range))
             return
 
         descrip = "unrecognized token at '{}'".format(chunk_to_str(chunk))
-        raise CompilerError(descrip, chunk[0].p.file, chunk[0].p.line)
+        raise CompilerError(descrip, range)
 
 
 def match_keyword_kind(token_repr):

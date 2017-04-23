@@ -30,11 +30,12 @@ int main() {
   v = 0;
   e = 0;
 
-  // Issue: 35: warning: conversion from incompatible pointer type
   int *f; unsigned int *g;
+  // warning: conversion from incompatible pointer type
   f = g;
 
-  _Bool h = &a;  // Value is checked at very end of this main() function
+  // Value of below is checked at very end of this main() function
+  _Bool h = &a;
 
   // Address-of operator where output is on the stack
   int* i_on_stack; int j;

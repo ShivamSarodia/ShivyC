@@ -12,11 +12,12 @@ Then, the test expects the main() in that test file to return the value
 "###". If no such line exists, the default expected return value is 0.
 
 If the C file contains line(s) of the form:
-// Issue: ____
 
-Then, the test expects compiliation to fail with an error or warning whose
-message contains the string "____".
+// error: ____
+// warning: ____
 
+Then, the test expects compiliation to raise an error or warning on the
+following line whose message is the string "____".
 """
 
 from errors import error_collector
@@ -60,31 +61,52 @@ class MetaIntegrationTests(type):
                 # Read test parameters from test file
                 with open(test_file_name) as f:
                     ret_val = 0
-                    issues = []
 
-                    for line in f.readlines():
+                    exp_errors = []
+                    exp_error_lines = []
+
+                    exp_warnings = []
+                    exp_warning_lines = []
+
+                    for index, line in enumerate(f.readlines()):
                         ret_mark = "// Return:"
-                        issue_mark = "// Issue:"
+                        error_mark = "// error:"
+                        warning_mark = "// warning:"
 
                         if line.strip().startswith(ret_mark):
                             ret_val = int(line.split(ret_mark)[-1])
-                        elif line.strip().startswith(issue_mark):
-                            issues.append(line.split(issue_mark)[-1])
+                        elif line.strip().startswith(error_mark):
+                            exp_errors.append(
+                                line.split(error_mark)[-1].strip())
+                            exp_error_lines.append(index + 2)
+                        elif line.strip().startswith(warning_mark):
+                            exp_warnings.append(
+                                line.split(warning_mark)[-1].strip())
+                            exp_warning_lines.append(index + 2)
 
                 compile_with_shivyc(test_file_name)
 
-                if not issues:
-                    self.assertEqual(error_collector.issues, [])
-                    self.assertEqual(subprocess.call(["./out"]), ret_val)
-                else:
-                    clean_issues = list(map(lambda x: x.strip(), issues))
+                act_errors = []
+                act_error_lines = []
 
-                    front_strip = len(test_file_name) + 1
-                    clean_actual = list(map(lambda x: str(x)[front_strip:],
-                                            error_collector.issues))
+                act_warnings = []
+                act_warning_lines = []
 
-                    self.assertListEqual(clean_issues, clean_actual)
-                    self.assertEqual(subprocess.call(["./out"]), ret_val)
+                for issue in error_collector.issues:
+                    if issue.warning:
+                        act_warnings.append(issue.descrip)
+                        act_warning_lines.append(issue.range.start.line)
+                    else:
+                        act_errors.append(issue.descrip)
+                        act_error_lines.append(issue.range.start.line)
+
+                self.assertListEqual(act_errors, exp_errors)
+                self.assertListEqual(act_error_lines, exp_error_lines)
+
+                self.assertListEqual(act_warnings, exp_warnings)
+                self.assertListEqual(act_warning_lines, exp_warning_lines)
+
+                self.assertEqual(subprocess.call(["./out"]), ret_val)
 
             return test_function
 

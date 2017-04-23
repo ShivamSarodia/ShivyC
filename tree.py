@@ -286,8 +286,7 @@ class NumberNode(ExpressionNode):
         else:
             descrip = ("integer literal too large to be represented by any " +
                        "integer type")
-            raise CompilerError(descrip, self.number.file_name,
-                                self.number.line_num)
+            raise CompilerError(descrip, self.number.r)
 
         il_code.register_literal_var(il_value, v)
 
@@ -555,8 +554,7 @@ class BinaryOperatorNode(ExpressionNode):
             else:  # self.operator.kind == token_kinds.slash
                 descrip = "invalid operand types for binary division"
 
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
+            raise CompilerError(descrip, self.operator.r)
 
         else:
             raise NotImplementedError("Unsupported operands")
@@ -649,8 +647,7 @@ class BinaryOperatorNode(ExpressionNode):
             return lvalue.set_to(right, il_code, self.operator)
         else:
             descrip = "expression on left of '=' is not assignable"
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
+            raise CompilerError(descrip, self.operator.r)
 
     def _make_bool_andor_code(self, andop, il_code, symbol_table):
         """Make code if this operation is boolean && or ||."""
@@ -702,8 +699,7 @@ class BinaryOperatorNode(ExpressionNode):
             arith_op, pointer_op = left, right
         else:
             descrip = "invalid operand types for binary addition"
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
+            raise CompilerError(descrip, self.operator.r)
 
         # Cast the integer operand to a long for multiplication.
         l_arith_op = set_type(arith_op, ctypes.unsig_longint, il_code)
@@ -761,8 +757,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         else:
             descrip = "invalid operand types for binary subtraction"
-            raise CompilerError(descrip, self.operator.file_name,
-                                self.operator.line_num)
+            raise CompilerError(descrip, self.operator.r)
 
     def _make_nonarith_equality_code(self, left, right, il_code):
         """Make code for == and != operators for non-arithmetic operands."""
@@ -780,9 +775,7 @@ class BinaryOperatorNode(ExpressionNode):
         if (left.ctype.type_type != CType.POINTER or
              right.ctype.type_type != CType.POINTER):
             descrip = "comparison between incomparable types"
-            error_collector.add(
-                CompilerError(descrip, self.operator.file_name,
-                              self.operator.line_num, True))
+            error_collector.add(CompilerError(descrip, self.operator.r, True))
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg == ctypes.void:
@@ -795,9 +788,7 @@ class BinaryOperatorNode(ExpressionNode):
         # If both types are still incompatible, warn!
         elif not left.ctype.compatible(right.ctype):
             descrip = "comparison between distinct pointer types"
-            error_collector.add(
-                CompilerError(descrip, self.operator.file_name,
-                              self.operator.line_num, True))
+            error_collector.add(CompilerError(descrip, self.operator.r, True))
 
         # Now, we can do comparison
         output = ILValue(ctypes.integer)
@@ -828,7 +819,7 @@ class _IncrDecr(ExpressionNode):
 
         if not lval or not lval.modable():
             descrip = "operand of increment operator not a modifiable lvalue"
-            raise CompilerError(descrip, tok.file_name, tok.line_num)
+            raise CompilerError(descrip, tok.r)
 
         one = ILValue(val.ctype)
         if val.ctype.type_type == CType.ARITH:
@@ -975,7 +966,7 @@ class AddrOfNode(ExpressionNode):
             return lvalue.addr(il_code)
         else:
             descrip = "lvalue required as unary '&' operand"
-            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
+            raise CompilerError(descrip, self.op.r)
 
 
 class DerefNode(ExpressionNode):
@@ -1018,8 +1009,7 @@ class DerefNode(ExpressionNode):
 
             if addr.ctype.type_type != CType.POINTER:
                 descrip = "operand of unary '*' must have pointer type"
-                raise CompilerError(descrip, self.op.file_name,
-                                    self.op.line_num)
+                raise CompilerError(descrip, self.op.r)
 
             self._cache_lvalue = LValue(LValue.INDIRECT, addr)
 
@@ -1085,7 +1075,7 @@ class ArraySubscriptNode(ExpressionNode):
 
         else:
             descrip = "invalid operand types for array subscriping"
-            raise CompilerError(descrip, self.op.file_name, self.op.line_num)
+            raise CompilerError(descrip, self.op.r)
 
         # Cast the integer operand to a long for multiplication.
         l_arith = set_type(arith, ctypes.unsig_longint, il_code)
@@ -1139,7 +1129,7 @@ class FunctionCallNode(ExpressionNode):
         if (func.ctype.type_type != CType.POINTER or
              func.ctype.arg.type_type != CType.FUNCTION):
             descrip = "called object is not a function pointer"
-            raise CompilerError(descrip, self.tok.file_name, self.tok.line_num)
+            raise CompilerError(descrip, self.tok.r)
 
         if not func.ctype.arg.args:
             final_args = self._get_args_without_prototype(
@@ -1186,8 +1176,7 @@ class FunctionCallNode(ExpressionNode):
             arg_types = func_ctype.args
         if len(arg_types) != len(self.args):
             descrip = "incorrect number of arguments for function call"
-            raise CompilerError(descrip, self.tok.file_name,
-                                self.tok.line_num)
+            raise CompilerError(descrip, self.tok.r)
         final_args = []
         for arg_given, arg_type in zip(self.args, arg_types):
             arg = arg_given.make_code(il_code, symbol_table)
@@ -1231,13 +1220,11 @@ class DeclarationNode(Node):
                 ctype, identifier, storage = self.make_ctype(decl)
                 if not identifier:
                     descrip = "missing identifier name in declaration"
-                    raise CompilerError(descrip, decl.specs[0].file_name,
-                                        decl.specs[0].line_num)
+                    raise CompilerError(descrip, decl.specs[0].r)
 
                 if ctype == ctypes.void:
                     descrip = "variable of void type declared"
-                    raise CompilerError(descrip, identifier.file_name,
-                                        identifier.line_num)
+                    raise CompilerError(descrip, identifier.r)
 
                 var = symbol_table.add(identifier, ctype)
 
@@ -1248,8 +1235,7 @@ class DeclarationNode(Node):
                     # Extern variable should not have initializer
                     if init:
                         descrip = "extern variable has initializer"
-                        raise CompilerError(
-                            descrip, identifier.file_name, identifier.line_num)
+                        raise CompilerError(descrip, identifier.r)
 
                 # Variables declared to be static
                 elif storage == self.STATIC:
@@ -1279,8 +1265,7 @@ class DeclarationNode(Node):
                         lval.set_to(init_val, il_code, identifier)
                     else:
                         descrip = "declared variable is not of assignable type"
-                        raise CompilerError(descrip, identifier.file_name,
-                                            identifier.line_num)
+                        raise CompilerError(descrip, identifier.r)
 
             except CompilerError as e:
                 error_collector.add(e)
@@ -1346,7 +1331,7 @@ class DeclarationNode(Node):
             base_type = ctypes.simple_types[base_type_list[0]]
         else:
             descrip = "two or more data types in declaration specifiers"
-            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+            raise CompilerError(descrip, specs[0].r)
 
         signed_list = list({token_kinds.signed_kw, token_kinds.unsigned_kw} &
                             set(spec_kinds))
@@ -1355,7 +1340,7 @@ class DeclarationNode(Node):
             base_type = ctypes.to_unsigned(base_type)
         elif len(signed_list) > 1:
             descrip = "both signed and unsigned in declaration specifiers"
-            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+            raise CompilerError(descrip, specs[0].r)
 
         # Create set of storage class specifiers that are present
         storage_class_set = {token_kinds.auto_kw,
@@ -1374,6 +1359,6 @@ class DeclarationNode(Node):
                 storage = self.AUTO
         else:
             descrip = "two or more storage classes in declaration specifiers"
-            raise CompilerError(descrip, specs[0].file_name, specs[0].line_num)
+            raise CompilerError(descrip, specs[0].r)
 
         return base_type, storage

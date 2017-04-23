@@ -231,7 +231,16 @@ class Parser:
 
         """
         node, index = self.parse_expression(index)
-        index = self._expect_semicolon(index)
+
+        # We print a special diagnostic here, rather than standard "missing
+        # semicolon". Often, a malformed expression causes parsing to stop
+        # prematurely due to the current expression parsing algorithm. So,
+        # if the token which follows the expression is not a semicolon,
+        # it is often the result of a malformed expression rather than a
+        # missing semicolon.
+        descrip = "missing semicolon or malformed expression"
+        index = self._match_token(
+            index, token_kinds.semicolon, descrip, ParserError.AFTER)
         return (tree.ExprStatementNode(node), index)
 
     def parse_expression(self, index):
@@ -631,16 +640,12 @@ class ExpressionParser:
             chars = self.s[-1].item.content
             if len(chars) == 0:
                 descrip = "empty character constant"
-                error_collector.add(
-                    CompilerError(descrip, self.s[-1].item.file_name,
-                                  self.s[-1].item.line_num))
+                error_collector.add(CompilerError(descrip, self.s[-1].item.r))
                 self.reduce(tree.NumberNode(None), 1)
 
             elif len(chars) > 1:
                 descrip = "multiple characters in character constant"
-                error_collector.add(
-                    CompilerError(descrip, self.s[-1].item.file_name,
-                                  self.s[-1].item.line_num))
+                error_collector.add(CompilerError(descrip, self.s[-1].item.r))
                 self.reduce(tree.NumberNode(None), 1)
 
             else:

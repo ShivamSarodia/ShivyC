@@ -29,7 +29,7 @@ class ErrorCollector:
     def show(self):  # pragma: no cover
         """Display all warnings and errors."""
         for issue in self.issues:
-            print(issue.term_str())
+            print(issue)
 
     def clear(self):
         """Clear all warnings and errors. Intended only for testing use."""
@@ -55,6 +55,23 @@ class Position:
         self.col = col
         self.full_line = full_line
 
+    def __add__(self, other):
+        """Increment Position column by one."""
+        return Position(self.file, self.line, self.col + 1, self.full_line)
+
+
+class Range:
+    """Class representing a continuous range between two positions.
+
+    start (Position) - start position, inclusive
+    end (Position) - end position, inclusive
+    """
+
+    def __init__(self, start, end=None):
+        """Initialize Range objects."""
+        self.start = start
+        self.end = end if end else start
+
 
 class CompilerError(Exception):
     """Class representing compile-time errors.
@@ -66,48 +83,75 @@ class CompilerError(Exception):
 
     """
 
-    def __init__(self, descrip, file_name=None, line_num=None, warning=False):
+    def __init__(self, descrip, range=None, warning=False):
         """Initialize error.
 
         descrip (str) - Description of the error.
-        file_name (str) - File in which the error appeared. If none is
-        provided, uses "shivyc" when printing the message.
-        line_num (int) - Line number of the file where the error appears.
+        range (Range) - Range at which the error appears.
         warning (bool) - True if this is a warning
 
         """
         self.descrip = descrip
-        self.file_name = file_name
-        self.line_num = line_num
+        self.range = range
         self.warning = warning
 
-    def __str__(self):
-        """Return a full representation of the error.
+    def __str__(self):  # pragma: no cover
+        """Return a pretty-printable statement of the error.
 
-        The returned expression is user friendly and pretty-printable.
-
+        Also includes the line on which the error occurred.
         """
-        return self.term_str(False)
+        error_color = "\x1B[31m"
+        warn_color = "\x1B[33m"
+        reset_color = "\x1B[0m"
+        bold_color = "\033[1m"
 
-    def term_str(self, color=True):
-        """Convert this error into string form.
-
-        If color parameter is true, then output terminal color codes.
-        """
-        error_color = "\x1B[31m" if color else ""
-        warn_color = "\x1B[33m" if color else ""
-        reset_color = "\x1B[0m" if color else ""
-        bold_color = "\033[1m" if color else ""
-
-        issue_type = "warning" if self.warning else "error"
         color_code = warn_color if self.warning else error_color
-        if self.file_name and self.line_num:
-            return "{}{}:{}: {}{}:{} {}".format(
-                bold_color, self.file_name, self.line_num, color_code,
-                issue_type, reset_color, self.descrip)
+        issue_type = "warning" if self.warning else "error"
+
+        # A position range is provided, and this is output to terminal.
+        if self.range:
+
+            # Set "indicator" to display the ^^^s and ---s to indicate the
+            # error location.
+            indicator = warn_color
+            indicator += " " * (self.range.start.col - 1)
+
+            if (self.range.start.line == self.range.end.line and
+                 self.range.start.file == self.range.end.file):
+
+                if self.range.end.col == self.range.start.col:
+                    indicator += "^"
+                else:
+                    indicator += "-" * (self.range.end.col -
+                                        self.range.start.col + 1)
+
+            else:
+                indicator += "-" * (len(self.range.start.full_line) -
+                                    self.range.start.col + 1)
+
+            indicator += reset_color
+
+            insert = [bold_color,
+                      self.range.start.file,
+                      self.range.start.line,
+                      self.range.start.col,
+                      color_code,
+                      issue_type,
+                      reset_color,
+                      self.descrip,
+                      self.range.start.full_line,
+                      indicator]
+
+            return "{}{}:{}:{}: {}{}:{} {}\n  {}\n  {}".format(*insert)
+
+        # A position range is not provided and this is output to terminal.
         else:
-            return "{}shivyc: {}{}:{} {}".format(
-                bold_color, color_code, issue_type, reset_color, self.descrip)
+            insert = [bold_color,
+                      color_code,
+                      issue_type,
+                      reset_color,
+                      self.descrip]
+            return "{}shivyc: {}{}:{} {}".format(*insert)
 
 
 class ParserError(CompilerError):
@@ -162,11 +206,15 @@ class ParserError(CompilerError):
 
         if message_type == self.AT:
             super().__init__("{} at '{}'".format(message, tokens[index]),
-                             tokens[index].file_name, tokens[index].line_num)
+                             tokens[index].r)
         elif message_type == self.GOT:
             super().__init__("{}, got '{}'".format(message, tokens[index]),
-                             tokens[index].file_name, tokens[index].line_num)
+                             tokens[index].r)
         elif message_type == self.AFTER:
+            if tokens[index - 1].r:
+                new_range = Range(tokens[index - 1].r.end + 1)
+            else:
+                new_range = None
+
             super().__init__(
-                "{} after '{}'".format(message, tokens[index - 1]),
-                tokens[index - 1].file_name, tokens[index - 1].line_num)
+                "{} after '{}'".format(message, tokens[index - 1]), new_range)

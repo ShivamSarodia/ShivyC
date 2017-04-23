@@ -29,9 +29,8 @@ def process(tokens, this_file):
             # the included file.
             file, filename = read_file(tokens[i + 2].content, this_file)
             if not file:
-                error_collector.add(
-                    CompilerError("unable to read included file",
-                                  tokens[i + 2].p.file, tokens[i + 2].p.line))
+                error_collector.add(CompilerError(
+                    "unable to read included file", tokens[i + 2].r))
             else:
                 new_tokens = process(lexer.tokenize(file, filename), filename)
                 processed += new_tokens

@@ -43,28 +43,19 @@ class Token:
     content - Additional content about some tokens. For number tokens,
     this stores the number itself. For identifiers, this stores the identifier
     name. For string, stores a list of its characters.
-    file_name (str) - Name of the file from which this token came. This is used
-    for error reporting.
-    line_num (int) - The line number from which this token came. This is used
-    for error reporting.
-    rep (str) - The string representation of this token, if the given
-    content parameter is not sufficient.
+    rep (str) - The string representation of this token. If not provided, the
+    content parameter is used.
+    r (Range) - Range of positions that this token covers.
 
     """
 
-    def __init__(self, kind, content="", rep="", p=None):
+    def __init__(self, kind, content="", rep="", r=None):
         """Initialize this token."""
         self.kind = kind
 
-        # TODO: Clarify the "content" vs "rep" distinction.
         self.content = content if content else str(self.kind)
         self.rep = rep
-        self.p = p
-
-        # TODO: Deprecate the file_name and line_num in favor of using pos.
-        # directly.
-        self.file_name = p.file if p else None
-        self.line_num = p.line if p else None
+        self.r = r
 
     def __eq__(self, other):
         """Require equality of both token kind and content."""

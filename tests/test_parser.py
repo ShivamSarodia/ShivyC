@@ -340,7 +340,8 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.identifier, "b")]
 
         Parser(tokens).parse()
-        self.assertIssues(["expected semicolon after 'b'"])
+        self.assertIssues(
+            ["missing semicolon or malformed expression after 'b'"])
 
 
 class ExpressionTests(ParserTestUtil):

@@ -4,10 +4,10 @@ int main() {
   if(array != array) return 2;
   if(&array[0] != &array[0]) return 13;
 
-  // Issue: 8: warning: comparison between distinct pointer types
+  // warning: comparison between distinct pointer types
   if(&array[0] != &array) return 13;
   if(&array[3] != &array[0] + 3) return 14;
-  // Issue: 11: warning: comparison between distinct pointer types
+  // warning: comparison between distinct pointer types
   if(&array + 1 != &array[0] + 5) return 15;
 
   int array2[5];
@@ -18,13 +18,13 @@ int main() {
 
   int array3[6];
   if(array == array3) return 7;
-  // Issue: 22: warning: comparison between distinct pointer types
+  // warning: comparison between distinct pointer types
   if(&array == &array3) return 8;
 
   unsigned int array4[5];
-  // Issue: 26: warning: comparison between distinct pointer types
+  // warning: comparison between distinct pointer types
   if(&array == &array4) return 9;
-  // Issue: 28: warning: comparison between distinct pointer types
+  // warning: comparison between distinct pointer types
   if(array == array4) return 10;
 
   *array = 15;

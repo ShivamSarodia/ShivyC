@@ -447,9 +447,8 @@ class SymbolTable:
             return ret
         else:
             descrip = "use of undeclared identifier '{}'"
-            raise CompilerError(descrip.format(identifier.content),
-                                identifier.file_name,
-                                identifier.line_num)
+            raise CompilerError(
+                descrip.format(identifier.content), identifier.r)
 
     def add(self, identifier, ctype):
         """Add an identifier with the given name and type to the symbol table.
@@ -465,9 +464,7 @@ class SymbolTable:
             return il_value
         else:
             descrip = "redefinition of '{}'"
-            raise CompilerError(descrip.format(name),
-                                identifier.file_name,
-                                identifier.line_num)
+            raise CompilerError(descrip.format(name), identifier.r)
 
 
 def check_cast(il_value, ctype, token):
@@ -506,9 +503,7 @@ def check_cast(il_value, ctype, token):
         # Warn on any other kind of pointer cast
         else:
             descrip = "conversion from incompatible pointer type"
-            error_collector.add(
-                CompilerError(descrip, token.file_name,
-                              token.line_num, True))
+            error_collector.add(CompilerError(descrip, token.r, True))
             return
 
     # Cast from null pointer constant to pointer okay
@@ -523,7 +518,7 @@ def check_cast(il_value, ctype, token):
 
     else:
         descrip = "invalid conversion between types"
-        raise CompilerError(descrip, token.file_name, token.line_num)
+        raise CompilerError(descrip, token.r)
 
 
 def set_type(il_value, ctype, il_code, output=None):

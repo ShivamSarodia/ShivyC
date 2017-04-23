@@ -28,9 +28,9 @@ int main() {
   strcpy(str2, "hello");
   if(strcmp(str1, str2)) return 4;
 
-  // Issue: 32: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   int* p = str1;
-  // Issue: 34: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   if(strcmp(p, str2)) return 13;
 
   str2[3] = 102;
@@ -41,9 +41,9 @@ int main() {
   if(strcmp(str1, "heylo")) return 6;
 
   // Fun with function pointers!
-  // Issue: 45: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   void* f1 = isalpha;
-  // Issue: 47: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   if(f1 != isalpha) return 11;
 
   int (*f2)(int) = isalpha;
@@ -51,13 +51,13 @@ int main() {
 
   // Test function pointer casting
 
-  // Issue: 55: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   int* p1 = isalpha;
-  // Issue: 57: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   int (*f3)(int, int) = isalpha;
-  // Issue: 59: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   int (*f4)(int*) = isalpha;
-  // Issue: 61: warning: conversion from incompatible pointer type
+  // warning: conversion from incompatible pointer type
   int* (*f5)(int) = isalpha;
 
 
