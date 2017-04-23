@@ -26,29 +26,36 @@ IMMEDIATE TIMELINE
 MAIN PROJECTS
 -------------
 
+- Better error reporting
+  - Display the line itself on which the error is detected
+  - In the display, underline the part of the line which has an error
+  - Clean up the error_collector system
 
+- Clarify distinction between ILCommand and TreeNode responsibilities
+  - I think ILCommand should be entirely type agnostic?
 
 --------------------------------------------------------------------------------
 
 FEATURES
 --------
 
-0  - Better declaration initializer parsing
+0  - Full declaration initializer parsing
 
-0  - Implement global variables more fully
+0  - Full global variable implementation
 0    - static globals, static locals, etc
 
-0  - Implement full preprocessor
-     - Fix small bugs in current preprocessor implementation
+0  - Implement const variables
+0    - Also update headers to include const where appropriate
 
-0  - Better errors/warnings
-0    - Better CompilerError interface
-0    - Include more specific error locations
+0  - Implement full preprocessor
+0    - Fix small bugs in current preprocessor implementation
 
 0  - Implement all types
 0    - Including proper treatment of `long long` as distinct from `long`,
        `signed char` as distinct from `char`, etc.
+0    - Implement `double` and `float`
 0    - Implement proper ranking of integers as distinct from just size
+0    - Implement typedefs
 
 0  - Implement more control statements
 0     - for-loops
@@ -69,5 +76,6 @@ FEATURES
 
 0  - Optimize conditionals in if-statements
 0  - Implement live range splitting in register allocator
+0  - Optimize register allocator
 
 --------------------------------------------------------------------------------
