@@ -13,7 +13,7 @@ used to cast.
 
 import ctypes
 import spots
-from il_gen import CType
+from ctypes import CType
 from spots import Spot
 
 

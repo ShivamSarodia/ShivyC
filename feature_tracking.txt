@@ -27,9 +27,7 @@ MAIN PROJECTS
 -------------
 
 - Better error reporting
-  - Display the line itself on which the error is detected
-  - In the display, underline the part of the line which has an error
-  - Clean up the error_collector system
+  - Add range property to nodes
 
 - Clarify distinction between ILCommand and TreeNode responsibilities
   - I think ILCommand should be entirely type agnostic?

@@ -11,8 +11,8 @@ import decl_tree
 import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
-from il_gen import CType, ILValue, LValue, check_cast, set_type
-from il_gen import ArrayCType, PointerCType, FunctionCType
+from il_gen import ILValue, LValue, check_cast, set_type
+from ctypes import CType, FunctionCType, PointerCType, ArrayCType
 from tokens import Token
 
 
