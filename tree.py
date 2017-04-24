@@ -12,7 +12,7 @@ import token_kinds
 import il_commands
 from errors import CompilerError, error_collector
 from il_gen import ILValue, LValue, check_cast, set_type
-from ctypes import CType, FunctionCType, PointerCType, ArrayCType
+from ctypes import FunctionCType, PointerCType, ArrayCType
 from tokens import Token
 
 
@@ -107,10 +107,10 @@ class ExpressionNode(Node):
         """Make code for this node and return decayed version of result."""
 
         lvalue = self.lvalue(il_code, symbol_table)
-        if lvalue and lvalue.ctype().type_type == CType.ARRAY:
+        if lvalue and lvalue.ctype().is_array():
             addr = lvalue.addr(il_code)
             return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
-        elif lvalue and lvalue.ctype().type_type == CType.FUNCTION:
+        elif lvalue and lvalue.ctype().is_function():
             return lvalue.addr(il_code)
         else:
             return self.make_code_raw(il_code, symbol_table)
@@ -531,8 +531,7 @@ class BinaryOperatorNode(ExpressionNode):
         right = self.right_expr.make_code(il_code, symbol_table)
 
         # If arithmetic type
-        if (left.ctype.type_type == CType.ARITH and
-             right.ctype.type_type == CType.ARITH):
+        if left.ctype.is_arith() and right.ctype.is_arith():
             return self._make_integer_code(right, left, il_code)
 
         # If operator is == or !=
@@ -691,11 +690,9 @@ class BinaryOperatorNode(ExpressionNode):
         # One operand should be pointer to complete object type, and the
         # other should be any integer type.
         # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
-        if (left.ctype.type_type == CType.POINTER and
-             right.ctype.type_type == CType.ARITH):
+        if left.ctype.is_pointer() and right.ctype.is_integral():
             arith_op, pointer_op = right, left
-        elif (right.ctype.type_type == CType.POINTER and
-               left.ctype.type_type == CType.ARITH):
+        elif right.ctype.is_pointer() == left.ctype.is_integral():
             arith_op, pointer_op = left, right
         else:
             descrip = "invalid operand types for binary addition"
@@ -722,9 +719,9 @@ class BinaryOperatorNode(ExpressionNode):
         """Make code for - operator for non-arithmetic operands."""
 
         # Both operands are pointers to compatible object types
-        if (left.ctype.type_type == CType.POINTER and
-            right.ctype.type_type == CType.POINTER and
-             left.ctype.compatible(right.ctype)):
+        # TODO: this isn't quite right when we allow qualifiers
+        if (left.ctype.is_pointer() and right.ctype.is_pointer()
+             and left.ctype.compatible(right.ctype)):
 
             # Get raw difference in pointer values
             raw = ILValue(ctypes.longint)
@@ -740,9 +737,7 @@ class BinaryOperatorNode(ExpressionNode):
 
         # Left operand is pointer to complete object type, and right operand
         # is integer.
-        elif (left.ctype.type_type == CType.POINTER and
-              right.ctype.type_type == CType.ARITH):
-
+        elif left.ctype.is_pointer() and right.ctype.is_integral():
             out = ILValue(left.ctype)
             raw = set_type(right, ctypes.longint, il_code)
 
@@ -764,24 +759,21 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If either operand is a null pointer constant, cast it to the
         # other's pointer type.
-        if (left.ctype.type_type == CType.POINTER and
-                right.null_ptr_const):
+        if left.ctype.is_pointer() and right.null_ptr_const:
             right = set_type(right, left.ctype, il_code)
-        elif (right.ctype.type_type == CType.POINTER and
-                  left.null_ptr_const):
+        elif right.ctype.is_pointer() and left.null_ptr_const:
             left = set_type(left, right.ctype, il_code)
 
         # If both operands are not pointer types, warn!
-        if (left.ctype.type_type != CType.POINTER or
-             right.ctype.type_type != CType.POINTER):
+        if not left.ctype.is_pointer() or not right.ctype.is_pointer():
             descrip = "comparison between incomparable types"
             error_collector.add(CompilerError(descrip, self.operator.r, True))
 
         # If one side is pointer to void, cast the other to same.
-        elif left.ctype.arg == ctypes.void:
+        elif left.ctype.arg.is_void():
             check_cast(right, left.ctype, self.operator)
             right = set_type(right, left.ctype, il_code)
-        elif right.ctype.arg == ctypes.void:
+        elif right.ctype.arg.is_void():
             check_cast(left, right.ctype, self.operator)
             left = set_type(left, right.ctype, il_code)
 
@@ -822,9 +814,9 @@ class _IncrDecr(ExpressionNode):
             raise CompilerError(descrip, tok.r)
 
         one = ILValue(val.ctype)
-        if val.ctype.type_type == CType.ARITH:
+        if val.ctype.is_arith():
             il_code.register_literal_var(one, "1")
-        elif val.ctype.type_type == CType.POINTER:
+        elif val.ctype.is_pointer():
             il_code.register_literal_var(one, str(val.ctype.arg.size))
         else:
             raise NotImplementedError("Unsupported operands")
@@ -1007,7 +999,7 @@ class DerefNode(ExpressionNode):
         if not self._cache_lvalue:
             addr = self.expr.make_code(il_code, symbol_table)
 
-            if addr.ctype.type_type != CType.POINTER:
+            if not addr.ctype.is_pointer():
                 descrip = "operand of unary '*' must have pointer type"
                 raise CompilerError(descrip, self.op.r)
 
@@ -1055,7 +1047,6 @@ class ArraySubscriptNode(ExpressionNode):
 
         # One operand should be pointer to complete object type, and the
         # other should be any integer type.
-        # TODO: Check if IntegerCType, not just CType.ARITH (floats, etc.)
 
         # Return a cached value if one exists
         if self._cache_lvalue:
@@ -1065,12 +1056,9 @@ class ArraySubscriptNode(ExpressionNode):
         arg_val = self.arg.make_code(il_code, symbol_table)
 
         # Otherwise, compute the lvalue
-        if (head_val.ctype.type_type == CType.POINTER and
-             arg_val.ctype.type_type == CType.ARITH):
+        if head_val.ctype.is_pointer() and arg_val.ctype.is_integral():
             arith, point = arg_val, head_val
-
-        elif (head_val.ctype.type_type == CType.ARITH and
-              arg_val.ctype.type_type == CType.POINTER):
+        elif head_val.ctype.is_integral() and arg_val.ctype.is_pointer():
             arith, point = head_val, arg_val
 
         else:
@@ -1126,8 +1114,7 @@ class FunctionCallNode(ExpressionNode):
 
         func = self.func.make_code(il_code, symbol_table)
 
-        if (func.ctype.type_type != CType.POINTER or
-             func.ctype.arg.type_type != CType.FUNCTION):
+        if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
             descrip = "called object is not a function pointer"
             raise CompilerError(descrip, self.tok.r)
 
@@ -1154,8 +1141,7 @@ class FunctionCallNode(ExpressionNode):
             arg = arg_given.make_code(il_code, symbol_table)
 
             # perform integer promotions
-            if (arg.ctype.type_type == CType.ARITH and
-                 arg.ctype.size < 4):
+            if arg.ctype.is_arith() and arg.ctype.size < 4:
                 arg = set_type(arg, ctypes.integer, il_code)
 
             final_args.append(arg)
@@ -1170,7 +1156,7 @@ class FunctionCallNode(ExpressionNode):
         """
         # if only parameter is of type void, expect no arguments
         if (len(func_ctype.args) == 1 and
-             func_ctype.args[0].type_type == CType.VOID):
+             func_ctype.args[0].is_void()):
             arg_types = []
         else:
             arg_types = func_ctype.args
@@ -1245,7 +1231,7 @@ class DeclarationNode(Node):
                 # Global variables
                 elif global_level:
                     # Global functions are extern by default
-                    if ctype.type_type == CType.FUNCTION:
+                    if ctype.is_function():
                         il_code.register_extern_var(var, identifier.content)
                     else:
                         # These should be common if uninitialized, or data if

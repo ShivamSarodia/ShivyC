@@ -7,32 +7,43 @@ class CType:
     """Represents a C type, like `int` or `double` or a struct.
 
     size (int) - The result of sizeof on this type.
-
     """
 
-    # Integer CType
-    ARITH = 0
-    # Function CTYPE
-    FUNCTION = 1
-    # Pointer CType
-    POINTER = 2
-    # Void CType
-    VOID = 3
-    # Array CType
-    ARRAY = 4
-
-    def __init__(self, size, type_type):
+    def __init__(self, size):
         """Initialize type."""
         self.size = size
-        self.type_type = type_type
 
     def compatible(self, other):
         """Check whether given `other` C type is compatible with self."""
         raise NotImplementedError
 
-    def is_object_type(self):
+    def is_object(self):
         """Check whether this is an object type."""
-        raise NotImplementedError
+        return False
+
+    def is_arith(self):
+        """Check whether this is an arithmetic type."""
+        return False
+
+    def is_integral(self):
+        """Check whether this is an integral type."""
+        return False
+
+    def is_pointer(self):
+        """Check whether this is a pointer type."""
+        return False
+
+    def is_function(self):
+        """Check whether this is a function type."""
+        return False
+
+    def is_void(self):
+        """Check whether this is a void type."""
+        return False
+
+    def is_array(self):
+        """Check whether this is an array type."""
+        return False
 
 
 class IntegerCType(CType):
@@ -48,18 +59,22 @@ class IntegerCType(CType):
     def __init__(self, size, signed):
         """Initialize type."""
         self.signed = signed
-        super().__init__(size, CType.ARITH)
-
-    def __str__(self):  # pragma: no cover
-        return "({} INT {} BYTES)".format("SIG" if self.signed else "UNSIG",
-                                            self.size)
+        super().__init__(size)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
         return other == self
 
-    def is_object_type(self):
+    def is_object(self):
         """Check if this is an object type."""
+        return True
+
+    def is_arith(self):
+        """Check whether this is an arithmetic type."""
+        return True
+
+    def is_integral(self):
+        """Check whether this is an integral type."""
         return True
 
 
@@ -72,15 +87,15 @@ class VoidCType(CType):
 
     def __init__(self):
         """Initialize type."""
-        super().__init__(1, CType.VOID)
+        super().__init__(1)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
         return other == self
 
-    def is_object_type(self):
-        """Check if this is an object type."""
-        return False
+    def is_void(self):
+        """Check whether this is a void type."""
+        return True
 
 
 class PointerCType(CType):
@@ -93,24 +108,17 @@ class PointerCType(CType):
     def __init__(self, arg):
         """Initialize type."""
         self.arg = arg
-        super().__init__(8, CType.POINTER)
-
-    def __str__(self):  # pragma: no cover
-        return "(PTR TO {})".format(str(self.arg))
-
-    def __eq__(self, other):
-        # Used for testing
-        return other.type_type == self.type_type and self.arg == other.arg
-
-    def __hash__(self):
-        return hash((self.type_type, self.arg))
+        super().__init__(8)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return (other.type_type == CType.POINTER and
-                self.arg.compatible(other.arg))
+        return other.is_pointer() and self.arg.compatible(other.arg)
 
-    def is_object_type(self):
+    def is_pointer(self):
+        """Check whether this is a pointer type."""
+        return True
+
+    def is_object(self):
         """Check if this is an object type."""
         return True
 
@@ -127,27 +135,19 @@ class ArrayCType(CType):
         """Initialize type."""
         self.el = el
         self.n = n
-        super().__init__(n * self.el.size, CType.ARRAY)
-
-    def __str__(self):  # pragma: no cover
-        return "(ARR OF {})".format(str(self.el))
-
-    def __eq__(self, other):
-        # Used for testing
-        return (other.type_type == self.type_type and self.el == other.el
-                and self.n == other.n)
-
-    def __hash__(self):
-        return hash((self.type_type, self.el, self.n))
+        super().__init__(n * self.el.size)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return (other.type_type == CType.ARRAY and
-                self.el.compatible(other.el) and
+        return (other.is_array() and self.el.compatible(other.el) and
                 self.n == other.n)
 
-    def is_object_type(self):
+    def is_object(self):
         """Check if this is an object type."""
+        return True
+
+    def is_array(self):
+        """Check whether this is an array type."""
         return True
 
 
@@ -164,10 +164,7 @@ class FunctionCType(CType):
         """Initialize type."""
         self.args = args
         self.ret = ret
-        super().__init__(1, CType.FUNCTION)
-
-    def __str__(self):  # pragma: no cover
-        return "(FUNC RET {})".format(str(self.ret))
+        super().__init__(1)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
@@ -175,7 +172,7 @@ class FunctionCType(CType):
         # TODO: This is not implemented correctly. Function pointer
         # compatibility rules are confusing.
 
-        if other.type_type != CType.FUNCTION:
+        if not other.is_function():
             return False
         elif len(self.args) != len(other.args):
             return False
@@ -187,9 +184,9 @@ class FunctionCType(CType):
 
         return True
 
-    def is_object_type(self):
-        """Check if this is an object type."""
-        return False
+    def is_function(self):
+        """Check if this is a function type."""
+        return True
 
 
 void = VoidCType()

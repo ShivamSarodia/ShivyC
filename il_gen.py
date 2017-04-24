@@ -1,7 +1,7 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
 import ctypes
-from ctypes import CType, PointerCType
+from ctypes import PointerCType
 from errors import CompilerError, error_collector
 
 
@@ -168,7 +168,7 @@ class LValue:
         else:  # self.lvalue_type == self.INDIRECT
             ctype = self.il_value.ctype.arg
 
-        return ctype.type_type in {CType.ARITH, CType.POINTER}
+        return ctype.is_arith() or ctype.is_pointer()
 
     def set_to(self, rvalue, il_code, blame_token):
         """Emit code to set the given lvalue to the given ILValue.
@@ -296,21 +296,19 @@ def check_cast(il_value, ctype, token):
         return
 
     # Cast between arithmetic types is always okay
-    if (ctype.type_type == CType.ARITH and
-         il_value.ctype.type_type == CType.ARITH):
+    if ctype.is_arith() and il_value.ctype.is_arith():
         return
 
-    elif (ctype.type_type == CType.POINTER and
-          il_value.ctype.type_type == CType.POINTER):
+    elif ctype.is_pointer() and il_value.ctype.is_pointer():
 
         # Cast between compatible pointer types okay
         if ctype.compatible(il_value.ctype):
             return
 
         # Cast between void pointer and pointer to object type okay
-        elif ctype.arg == ctypes.void and il_value.ctype.arg.is_object_type():
+        elif ctype.arg.is_void() and il_value.ctype.arg.is_object():
             return
-        elif ctype.arg.is_object_type() and il_value.ctype.arg == ctypes.void:
+        elif ctype.arg.is_object() and il_value.ctype.arg.is_void():
             return
 
         # Warn on any other kind of pointer cast
@@ -320,13 +318,11 @@ def check_cast(il_value, ctype, token):
             return
 
     # Cast from null pointer constant to pointer okay
-    elif (ctype.type_type == CType.POINTER and
-              il_value.null_ptr_const):
+    elif ctype.is_pointer() and il_value.null_ptr_const:
         return
 
     # Cast from pointer to boolean okay
-    elif (ctype == ctypes.bool_t and
-          il_value.ctype.type_type == CType.POINTER):
+    elif ctype == ctypes.bool_t and il_value.ctype.is_pointer():
         return
 
     else:

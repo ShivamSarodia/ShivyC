@@ -8,11 +8,9 @@ Immediate timeline - Changes planned as the next steps.
 Main projects - The large-scale changes planned for forseeable future.
 Features - Various smaller-scale changes that need to be implemented
 
-Current target: fully compile Count.c from my CS 223 pset
-Next target: compile the integer/string cs50.c functions
+Current target: fully compile nmake.c from CS323 pset
 
-1 - Explicitly required to reach current target
-0 - Not explicitly required for current target
+* - Explicitly required to reach current target
 
 --------------------------------------------------------------------------------
 
@@ -28,52 +26,74 @@ MAIN PROJECTS
 
 - Better error reporting
   - Add range property to nodes
+  - Add str property to nodes to enable printing
 
 - Clarify distinction between ILCommand and TreeNode responsibilities
   - I think ILCommand should be entirely type agnostic?
+
+- Improved treatment of command line flags.
+  - Allow certain features to be enabled and disabled (e.g. allowing void* math)
 
 --------------------------------------------------------------------------------
 
 FEATURES
 --------
 
-0  - Full declaration initializer parsing
+TYPES
+  - Declaration initializers
+*   - Global initializers
+*   - Array/struct initializers
+*   - String initializers
+  - Full extern/static/global variable implementation
+    - static globals, static locals, etc
+  - Qualified types
+*   - const
+    - volatile
+    - register
+*   - Update headers to include these
+  - Similar types
+    - `long long` (distinct from `long`)
+    - Proper ranking of integers, distinct from just size
+  - Implement `double` and `float`
+* - Implement typedef
+* - Implement struct
 
-0  - Full global variable implementation
-0    - static globals, static locals, etc
+PREPROCESSOR
+  - Fix small bugs in current implementation
+* - #define
+*   - static and function-form
 
-0  - Implement const variables
-0    - Also update headers to include const where appropriate
+CONTROL STATEMENTS
+* - for
+  - do-while
+* - break/continue
 
-0  - Implement full preprocessor
-0    - Fix small bugs in current preprocessor implementation
+FUNCTIONS
+* - Implement function definition
+* - Improve function declaration
+*   - Struct as argument
+*   - Struct as return value
+    - Over 6 arguments
+* - Support argc and argv
 
-0  - Implement all types
-0    - Including proper treatment of `long long` as distinct from `long`,
-       `signed char` as distinct from `char`, etc.
-0    - Implement `double` and `float`
-0    - Implement proper ranking of integers as distinct from just size
-0    - Implement typedefs
+EXPRESSION
+* - Comparison (>, etc.)
+* - Assignment (*=, +=, etc.)
+  - Bitwise (&, |, etc.)
+  - Ternary
+* - sizeof
+  - Casts
+  - Hex/octal literal consts
+  - Literal suffixed consts (`123ul`, etc)
+* - Hex sequences in strings (`\0`)
 
-0  - Implement more control statements
-0     - for-loops
-0     - break/continue
+OPTIMIZAIONS
+  - Conditionals in if-statements
+  - Live range splitting in register allocator
+  - Speed up register allocator
 
-0  - Implement more operators
-0     - Comparison (>, <, >=, <=)
-0     - Assignment (*=, +=, /=, etc)
-0     - Bitwise (&, |, ~, >>, <<)
-0     - Ternary operator
-
-0  - Support hex/octal literal consts
-0  - Support literal suffixed consts (like 123ul for unsigned long)
-
-0  - Implement sizeof operator
-
-0  - Implement casts
-
-0  - Optimize conditionals in if-statements
-0  - Implement live range splitting in register allocator
-0  - Optimize register allocator
+GENERAL
+* - Support compilation of multiple files
+  - Support linking on other systems
 
 --------------------------------------------------------------------------------

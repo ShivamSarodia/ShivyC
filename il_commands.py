@@ -13,7 +13,6 @@ used to cast.
 
 import ctypes
 import spots
-from ctypes import CType
 from spots import Spot
 
 
@@ -956,7 +955,7 @@ class Call(ILCommand):
         self.func = func
         self.args = args
         self.ret = ret
-        self.void_return = (self.func.ctype.arg.ret.type_type == CType.VOID)
+        self.void_return = self.func.ctype.arg.ret.is_void()
 
         if len(self.args) > len(self.arg_regs):
             raise NotImplementedError("too many arguments")
