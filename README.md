@@ -8,7 +8,7 @@ ShivyC is a C compiler written purely in Python 3, targeting Linux x86-64 machin
 ShivyC is a rewrite from scratch of my older attempt at a C compiler, [ShivC](https://github.com/ShivamSarodia/ShivC), with much more emphasis on feature completeness and code quality. See the ShivC README for more details on the target improvements.
 
 ## Running
-Requires Python 3 and NASM; tested on NASM 2.11.08. Run `./shivyc.py` for usage info. To run the tests:
+Requires Python 3 and the GNU binutils for assembling and linking. Run `./shivyc.py` for usage info. To run the tests:
 ```
 python3 -m unittest discover
 ```
