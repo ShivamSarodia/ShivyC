@@ -103,7 +103,8 @@ def new(glob_str, dct):
             self.assertListEqual(act_warnings, exp_warnings)
             self.assertListEqual(act_warning_lines, exp_warning_lines)
 
-            self.assertEqual(subprocess.call(["./out"]), ret_val)
+            if not act_errors:
+                self.assertEqual(subprocess.call(["./out"]), ret_val)
 
         return test_function
 

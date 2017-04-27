@@ -34,15 +34,12 @@ def parse(tokens_to_parse):
     p.best_error = None
     p.tokens = tokens_to_parse
 
-    if p.tokens:
-        try:
-            return parse_root(0)[0]
-        except ParserError as e:
-            log_error(e)
-            error_collector.add(p.best_error)
-            return None
-    else:
-        return tree.RootNode([])
+    try:
+        return parse_root(0)[0]
+    except ParserError as e:
+        log_error(e)
+        error_collector.add(p.best_error)
+        return None
 
 
 @add_range
