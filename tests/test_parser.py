@@ -4,7 +4,7 @@ import tree
 import token_kinds
 from decl_tree import Root, Pointer, Array, Function, Identifier
 from errors import error_collector
-from parser import Parser
+from parser.parser import parse
 from tokens import Token
 from tests.test_utils import TestUtils
 
@@ -28,7 +28,7 @@ class ParserTestUtil(TestUtils):
         tree.MainNode, just a list of the nodes within.
 
         """
-        ast_root = Parser(self._token_wrap_main(tokens)).parse()
+        ast_root = parse(self._token_wrap_main(tokens))
         self.assertEqual(ast_root,
                          tree.RootNode([
                              tree.MainNode(tree.CompoundNode(nodes))
@@ -40,7 +40,7 @@ class ParserTestUtil(TestUtils):
         As above, no need to include 'int main() { }' in the tokens.
 
         """
-        Parser(self._token_wrap_main(tokens)).parse()
+        parse(self._token_wrap_main(tokens))
         self.assertIssues([descrip])
 
     def _token_wrap_main(self, tokens):
@@ -91,7 +91,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.close_brack), Token(token_kinds.identifier, "a")
         ]
 
-        Parser(tokens).parse()
+        parse(tokens)
         self.assertIssues(["unexpected token at 'a'"])
 
     def test_missing_semicolon_and_end_brace(self):  # noqa: D400, D403
@@ -102,8 +102,8 @@ class GeneralTests(ParserTestUtil):
                   Token(token_kinds.open_brack), Token(token_kinds.return_kw),
                   Token(token_kinds.number, "15")]
 
-        Parser(tokens).parse()
-        self.assertIssues(["expected semicolon after '15'"])
+        parse(tokens)
+        self.assertIssues(["expected ';' after '15'"])
 
     def test_missing_semicolon_after_number(self):  # noqa: D400, D403
         """int main() { return 15 }"""
@@ -111,7 +111,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.return_kw), Token(token_kinds.number, "15")
         ]
 
-        self.assertParserError(tokens, "expected semicolon after '15'")
+        self.assertParserError(tokens, "expected ';' after '15'")
 
     def test_missing_final_brace_main(self):  # noqa: D400, D403
         """int main() { return 15;"""
@@ -122,7 +122,7 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.number, "15"), Token(token_kinds.semicolon)
         ]
 
-        Parser(tokens).parse()
+        parse(tokens)
         self.assertIssues(["expected '}' after ';'"])
 
     def test_declaration_before_and_after_main(self):  # noqa: D400, D403
@@ -151,7 +151,7 @@ class GeneralTests(ParserTestUtil):
         b_tok = Token(token_kinds.identifier, "b")
         c_tok = Token(token_kinds.identifier, "c")
 
-        ast_root = Parser(tokens).parse()
+        ast_root = parse(tokens)
         self.assertEqual(ast_root,
                          tree.RootNode([
 
@@ -339,9 +339,9 @@ class GeneralTests(ParserTestUtil):
             Token(token_kinds.plus),
             Token(token_kinds.identifier, "b")]
 
-        Parser(tokens).parse()
+        parse(tokens)
         self.assertIssues(
-            ["missing semicolon or malformed expression after 'b'"])
+            ["expected ';' after 'b'"])
 
 
 class ExpressionTests(ParserTestUtil):

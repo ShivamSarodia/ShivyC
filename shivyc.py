@@ -13,7 +13,7 @@ import lexer
 import preproc
 
 from errors import error_collector, CompilerError
-from parser import Parser
+from parser.parser import parse
 from il_gen import ILCode
 from il_gen import SymbolTable
 from asm_gen import ASMCode
@@ -43,7 +43,7 @@ def main():
         error_collector.show()
         return 1
 
-    ast_root = Parser(token_list).parse()
+    ast_root = parse(token_list)
     if not error_collector.ok():
         error_collector.show()
         return 1

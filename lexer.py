@@ -186,8 +186,6 @@ def tokenize_line(line, in_comment):
             seen_filename = True
 
         # If next character is a quote, we read the whole string as a token.
-        # We complain in the parser if there are multiple characters in a
-        # character string.
         elif symbol_kind in {token_kinds.dquote, token_kinds.squote}:
             if symbol_kind == token_kinds.dquote:
                 quote_str = '"'
@@ -200,8 +198,16 @@ def tokenize_line(line, in_comment):
 
             chars, end = read_string(line, chunk_end + 1, quote_str, add_null)
             rep = chunk_to_str(line[chunk_end:end + 1])
-            tokens.append(Token(kind, chars, rep,
-                                r=Range(line[chunk_end].p, line[end].p)))
+            r = Range(line[chunk_end].p, line[end].p)
+
+            if kind == token_kinds.char_string and len(chars) == 0:
+                err = "empty character constant"
+                error_collector.add(CompilerError(err, r))
+            elif kind == token_kinds.char_string and len(chars) > 1:
+                err = "multiple characters in character constant"
+                error_collector.add(CompilerError(err, r))
+
+            tokens.append(Token(kind, chars, rep, r=r))
 
             chunk_start = end + 1
             chunk_end = chunk_start
