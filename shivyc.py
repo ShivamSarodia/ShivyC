@@ -226,7 +226,7 @@ def find_library(file):
 
     for path in search_paths:
         full = path.joinpath(file)
-        if full.exists():
+        if full.is_file():
             return str(full)
     return None
 
