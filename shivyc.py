@@ -120,6 +120,7 @@ def read_file(arguments):
     except IOError as e:
         descrip = "could not read file: '{}'"
         error_collector.add(CompilerError(descrip.format(arguments.filename)))
+        return None, None
 
 
 def write_asm(asm_source, asm_filename):
