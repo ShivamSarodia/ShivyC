@@ -15,8 +15,9 @@ class Spot:
     # (rax, rdi, etc.) as a string.
     REGISTER = 1
     # Memory spot, like on the stack or in .data section. The `detail`
-    # attribute is a tuple with first argument base as a string, and second
-    # argument offset as an integer. For example, ("rbp", -5).
+    # attribute is a tuple with first argument base as a register Spot or
+    # string literal, and second argument offset as an integer. For example,
+    # (Spots.RBP, -5) or ("isalpha", 0).
     MEM = 2
     # A literal value. This is a bit of a hack, since a literal value isn't
     # /really/ a storage spot. The detail attribute is the integer
@@ -58,7 +59,8 @@ class Spot:
                     "rsp": ["rsp", "", "", ""]}
 
         if self.spot_type == self.REGISTER:
-            if size == 1: return spot_map[self.detail][3]
+            if size == 0: return spot_map[self.detail][0]
+            elif size == 1: return spot_map[self.detail][3]
             elif size == 2: return spot_map[self.detail][2]
             elif size == 4: return spot_map[self.detail][1]
             elif size == 8: return spot_map[self.detail][0]
@@ -69,15 +71,20 @@ class Spot:
             elif size == 8: size_desc = "QWORD"
             else: size_desc = ""
 
+            if isinstance(self.detail[0], Spot):
+                base_str = self.detail[0].asm_str(0)
+            else:
+                base_str = self.detail[0]
+
             if self.detail[1] > 0:
                 t = "{} [{}+{}]"
-                return t.format(size_desc, self.detail[0], self.detail[1])
+                return t.format(size_desc, base_str, self.detail[1])
             elif self.detail[1] == 0:
                 t = "{} [{}]"
-                return t.format(size_desc, self.detail[0])
+                return t.format(size_desc, base_str)
             else:  # self.detail[1] < 0
                 t = "{} [{}-{}]"
-                return t.format(size_desc, self.detail[0], -self.detail[1])
+                return t.format(size_desc, base_str, -self.detail[1])
 
         elif self.spot_type == self.LITERAL:
             return str(self.detail)

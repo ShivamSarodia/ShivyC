@@ -267,7 +267,7 @@ class ASMGen:
         for v in referenced:
             if v in free_values:
                 self.offset += v.ctype.size
-                global_spotmap[v] = Spot(Spot.MEM, ("rbp", -self.offset))
+                global_spotmap[v] = Spot(Spot.MEM, (spots.RBP, -self.offset))
                 free_values.remove(v)
 
         # Perform liveliness analysis
@@ -326,7 +326,7 @@ class ASMGen:
         # Assign stack values to the spilled nodes
         for v in spilled_nodes:
             self.offset += v.ctype.size
-            spotmap[v] = Spot(Spot.MEM, ("rbp", -self.offset))
+            spotmap[v] = Spot(Spot.MEM, (spots.RBP, -self.offset))
 
         # Merge global spotmap into this spotmap
         for v in global_spotmap:
@@ -398,7 +398,7 @@ class ASMGen:
                   value in self.il_code.variables):  # pragma: no cover
                 # If all variables are allocated on the stack
                 self.offset += value.ctype.size
-                s = Spot(Spot.MEM, ("rbp", -self.offset))
+                s = Spot(Spot.MEM, (spots.RBP, -self.offset))
                 global_spotmap[value] = s
             else:
                 # Value is free and needs an assignment
@@ -691,7 +691,7 @@ class ASMGen:
         # This is kinda hacky...
         max_offset = 0
         for spot in spotmap.values():
-            if spot.spot_type == Spot.MEM and spot.detail[0] == "rbp":
+            if spot.spot_type == Spot.MEM and spot.detail[0] == spots.RBP:
                 max_offset = max(max_offset, -spot.detail[1])
 
         if max_offset % 16 != 0:

@@ -873,11 +873,11 @@ class ReadAt(ILCommand):
         output_spot = spotmap[self.output]
 
         if spotmap[self.addr].spot_type == Spot.REGISTER:
-            indir_spot = Spot(Spot.MEM, (spotmap[self.addr].asm_str(8), 0))
+            indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
         else:
             r = get_reg()
             asm_code.add(asm_cmd.Mov(r, addr_spot, 8))
-            indir_spot = Spot(Spot.MEM, (r.asm_str(8), 0))
+            indir_spot = Spot(Spot.MEM, (r, 0))
 
         size = self.output.ctype.size
         asm_code.add(asm_cmd.Mov(output_spot, indir_spot, size))
@@ -909,11 +909,11 @@ class SetAt(ILCommand):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         size = self.val.ctype.size
         if spotmap[self.addr].spot_type == Spot.REGISTER:
-            indir_spot = Spot(Spot.MEM, (spotmap[self.addr].asm_str(8), 0))
+            indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
         else:
             r = get_reg([], [spotmap[self.val]])
             asm_code.add(asm_cmd.Mov(r, spotmap[self.addr], 8))
-            indir_spot = Spot(Spot.MEM, (r.asm_str(8), 0))
+            indir_spot = Spot(Spot.MEM, (r, 0))
 
         asm_code.add(
             asm_cmd.Mov(indir_spot, spotmap[self.val], size))
