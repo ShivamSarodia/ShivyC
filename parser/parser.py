@@ -19,7 +19,8 @@ import token_kinds
 import tree
 
 from errors import error_collector
-from parser.utils import log_error, match_token, ParserError, raise_error
+from parser.utils import (add_range, log_error, match_token, ParserError,
+                          raise_error)
 from parser.statement import parse_compound_statement
 from parser.declaration import parse_declaration
 
@@ -33,14 +34,18 @@ def parse(tokens_to_parse):
     p.best_error = None
     p.tokens = tokens_to_parse
 
-    try:
-        return parse_root(0)[0]
-    except ParserError as e:
-        log_error(e)
-        error_collector.add(p.best_error)
-        return None
+    if p.tokens:
+        try:
+            return parse_root(0)[0]
+        except ParserError as e:
+            log_error(e)
+            error_collector.add(p.best_error)
+            return None
+    else:
+        return tree.RootNode([])
 
 
+@add_range
 def parse_root(index):
     """Parse the given tokens into an AST."""
     nodes = []
@@ -71,6 +76,7 @@ def parse_root(index):
         raise_error("unexpected token", index, ParserError.AT)
 
 
+@add_range
 def parse_main(index):
     """Parse a main function containing block items.
 

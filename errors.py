@@ -72,6 +72,10 @@ class Range:
         self.start = start
         self.end = end if end else start
 
+    def __add__(self, other):
+        """Add Range objects by concatenating their ranges."""
+        return Range(self.start, other.end)
+
 
 class CompilerError(Exception):
     """Class representing compile-time errors.

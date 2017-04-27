@@ -16,4 +16,10 @@ int main() {
 
   // error: two or more storage classes in declaration specifiers
   extern auto int b;
+
+  {
+    int c;
+  }
+  // error: use of undeclared identifier 'c'
+  c;
 }

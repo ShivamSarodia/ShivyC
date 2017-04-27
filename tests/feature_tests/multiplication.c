@@ -17,5 +17,8 @@ int main() {
 
   if(i / g != h) return 3;
 
+  // Test order of operations
+  if(3 + 2 * 3 != 9) return 4;
+
   return 0;
 }

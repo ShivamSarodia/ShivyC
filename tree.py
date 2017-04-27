@@ -23,9 +23,7 @@ class Node:
     function that accepts a il_code (ILCode) to which the generated IL code
     should be saved.
 
-    symbol (enum) - Non-terminal symbol the rule corresponding to a node
-    produces. This value is checked by parent nodes to make sure the children
-    produce symbols of the expected type.
+    r (Range) - range this Node covers
 
     """
 
@@ -36,46 +34,15 @@ class Node:
     DECLARATION = 3
     EXPRESSION = 4
 
+    def __init__(self):
+        """Initialize r to dummy value."""
+        self.r = None
+
     def __eq__(self, other):
         """Check whether all children of this node are equal."""
         if type(other) is type(self):
             return self.__dict__ == other.__dict__
         return False  # pragma: no cover
-
-    def assert_symbol(self, node, symbol_name):
-        """Check whether the provided node is of the given symbol.
-
-        Useful for enforcing tree structure. Raises an exception if the node
-        represents a rule that does not produce the expected symbol.
-
-        """
-        if node.symbol != symbol_name:
-            raise ValueError("malformed tree: expected symbol '" +
-                             str(symbol_name) + "' but got '" +
-                             str(node.symbol) + "'")  # pragma: no cover
-
-    def assert_symbols(self, node, symbol_names):
-        """Check whether the provided node is one of the given symbols.
-
-        Useful for enforcing tree structure. Raises an exception if the node
-        represents a rule that produces none of the symbols in symbol_names.
-
-        """
-        if node.symbol not in symbol_names:
-            raise ValueError("malformed tree: unexpected symbol '" +
-                             str(node.symbol) + "'")  # pragma: no cover
-
-    def assert_kind(self, token, kind):
-        """Check whether the provided token is of the given token kind.
-
-        Useful for enforcing tree structure. Raises an exception if the token
-        does not have the given kind.
-
-        """
-        if token.kind != kind:
-            raise ValueError("malformed tree: expected token_kind '" +
-                             str(kind) + "' but got '" +
-                             str(token.kind) + "'")  # pragma: no cover
 
     def make_code(self, il_code, symbol_table):
         """Make code for this node.
@@ -171,9 +138,7 @@ class MainNode(Node):
 
     This node will be removed once function definition is supported.
 
-    block_items (List[statement, declaration]) - List of the statements and
-    declarations in the main function.
-
+    body - List of the statements and declarations in the main function.
     """
 
     symbol = Node.MAIN_FUNCTION
@@ -181,10 +146,6 @@ class MainNode(Node):
     def __init__(self, body):
         """Initialize node."""
         super().__init__()
-
-        # Specifically, we expect 'body' to be a compound statement.
-        self.assert_symbol(body, Node.STATEMENT)
-
         self.body = body
 
     def make_code(self, il_code, symbol_table):
@@ -196,8 +157,7 @@ class MainNode(Node):
         """
         self.body.make_code(il_code, symbol_table)
 
-        return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")),
-                                 None)
+        return_node = ReturnNode(NumberNode(Token(token_kinds.number, "0")))
         return_node.make_code(il_code, symbol_table)
 
 
@@ -214,9 +174,6 @@ class CompoundNode(Node):
     def __init__(self, block_items):
         """Initialize node."""
         super().__init__()
-
-        for item in block_items:
-            self.assert_symbols(item, [self.STATEMENT, self.DECLARATION])
         self.block_items = block_items
 
     def make_code(self, il_code, symbol_table):
@@ -239,20 +196,16 @@ class ReturnNode(Node):
 
     symbol = Node.STATEMENT
 
-    def __init__(self, return_value, return_kw):
+    def __init__(self, return_value):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(return_value, self.EXPRESSION)
-
         self.return_value = return_value
-        self.return_kw = return_kw
 
     def make_code(self, il_code, symbol_table):
         """Make IL code for returning this value."""
         il_value = self.return_value.make_code(il_code, symbol_table)
 
-        check_cast(il_value, ctypes.integer, self.return_kw)
+        check_cast(il_value, ctypes.integer, self.return_value.r)
         il_code.add(il_commands.Return(
             set_type(il_value, ctypes.integer, il_code)))
 
@@ -267,7 +220,6 @@ class NumberNode(ExpressionNode):
     def __init__(self, number):
         """Initialize node."""
         super().__init__()
-
         self.number = number
 
     def make_code_raw(self, il_code, symbol_table):
@@ -344,9 +296,6 @@ class IdentifierNode(ExpressionNode):
     def __init__(self, identifier):
         """Initialize node."""
         super().__init__()
-
-        self.assert_kind(identifier, token_kinds.identifier)
-
         self.identifier = identifier
 
     def make_code_raw(self, il_code, symbol_table):
@@ -372,9 +321,6 @@ class ExprStatementNode(Node):
     def __init__(self, expr):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(expr, self.EXPRESSION)
-
         self.expr = expr
 
     def make_code(self, il_code, symbol_table):
@@ -392,9 +338,6 @@ class ParenExprNode(ExpressionNode):
     def __init__(self, expr):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(expr, self.EXPRESSION)
-
         self.expr = expr
 
     def make_code_raw(self, il_code, symbol_table):
@@ -422,9 +365,6 @@ class IfStatementNode(Node):
     def __init__(self, conditional, statement, else_statement):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(conditional, Node.EXPRESSION)
-        self.assert_symbol(statement, Node.STATEMENT)
 
         self.conditional = conditional
         self.statement = statement
@@ -468,10 +408,6 @@ class WhileStatementNode(Node):
     def __init__(self, conditional, statement):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(conditional, Node.EXPRESSION)
-        self.assert_symbol(statement, Node.STATEMENT)
-
         self.conditional = conditional
         self.statement = statement
 
@@ -503,9 +439,6 @@ class BinaryOperatorNode(ExpressionNode):
     def __init__(self, left_expr, operator, right_expr):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(left_expr, self.EXPRESSION)
-        self.assert_symbol(right_expr, self.EXPRESSION)
 
         self.left_expr = left_expr
         self.operator = operator
@@ -643,10 +576,10 @@ class BinaryOperatorNode(ExpressionNode):
         lvalue = self.left_expr.lvalue(il_code, symbol_table)
 
         if lvalue and lvalue.modable():
-            return lvalue.set_to(right, il_code, self.operator)
+            return lvalue.set_to(right, il_code, self.operator.r)
         else:
             descrip = "expression on left of '=' is not assignable"
-            raise CompilerError(descrip, self.operator.r)
+            raise CompilerError(descrip, self.left_expr.r)
 
     def _make_bool_andor_code(self, andop, il_code, symbol_table):
         """Make code if this operation is boolean && or ||."""
@@ -771,10 +704,10 @@ class BinaryOperatorNode(ExpressionNode):
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg.is_void():
-            check_cast(right, left.ctype, self.operator)
+            check_cast(right, left.ctype, self.operator.r)
             right = set_type(right, left.ctype, il_code)
         elif right.ctype.arg.is_void():
-            check_cast(left, right.ctype, self.operator)
+            check_cast(left, right.ctype, self.operator.r)
             left = set_type(left, right.ctype, il_code)
 
         # If both types are still incompatible, warn!
@@ -811,7 +744,7 @@ class _IncrDecr(ExpressionNode):
 
         if not lval or not lval.modable():
             descrip = "operand of increment operator not a modifiable lvalue"
-            raise CompilerError(descrip, tok.r)
+            raise CompilerError(descrip, expr.r)
 
         one = ILValue(val.ctype)
         if val.ctype.is_arith():
@@ -825,13 +758,13 @@ class _IncrDecr(ExpressionNode):
 
         if pre:
             il_code.add(command(new_val, val, one))
-            lval.set_to(new_val, il_code, tok)
+            lval.set_to(new_val, il_code, expr.r)
             return new_val
         else:
             old_val = ILValue(val.ctype)
             il_code.add(il_commands.Set(old_val, val))
             il_code.add(command(new_val, val, one))
-            lval.set_to(new_val, il_code, tok)
+            lval.set_to(new_val, il_code, expr.r)
             return old_val
 
 
@@ -946,8 +879,6 @@ class AddrOfNode(ExpressionNode):
     def __init__(self, expr, op):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(expr, Node.EXPRESSION)
         self.expr = expr
         self.op = op
 
@@ -957,8 +888,8 @@ class AddrOfNode(ExpressionNode):
         if lvalue:
             return lvalue.addr(il_code)
         else:
-            descrip = "lvalue required as unary '&' operand"
-            raise CompilerError(descrip, self.op.r)
+            descrip = "operand of unary '&' must be lvalue"
+            raise CompilerError(descrip, self.expr.r)
 
 
 class DerefNode(ExpressionNode):
@@ -971,8 +902,6 @@ class DerefNode(ExpressionNode):
     def __init__(self, expr, op):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(expr, Node.EXPRESSION)
         self.expr = expr
         self.op = op
 
@@ -1001,7 +930,7 @@ class DerefNode(ExpressionNode):
 
             if not addr.ctype.is_pointer():
                 descrip = "operand of unary '*' must have pointer type"
-                raise CompilerError(descrip, self.op.r)
+                raise CompilerError(descrip, self.expr.r)
 
             self._cache_lvalue = LValue(LValue.INDIRECT, addr)
 
@@ -1022,10 +951,6 @@ class ArraySubscriptNode(ExpressionNode):
     def __init__(self, head, arg, op):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(head, Node.EXPRESSION)
-        self.assert_symbol(arg, Node.EXPRESSION)
-
         self.head = head
         self.arg = arg
         self.op = op
@@ -1060,10 +985,9 @@ class ArraySubscriptNode(ExpressionNode):
             arith, point = arg_val, head_val
         elif head_val.ctype.is_integral() and arg_val.ctype.is_pointer():
             arith, point = head_val, arg_val
-
         else:
             descrip = "invalid operand types for array subscriping"
-            raise CompilerError(descrip, self.op.r)
+            raise CompilerError(descrip, self.r)
 
         # Cast the integer operand to a long for multiplication.
         l_arith = set_type(arith, ctypes.unsig_longint, il_code)
@@ -1100,11 +1024,6 @@ class FunctionCallNode(ExpressionNode):
     def __init__(self, func, args, tok):
         """Initialize node."""
         super().__init__()
-
-        self.assert_symbol(func, Node.EXPRESSION)
-        for arg in args:
-            self.assert_symbol(arg, Node.EXPRESSION)
-
         self.func = func
         self.args = args
         self.tok = tok
@@ -1116,7 +1035,7 @@ class FunctionCallNode(ExpressionNode):
 
         if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
             descrip = "called object is not a function pointer"
-            raise CompilerError(descrip, self.tok.r)
+            raise CompilerError(descrip, self.func.r)
 
         if not func.ctype.arg.args:
             final_args = self._get_args_without_prototype(
@@ -1161,12 +1080,19 @@ class FunctionCallNode(ExpressionNode):
         else:
             arg_types = func_ctype.args
         if len(arg_types) != len(self.args):
-            descrip = "incorrect number of arguments for function call"
-            raise CompilerError(descrip, self.tok.r)
+            err = ("incorrect number of arguments for function call" +
+                   " (expected {}, have {})").format(len(arg_types),
+                                                     len(self.args))
+
+            if self.args:
+                raise CompilerError(err, self.args[-1].r)
+            else:
+                raise CompilerError(err, self.tok.r)
+
         final_args = []
         for arg_given, arg_type in zip(self.args, arg_types):
             arg = arg_given.make_code(il_code, symbol_table)
-            check_cast(arg, arg_type, self.tok)
+            check_cast(arg, arg_type, arg_given.r)
             final_args.append(set_type(arg, arg_type, il_code))
         return final_args
 
@@ -1177,7 +1103,6 @@ class DeclarationNode(Node):
     decls (List(decl_tree.Node)) - list of declaration trees
     inits (List(ExpressionNode)) - list of initializer expressions, or None
     if a variable is not initialized
-
     """
 
     symbol = Node.DECLARATION
@@ -1206,11 +1131,11 @@ class DeclarationNode(Node):
                 ctype, identifier, storage = self.make_ctype(decl)
                 if not identifier:
                     descrip = "missing identifier name in declaration"
-                    raise CompilerError(descrip, decl.specs[0].r)
+                    raise CompilerError(descrip, decl.r)
 
                 if ctype == ctypes.void:
                     descrip = "variable of void type declared"
-                    raise CompilerError(descrip, identifier.r)
+                    raise CompilerError(descrip, decl.r)
 
                 var = symbol_table.add(identifier, ctype)
 
@@ -1221,7 +1146,7 @@ class DeclarationNode(Node):
                     # Extern variable should not have initializer
                     if init:
                         descrip = "extern variable has initializer"
-                        raise CompilerError(descrip, identifier.r)
+                        raise CompilerError(descrip, decl.r)
 
                 # Variables declared to be static
                 elif storage == self.STATIC:
@@ -1248,10 +1173,10 @@ class DeclarationNode(Node):
                     init_val = init.make_code(il_code, symbol_table)
                     lval = LValue(LValue.DIRECT, var)
                     if lval.modable():
-                        lval.set_to(init_val, il_code, identifier)
+                        lval.set_to(init_val, il_code, identifier.r)
                     else:
                         descrip = "declared variable is not of assignable type"
-                        raise CompilerError(descrip, identifier.r)
+                        raise CompilerError(descrip, decl.r)
 
             except CompilerError as e:
                 error_collector.add(e)
@@ -1308,6 +1233,8 @@ class DeclarationNode(Node):
         Return a `ctype, storage class` pair, where storage class is one of
         the above values.
         """
+        spec_range = specs[0].r + specs[-1].r
+
         spec_kinds = [spec.kind for spec in specs]
         base_type_list = list(set(ctypes.simple_types.keys()) &
                               set(spec_kinds))
@@ -1317,7 +1244,7 @@ class DeclarationNode(Node):
             base_type = ctypes.simple_types[base_type_list[0]]
         else:
             descrip = "two or more data types in declaration specifiers"
-            raise CompilerError(descrip, specs[0].r)
+            raise CompilerError(descrip, spec_range)
 
         signed_list = list({token_kinds.signed_kw, token_kinds.unsigned_kw} &
                             set(spec_kinds))
@@ -1326,7 +1253,7 @@ class DeclarationNode(Node):
             base_type = ctypes.to_unsigned(base_type)
         elif len(signed_list) > 1:
             descrip = "both signed and unsigned in declaration specifiers"
-            raise CompilerError(descrip, specs[0].r)
+            raise CompilerError(descrip, spec_range)
 
         # Create set of storage class specifiers that are present
         storage_class_set = {token_kinds.auto_kw,
@@ -1345,6 +1272,6 @@ class DeclarationNode(Node):
                 storage = self.AUTO
         else:
             descrip = "two or more storage classes in declaration specifiers"
-            raise CompilerError(descrip, specs[0].r)
+            raise CompilerError(descrip, spec_range)
 
         return base_type, storage

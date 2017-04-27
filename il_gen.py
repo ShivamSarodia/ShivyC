@@ -170,12 +170,12 @@ class LValue:
 
         return ctype.is_arith() or ctype.is_pointer()
 
-    def set_to(self, rvalue, il_code, blame_token):
+    def set_to(self, rvalue, il_code, r):
         """Emit code to set the given lvalue to the given ILValue.
 
         rvalue (ILValue) - rvalue to set this lvalue to
         il_code (ILCode) - ILCode object to add generated code
-        blame_token (Token) - Token for warning/error messages
+        r (Range) - Range for warning/error messages
         return - ILValue representing the result of this operation
 
         """
@@ -183,11 +183,11 @@ class LValue:
         import il_commands
 
         if self.lvalue_type == self.DIRECT:
-            check_cast(rvalue, self.il_value.ctype, blame_token)
+            check_cast(rvalue, self.il_value.ctype, r)
             return set_type(rvalue, self.il_value.ctype,
                             il_code, self.il_value)
         elif self.lvalue_type == self.INDIRECT:
-            check_cast(rvalue, self.il_value.ctype.arg, blame_token)
+            check_cast(rvalue, self.il_value.ctype.arg, r)
             right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
             il_code.add(il_commands.SetAt(self.il_value, right_cast))
             return right_cast
@@ -280,7 +280,7 @@ class SymbolTable:
             raise CompilerError(descrip.format(name), identifier.r)
 
 
-def check_cast(il_value, ctype, token):
+def check_cast(il_value, ctype, range):
     """Emit warnings/errors of casting il_value to given ctype.
 
     This method does not actually cast the values. If values cannot be
@@ -288,7 +288,7 @@ def check_cast(il_value, ctype, token):
 
     il_value - ILValue to convert
     ctype - CType to convert to
-    token - Token relevant to the cast, for error reporting
+    range - Range for error reporting
 
     """
     # Cast between same types is always okay
@@ -314,7 +314,7 @@ def check_cast(il_value, ctype, token):
         # Warn on any other kind of pointer cast
         else:
             descrip = "conversion from incompatible pointer type"
-            error_collector.add(CompilerError(descrip, token.r, True))
+            error_collector.add(CompilerError(descrip, range, True))
             return
 
     # Cast from null pointer constant to pointer okay
@@ -327,7 +327,7 @@ def check_cast(il_value, ctype, token):
 
     else:
         descrip = "invalid conversion between types"
-        raise CompilerError(descrip, token.r)
+        raise CompilerError(descrip, range)
 
 
 def set_type(il_value, ctype, il_code, output=None):

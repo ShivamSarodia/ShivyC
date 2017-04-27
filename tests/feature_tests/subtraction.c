@@ -8,6 +8,10 @@ int main() {
   int d = a - 5;
   if(d != 5) return 3;
 
+  // Test associativity of subtraction
+  if(3 - 4 - 5 == 3 - (4 - 5)) return 4;
+  if(3 - 4 - 5 != (3 - 4) - 5) return 5;
+
   // Test imm64 cases
 
   // used to modify variable liveliness

@@ -1,7 +1,7 @@
  int main() {
   int a; int b;
 
-  // error: lvalue required as unary '&' operand
+  // error: operand of unary '&' must be lvalue
   &(a + b);
 
   // error: operand of unary '*' must have pointer type

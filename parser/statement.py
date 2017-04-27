@@ -1,14 +1,15 @@
 """Parser logic that parses statement nodes."""
 
-import parser.utils as p
 import token_kinds
 import tree
 
 from parser.declaration import parse_declaration
 from parser.expression import parse_expression
-from parser.utils import log_error, match_token, token_is, ParserError
+from parser.utils import (add_range, log_error, match_token, token_is,
+                          ParserError)
 
 
+@add_range
 def parse_statement(index):
     """Parse a statement.
 
@@ -39,6 +40,7 @@ def parse_statement(index):
     return parse_expr_statement(index)
 
 
+@add_range
 def parse_compound_statement(index):
     """Parse a compound statement.
 
@@ -72,6 +74,7 @@ def parse_compound_statement(index):
     return tree.CompoundNode(nodes), index
 
 
+@add_range
 def parse_return(index):
     """Parse a return statement.
 
@@ -79,14 +82,13 @@ def parse_return(index):
 
     """
     index = match_token(index, token_kinds.return_kw, ParserError.GOT)
-
-    return_kw = p.tokens[index - 1]
     node, index = parse_expression(index)
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return tree.ReturnNode(node, return_kw), index
+    return tree.ReturnNode(node), index
 
 
+@add_range
 def parse_if_statement(index):
     """Parse an if statement."""
 
@@ -107,6 +109,7 @@ def parse_if_statement(index):
     return tree.IfStatementNode(conditional, statement, else_statement), index
 
 
+@add_range
 def parse_while_statement(index):
     """Parse a while statement."""
     index = match_token(index, token_kinds.while_kw, ParserError.GOT)
@@ -118,6 +121,7 @@ def parse_while_statement(index):
     return tree.WhileStatementNode(conditional, statement), index
 
 
+@add_range
 def parse_expr_statement(index):
     """Parse a statement that is an expression.
 

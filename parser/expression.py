@@ -4,15 +4,18 @@ import parser.utils as p
 import token_kinds
 import tree
 
-from parser.utils import match_token, token_is, ParserError, raise_error
+from parser.utils import (add_range, match_token, token_is, ParserError,
+                          raise_error)
 
 
+@add_range
 def parse_expression(index):
     """Parse expression."""
     # TODO: Support expressions separated by commas
     return parse_assignment(index)
 
 
+@add_range
 def parse_assignment(index):
     """Parse an assignment expression."""
 
@@ -31,12 +34,14 @@ def parse_assignment(index):
         return left, index
 
 
+@add_range
 def parse_conditional(index):
     """Parse a conditional expression."""
     # TODO: Parse ternary operator
     return parse_logical_or(index)
 
 
+@add_range
 def parse_logical_or(index):
     """Parse logical or expression."""
     return parse_series(
@@ -44,6 +49,7 @@ def parse_logical_or(index):
         [token_kinds.bool_or])
 
 
+@add_range
 def parse_logical_and(index):
     """Parse logical and expression."""
     # TODO: Implement bitwise operators here.
@@ -52,6 +58,7 @@ def parse_logical_and(index):
         [token_kinds.bool_and])
 
 
+@add_range
 def parse_equality(index):
     """Parse equality expression."""
     # TODO: Implement relational and shift expressions here.
@@ -60,6 +67,7 @@ def parse_equality(index):
         [token_kinds.twoequals, token_kinds.notequal])
 
 
+@add_range
 def parse_additive(index):
     """Parse additive expression."""
     return parse_series(
@@ -67,6 +75,7 @@ def parse_additive(index):
         [token_kinds.plus, token_kinds.minus])
 
 
+@add_range
 def parse_multiplicative(index):
     """Parse multiplicative expression."""
     return parse_series(
@@ -74,12 +83,14 @@ def parse_multiplicative(index):
         [token_kinds.star, token_kinds.slash])
 
 
+@add_range
 def parse_cast(index):
     """Parse cast expression."""
     # TODO: Implement cast operation
     return parse_unary(index)
 
 
+@add_range
 def parse_unary(index):
     """Parse unary expression."""
     if index < len(p.tokens):
@@ -104,6 +115,7 @@ def parse_unary(index):
         return parse_postfix(index)
 
 
+@add_range
 def parse_postfix(index):
     """Parse postfix expression."""
     cur, index = parse_primary(index)
@@ -150,6 +162,7 @@ def parse_postfix(index):
             return cur, index
 
 
+@add_range
 def parse_primary(index):
     """Parse primary expression."""
     if token_is(index, token_kinds.open_paren):

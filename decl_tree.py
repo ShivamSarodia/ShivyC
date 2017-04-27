@@ -35,12 +35,15 @@ class Root(Node):
     """Represents a list of declaration specifiers.
 
     specs (List(Tokens)) - list of the declaration specifiers, as tokens
+    child (Node) - child declaration node
+    r (Range) - range that this declaration node covers
     """
 
     def __init__(self, specs, child):
         """Generate root node."""
         self.specs = specs
         self.child = child
+        self.r = None
         super().__init__()
 
     def __eq__(self, other):

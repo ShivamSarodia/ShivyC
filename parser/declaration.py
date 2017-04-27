@@ -7,9 +7,11 @@ import token_kinds
 import tree
 
 from parser.expression import parse_expression
-from parser.utils import ParserError, match_token, token_is, raise_error
+from parser.utils import (add_range, ParserError, match_token, token_is,
+                          raise_error)
 
 
+@add_range
 def parse_declaration(index):
     """Parse a declaration.
 
@@ -28,6 +30,7 @@ def parse_declaration(index):
     while True:
         end = find_decl_end(index)
         t = decl_tree.Root(specs, parse_declarator(index, end))
+        t.r = p.tokens[index].r + p.tokens[end - 1].r
         decls.append(t)
 
         index = end

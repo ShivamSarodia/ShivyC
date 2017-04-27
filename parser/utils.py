@@ -48,6 +48,7 @@ class ParserError(CompilerError):
 
         if len(tokens) == 0:
             super().__init__("{} at beginning of source".format(message))
+            return
 
         # If the index is too big, we're always using the AFTER form
         if index >= len(tokens):
@@ -122,3 +123,22 @@ def match_token(index, kind, message_type, message=None):
         return index + 1
     else:
         raise ParserError(message, index, tokens, message_type)
+
+
+def add_range(parse_func):
+    """Return a decorated function that tags the produced node with a range.
+
+    Accepts a parse_* function, and returns a version of the function where
+    the returned node has its range attribute set
+
+    """
+    global tokens
+
+    def parse_with_range(index):
+        start_index = index
+        node, end_index = parse_func(index)
+        node.r = tokens[start_index].r + tokens[end_index - 1].r
+
+        return node, end_index
+
+    return parse_with_range

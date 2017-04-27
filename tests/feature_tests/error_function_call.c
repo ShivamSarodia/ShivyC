@@ -10,18 +10,18 @@ int main() {
   // error: called object is not a function pointer
   a();
 
-  // error: incorrect number of arguments for function call
+  // error: incorrect number of arguments for function call (expected 1, have 0)
   isalpha();
 
-  // error: incorrect number of arguments for function call
+  // error: incorrect number of arguments for function call (expected 1, have 2)
   isalpha(10, 10);
 
   isdigit();
 
-  // error: incorrect number of arguments for function call
+  // error: incorrect number of arguments for function call (expected 0, have 1)
   isdigit(1);
 
-  // error: incorrect number of arguments for function call
+  // error: incorrect number of arguments for function call (expected 0, have 2)
   isdigit(1, 2);
 
   return 0;
