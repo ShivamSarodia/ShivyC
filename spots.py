@@ -65,10 +65,10 @@ class Spot:
             elif size == 4: return spot_map[self.detail][1]
             elif size == 8: return spot_map[self.detail][0]
         elif self.spot_type == self.MEM:
-            if size == 1: size_desc = "BYTE"
-            elif size == 2: size_desc = "WORD"
-            elif size == 4: size_desc = "DWORD"
-            elif size == 8: size_desc = "QWORD"
+            if size == 1: size_desc = "BYTE PTR "
+            elif size == 2: size_desc = "WORD PTR "
+            elif size == 4: size_desc = "DWORD PTR "
+            elif size == 8: size_desc = "QWORD PTR "
             else: size_desc = ""
 
             if isinstance(self.detail[0], Spot):
@@ -77,13 +77,13 @@ class Spot:
                 base_str = self.detail[0]
 
             if self.detail[1] > 0:
-                t = "{} [{}+{}]"
+                t = "{}[{}+{}]"
                 return t.format(size_desc, base_str, self.detail[1])
             elif self.detail[1] == 0:
-                t = "{} [{}]"
+                t = "{}[{}]"
                 return t.format(size_desc, base_str)
             else:  # self.detail[1] < 0
-                t = "{} [{}-{}]"
+                t = "{}[{}-{}]"
                 return t.format(size_desc, base_str, -self.detail[1])
 
         elif self.spot_type == self.LITERAL:

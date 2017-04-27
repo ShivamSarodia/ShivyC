@@ -148,8 +148,7 @@ def assemble_and_link(binary_name, asm_name, obj_name):
 
     """
     try:
-        subprocess.check_call(
-            ["nasm", "-f", "elf64", "-o", obj_name, asm_name])
+        subprocess.check_call(["as", "-64", "-o", obj_name, asm_name])
     except subprocess.CalledProcessError:
         error_collector.add(
             CompilerError("assembler returned non-zero status"))

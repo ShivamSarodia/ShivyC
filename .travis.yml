@@ -6,7 +6,6 @@ install:
 addons:
   apt:
     packages:
-    - nasm
     - binutils
     - gcc
 script: coverage run -m unittest discover

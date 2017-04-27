@@ -67,7 +67,7 @@ class Comment:
         self.msg = msg
 
     def __str__(self):  # noqa: D102
-        return "\t;; " + self.msg
+        return "\t// " + self.msg
 
 
 class Label:

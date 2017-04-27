@@ -44,12 +44,13 @@ class ASMCode:
         name (str) - The name to add.
 
         """
-        self.externs.append("\textern " + name)
+        # GAS does not require this.
+        self.externs.append("\t.extern " + name)
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
         self.string_literals.append(name + ":")
-        data = "db "
+        data = ".byte "
         for char in chars:
             data += str(char) + ","
         self.string_literals.append("\t" + data[:-1])
@@ -61,14 +62,15 @@ class ASMCode:
         assembling.
 
         """
-        header = []
+        header = ["\t.intel_syntax noprefix"]
         if self.string_literals:
-            header += ["\tSECTION .data"] + self.string_literals + [""]
+            header += ["\t.section .data"] + self.string_literals + [""]
 
-        header += (["\tSECTION .text"] + self.externs +
-                   ["\tglobal main", "", "main:"])
+        header += (["\t.section .text"] + self.externs +
+                   ["\t.global main", "", "main:"])
 
-        return "\n".join(header + [str(line) for line in self.lines])
+        return "\n".join(header + [str(line) for line in self.lines] +
+                         ["\t.att_syntax noprefix", ""])
 
 
 class NodeGraph:
