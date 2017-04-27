@@ -1,6 +1,8 @@
 """Objects for the IL->ASM stage of the compiler."""
 
 import itertools
+
+import asm_cmd
 import spots
 from spots import Spot
 
@@ -20,15 +22,13 @@ class ASMCode:
         self.externs = []
         self.string_literals = []
 
-    def add_command(self, command, arg1=None, arg2=None):
+    def add(self, cmd):
         """Add a command to the code.
 
-        command (str) - Name of the command to add.
-        arg1 (str) - First argument of the command.
-        arg2 (str) - Second argument of the command.
+        cmd (ASMCommand) - Command to add
 
         """
-        self.lines.append((command, arg1, arg2))
+        self.lines.append(cmd)
 
     label_num = 0
 
@@ -38,14 +38,6 @@ class ASMCode:
         ASMCode.label_num += 1
         return "__shivyc_label" + str(ASMCode.label_num)
 
-    def add_label(self, label):
-        """Add a label to the code.
-
-        label (str) - The label string to add.
-
-        """
-        self.lines.append(label)
-
     def add_extern(self, name):
         """Add an external name to the code.
 
@@ -53,10 +45,6 @@ class ASMCode:
 
         """
         self.externs.append("\textern " + name)
-
-    def add_comment(self, comment):
-        """Add a comment in the ASM code."""
-        self.lines.append(";; " + comment)
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
@@ -73,26 +61,6 @@ class ASMCode:
         assembling.
 
         """
-
-        def to_string(line):
-            """Convert the provided tuple/string into a string of asm code.
-
-            Does not terminate with a newline.
-
-            """
-            if isinstance(line, str):
-                if line[:2] == ";;":  # this is a comment
-                    return "\t" + line
-                else:  # this is a label
-                    return line + ":"
-            else:
-                line_str = "\t" + line[0]
-                if line[1]:
-                    line_str += " " + line[1]
-                if line[2]:
-                    line_str += ", " + line[2]
-                return line_str
-
         header = []
         if self.string_literals:
             header += ["\tSECTION .data"] + self.string_literals + [""]
@@ -100,7 +68,7 @@ class ASMCode:
         header += (["\tSECTION .text"] + self.externs +
                    ["\tglobal main", "", "main:"])
 
-        return "\n".join(header + [to_string(line) for line in self.lines])
+        return "\n".join(header + [str(line) for line in self.lines])
 
 
 class NodeGraph:
@@ -730,13 +698,15 @@ class ASMGen:
             max_offset += 16 - max_offset % 16
 
         # Back up rbp and move rsp
-        self.asm_code.add_command("push", "rbp")
-        self.asm_code.add_command("mov", "rbp", "rsp")
-        self.asm_code.add_command("sub", "rsp", str(max_offset))
+        self.asm_code.add(asm_cmd.Push(spots.RBP, None, 8))
+        self.asm_code.add(asm_cmd.Mov(spots.RBP, spots.RSP, 8))
+
+        offset_spot = Spot(Spot.LITERAL, str(max_offset))
+        self.asm_code.add(asm_cmd.Sub(spots.RSP, offset_spot, 8))
 
         # Generate code for each command
         for i, command in enumerate(self.il_code):
-            self.asm_code.add_comment(type(command).__name__.upper())
+            self.asm_code.add(asm_cmd.Comment(type(command).__name__.upper()))
 
             def get_reg(pref=None, conf=None):
                 if not pref: pref = []

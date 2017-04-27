@@ -24,12 +24,14 @@ IMMEDIATE TIMELINE
 MAIN PROJECTS
 -------------
 
-- Better error reporting
-  - Add range property to nodes
-  - Add str property to nodes to enable printing
-
 - Clarify distinction between ILCommand and TreeNode responsibilities
   - I think ILCommand should be entirely type agnostic?
+
+- Consider switching to GAS from NASM to reduce number of dependencies.
+  - Improve link library searching
+  - Consider more rigorous representation of ASM code
+    - This would allow cooler code generation, easy switch between
+      nasm/masm, and easier verification that arguments are okay
 
 - Improved treatment of command line flags.
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
@@ -95,5 +97,9 @@ OPTIMIZAIONS
 GENERAL
 * - Support compilation of multiple files
   - Support linking on other systems
+  - Support error recovery
+    - Within parser
+    - Between stages
+      (i.e. if lexer/parser are confident in their guess, try IL generation too)
 
 --------------------------------------------------------------------------------

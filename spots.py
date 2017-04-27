@@ -53,7 +53,9 @@ class Spot:
                     "r8": ["r8", "r8d", "r8w", "r8b"],
                     "r9": ["r9", "r9d", "r9w", "r9b"],
                     "r10": ["r10", "r10d", "r10w", "r10b"],
-                    "r11": ["r11", "r11d", "r11w", "r11b"]}
+                    "r11": ["r11", "r11d", "r11w", "r11b"],
+                    "rbp": ["rbp", "", "", ""],
+                    "rsp": ["rsp", "", "", ""]}
 
         if self.spot_type == self.REGISTER:
             if size == 1: return spot_map[self.detail][3]
@@ -106,5 +108,8 @@ R8 = Spot(Spot.REGISTER, "r8")
 R9 = Spot(Spot.REGISTER, "r9")
 R10 = Spot(Spot.REGISTER, "r10")
 R11 = Spot(Spot.REGISTER, "r11")
+
+RBP = Spot(Spot.REGISTER, "rbp")
+RSP = Spot(Spot.REGISTER, "rsp")
 
 registers = [RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11]
