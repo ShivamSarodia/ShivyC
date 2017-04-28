@@ -46,10 +46,6 @@ class Root(Node):
         self.r = None
         super().__init__()
 
-    def __eq__(self, other):
-        return (isinstance(other, Root) and other.specs == self.specs and
-                other.child == self.child)
-
 
 class Pointer(Node):
     """Represents a pointer to a type."""
@@ -58,9 +54,6 @@ class Pointer(Node):
         """Generate pointer node."""
         self.child = child
         super().__init__()
-
-    def __eq__(self, other):
-        return isinstance(other, Pointer) and other.child == self.child
 
 
 class Array(Node):
@@ -76,10 +69,6 @@ class Array(Node):
         self.child = child
         super().__init__()
 
-    def __eq__(self, other):
-        return (isinstance(other, Array) and other.child == self.child and
-                other.n == self.n)
-
 
 class Function(Node):
     """Represents an function with given arguments and returning given type.
@@ -93,10 +82,6 @@ class Function(Node):
         self.child = child
         super().__init__()
 
-    def __eq__(self, other):
-        return (isinstance(other, Function) and other.args == self.args and
-                other.child == self.child)
-
 
 class Identifier(Node):
     """Represents an identifier.
@@ -108,7 +93,3 @@ class Identifier(Node):
         """Generate identifier node from an identifier token."""
         self.identifier = identifier
         super().__init__()
-
-    def __eq__(self, other):
-        return (isinstance(other, Identifier) and
-                other.identifier == self.identifier)

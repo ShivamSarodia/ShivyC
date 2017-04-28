@@ -161,17 +161,6 @@ class ILCommand:
                 (int(spot.detail) > ctypes.int_max or
                  int(spot.detail) < ctypes.int_min))
 
-    def to_str(self, name, inputs, output=None):  # pragma: no cover
-        """Given the name, inputs, and outputs return its string form."""
-        RED = '\033[91m'
-        ENDC = '\033[0m'
-        BOLD = '\033[1m'
-
-        input_str = "".join(str(input).ljust(40) for input in inputs)
-        output_str = (str(output) if output else "").ljust(40)
-        return output_str + RED + BOLD + str(name).ljust(10) + ENDC + " " + \
-               input_str
-
 
 class _AddMult(ILCommand):
     """Base class for ADD and MULT.
@@ -271,9 +260,6 @@ class Add(_AddMult):
         self._shared_asm(asm_cmd.Add, True, self.output, self.arg1, self.arg2,
                          spotmap, get_reg, asm_code)
 
-    def __str__(self):    # pragma: no cover
-        return self.to_str("ADD", [self.arg1, self.arg2], self.output)
-
 
 class Subtr(_AddMult):
     """SUBTR - Subtracts arg1 and arg2, then saves to output.
@@ -298,9 +284,6 @@ class Subtr(_AddMult):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         self._shared_asm(asm_cmd.Sub, False, self.out, self.arg1, self.arg2,
                          spotmap, get_reg, asm_code)
-
-    def __str__(self):    # pragma: no cover
-        return self.to_str("SUBTR", [self.arg1, self.arg2], self.out)
 
 
 class Mult(_AddMult):
@@ -380,9 +363,6 @@ class Mult(_AddMult):
             self._shared_asm(asm_cmd.Imul, True, self.output, self.arg1,
                              self.arg2, spotmap, get_reg, asm_code)
 
-    def __str__(self):    # pragma: no cover
-        return self.to_str("MULT", [self.arg1, self.arg2], self.output)
-
 
 class Div(ILCommand):
     """DIV - divides arg1 and arg2, then saves to output.
@@ -457,9 +437,6 @@ class Div(ILCommand):
 
         if spotmap[self.output] != spots.RAX:
             asm_code.add(asm_cmd.Mov(output_spot, spots.RAX, size))
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("DIV", [self.arg1, self.arg2], self.output)
 
 
 class _GeneralEqualCmp(ILCommand):
@@ -568,9 +545,6 @@ class NotEqualCmp(_GeneralEqualCmp):
     equal_value = "0"
     not_equal_value = "1"
 
-    def __str__(self):  # pragma: no cover
-        return self.to_str("NEQ", [self.arg1, self.arg2], self.output)
-
 
 class EqualCmp(_GeneralEqualCmp):
     """EqualCmp - checks whether arg1 and arg2 are equal.
@@ -582,9 +556,6 @@ class EqualCmp(_GeneralEqualCmp):
 
     equal_value = "1"
     not_equal_value = "0"
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("NEQ", [self.arg1, self.arg2], self.output)
 
 
 class Set(ILCommand):
@@ -682,9 +653,6 @@ class Set(ILCommand):
         asm_code.add(asm_cmd.Mov(output_spot, one, self.output.ctype.size))
         asm_code.add(asm_cmd.Label(label))
 
-    def __str__(self):  # pragma: no cover
-        return self.to_str("SET", [self.arg], self.output)
-
 
 class Return(ILCommand):
     """RETURN - returns the given value from function.
@@ -718,9 +686,6 @@ class Return(ILCommand):
         asm_code.add(asm_cmd.Pop(spots.RBP, None, 8))
         asm_code.add(asm_cmd.Ret())
 
-    def __str__(self):  # pragma: no cover
-        return self.to_str("RET", [self.arg])
-
 
 class Label(ILCommand):
     """Label - Analogous to an ASM label."""
@@ -741,9 +706,6 @@ class Label(ILCommand):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         asm_code.add(asm_cmd.Label(self.label))
 
-    def __str__(self):  # pragma: no cover
-        return self.to_str("LABEL", [self.label])
-
 
 class Jump(ILCommand):
     """Jumps unconditionally to a label."""
@@ -762,9 +724,6 @@ class Jump(ILCommand):
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         asm_code.add(asm_cmd.Jmp(self.label))
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("JMP", [self.label])
 
 
 class _GeneralJumpZero(ILCommand):
@@ -803,17 +762,11 @@ class JumpZero(_GeneralJumpZero):
 
     command = asm_cmd.Je
 
-    def __str__(self):  # pragma: no cover
-        return self.to_str("JZERO", [self.cond, self.label])
-
 
 class JumpNotZero(_GeneralJumpZero):
     """Jumps to a label if given condition is zero."""
 
     command = asm_cmd.Jne
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("JNZERO", [self.cond, self.label])
 
 
 class AddrOf(ILCommand):
@@ -843,9 +796,6 @@ class AddrOf(ILCommand):
         if r != spotmap[self.output]:
             size = self.output.ctype.size
             asm_code.add(asm_cmd.Mov(spotmap[self.output], r, size))
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("ADDROF", [self.var], self.output)
 
 
 class ReadAt(ILCommand):
@@ -881,9 +831,6 @@ class ReadAt(ILCommand):
 
         size = self.output.ctype.size
         asm_code.add(asm_cmd.Mov(output_spot, indir_spot, size))
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("READAT", [self.addr], self.output)
 
 
 class SetAt(ILCommand):
@@ -992,6 +939,3 @@ class Call(ILCommand):
 
         if not self.void_return and spotmap[self.ret] != spots.RAX:
             asm_code.add(asm_cmd.Mov(self.ret, spots.RAX, ret_size))
-
-    def __str__(self):  # pragma: no cover
-        return self.to_str("CALL", self.args, self.ret)
