@@ -167,7 +167,7 @@ class IntegrationTests(TestUtils):
 
         # Remove leftover files from last test
         rm = "rm -f {0}/gcc_out {0}/out {0}/shivyc_output {0}/gcc_output"
-        subprocess.run(rm, shell=True, check=True)
+        subprocess.run(rm.format(dir), shell=True, check=True)
 
         # Compile Count.c with ShivyC
         compile_with_shivyc(dir + "/Count.c")
