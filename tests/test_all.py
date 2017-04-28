@@ -38,8 +38,7 @@ def compile_with_shivyc(test_file_name):
     """
     # Mock out arguments to ShivyC call
     class MockArguments:
-        filename = test_file_name
-        show_il = False
+        files = [test_file_name]
         show_reg_alloc_perf = False
         variables_on_stack = False
 

@@ -23,104 +23,114 @@ from asm_gen import ASMGen
 
 def main():
     """Run the main compiler script."""
-    # Each of these functions should add any issues to the global
-    # error_collector -- NOT raise them. After each stage of the compiler,
-    # compiliation only proceeds if no errors were found.
-
     arguments = get_arguments()
 
-    code, filename = read_file(arguments)
-    if not error_collector.ok():
-        error_collector.show()
-        return 1
+    objs = []
+    for file in arguments.files:
+        objs.append(process_file(file, arguments))
 
-    token_list = lexer.tokenize(code, filename)
-    if not error_collector.ok():
-        error_collector.show()
+    error_collector.show()
+    if any(not obj for obj in objs):
         return 1
+    else:
+        if not link("out", objs):
+            err = "linker returned non-zero status"
+            print(CompilerError(err))
+            return 1
+        return 0
 
-    token_list = preproc.process(token_list, filename)
+
+def process_file(file, args):
+    """Process single file into object file and return the object file name."""
+    if file[-2:] == ".c":
+        return process_c_file(file, args)
+    elif file[-2:] == ".o":
+        return file
+    else:
+        err = "unknown file type: '{}'"
+        error_collector.add(CompilerError(err.format(file)))
+        return None
+
+
+def process_c_file(file, args):
+    """Compile a C file into an object file and return the object file name."""
+    code = read_file(file)
     if not error_collector.ok():
-        error_collector.show()
-        return 1
+        return None
+
+    token_list = lexer.tokenize(code, file)
+    if not error_collector.ok():
+        return None
+
+    token_list = preproc.process(token_list, file)
+    if not error_collector.ok():
+        return None
 
     ast_root = parse(token_list)
     if not error_collector.ok():
-        error_collector.show()
-        return 1
+        return None
 
     il_code = ILCode()
     ast_root.make_code(il_code, SymbolTable())
     if not error_collector.ok():
-        error_collector.show()
-        return 1
-
-    # Display the IL generated if indicated on the command line.
-    if arguments.show_il:
-        print(str(il_code))
+        return None
 
     asm_code = ASMCode()
-    ASMGen(il_code, asm_code, arguments).make_asm()
+    ASMGen(il_code, asm_code, args).make_asm()
     asm_source = asm_code.full_code()
     if not error_collector.ok():
-        error_collector.show()
-        return 1
+        return None
 
-    asm_filename = "out.s"
-    write_asm(asm_source, asm_filename)
+    asm_file = file[:-2] + ".s"
+    obj_file = file[:-2] + ".o"
+
+    write_asm(asm_source, asm_file)
     if not error_collector.ok():
-        error_collector.show()
-        return 1
+        return None
 
-    assemble_and_link("out", asm_filename, "out.o")
+    assemble(asm_file, obj_file)
     if not error_collector.ok():
-        error_collector.show()
-        return 1
+        return None
 
-    error_collector.show()
-    return 0
+    return obj_file
 
 
 def get_arguments():
     """Get the command-line arguments.
 
-    This function sets up the argument parser and returns an object storing the
-    argument values (as returned by argparse.parse_args()).
-
+    This function sets up the argument parser. Returns a tuple containing
+    an object storing the argument values and a list of the file names
+    provided on command line.
     """
-    parser = argparse.ArgumentParser(description="Compile C files.")
+    desc = """Compile, assemble, and link C files. Option flags starting
+    with `-z` are primarily for debugging or diagnostic purposes."""
+    parser = argparse.ArgumentParser(
+        description=desc, usage="shivyc.py [options] files...")
 
-    # The file name of the C file to compile.
-    parser.add_argument("filename", metavar="filename")
-
-    # Boolean flag for whether to print the generated IL
-    parser.add_argument("-show-il", help="display generated IL",
-                        dest="show_il", action="store_true")
+    # Files to compile
+    parser.add_argument("files", metavar="files", nargs="+")
 
     # Boolean flag for whether to print register allocator performance info
-    parser.add_argument("-show-reg-alloc-perf",
+    parser.add_argument("-z-reg-alloc-perf",
                         help="display register allocator performance info",
                         dest="show_reg_alloc_perf", action="store_true")
 
     # Boolean flag for whether to allocate any variables in registers
-    parser.add_argument("-variables-on-stack",
+    parser.add_argument("-z-vars-on-stack",
                         help="allocate all variables on the stack",
                         dest="variables_on_stack", action="store_true")
-
-    parser.set_defaults(show_il=False)
 
     return parser.parse_args()
 
 
-def read_file(arguments):
-    """Read the file(s) in arguments and return the file contents."""
+def read_file(file):
+    """Return the contents of the given file."""
     try:
-        with open(arguments.filename) as c_file:
-            return c_file.read(), arguments.filename
+        with open(file) as c_file:
+            return c_file.read()
     except IOError as e:
         descrip = "could not read file: '{}'"
-        error_collector.add(CompilerError(descrip.format(arguments.filename)))
-        return None, None
+        error_collector.add(CompilerError(descrip.format(file)))
 
 
 def write_asm(asm_source, asm_filename):
@@ -138,23 +148,19 @@ def write_asm(asm_source, asm_filename):
         error_collector.add(CompilerError(descrip.format(asm_filename)))
 
 
-def assemble_and_link(binary_name, asm_name, obj_name):
-    """Assmble and link the assembly file into an object file and binary.
-
-    If the assembly/linking fails, raise an exception. TODO: Deal with linker
-    failures more smoothly.
-
-    binary_name (str) - Name of the binary file to output
-    asm_name (str) - Name of the assembly file to read in
-    obj_name (str) - Name of the obj file to output
-
-    """
+def assemble(asm_name, obj_name):
+    """Assemble the given assembly file into an object file."""
     try:
         subprocess.check_call(["as", "-64", "-o", obj_name, asm_name])
+        return True
     except subprocess.CalledProcessError:
         err = "assembler returned non-zero status"
         error_collector.add(CompilerError(err))
-        return
+        return False
+
+
+def link(binary_name, obj_names):
+    """Assemble the given object files into a binary."""
 
     try:
         crtnum = find_crtnum()
@@ -171,12 +177,13 @@ def assemble_and_link(binary_name, asm_name, obj_name):
 
         # find files to link
         subprocess.check_call(
-            ["ld", "-dynamic-linker", linux_so, crtnum, crti, "-lc",
-             obj_name, crtn, "-o", binary_name])
+            ["ld", "-dynamic-linker", linux_so, crtnum, crti, "-lc"]
+            + obj_names + [crtn, "-o", binary_name])
+
+        return True
 
     except subprocess.CalledProcessError:
-        err = "linker returned non-zero status"
-        error_collector.add(CompilerError(err))
+        return False
 
 
 def find_crtnum():
