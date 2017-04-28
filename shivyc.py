@@ -105,7 +105,7 @@ def get_arguments():
     desc = """Compile, assemble, and link C files. Option flags starting
     with `-z` are primarily for debugging or diagnostic purposes."""
     parser = argparse.ArgumentParser(
-        description=desc, usage="shivyc.py [options] files...")
+        description=desc, usage="shivyc.py [-h] [options] files...")
 
     # Files to compile
     parser.add_argument("files", metavar="files", nargs="+")
