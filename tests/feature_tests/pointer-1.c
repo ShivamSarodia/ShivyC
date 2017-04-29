@@ -19,6 +19,9 @@ int main() {
   // Assignment of non-void to void
   void* v = &a;
 
+  // Dereference void pointer
+  *v;
+
   // Assignment of non-void double pointer to void
   int *q = &a;
   v = &q;

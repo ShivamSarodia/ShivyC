@@ -17,5 +17,9 @@
   // error: operand of unary '*' must have pointer type
   *a = 1;
 
+  void* p;
+  // error: invalid conversion between types
+  *p = 1;
+
   return 0;
  }
