@@ -4,7 +4,7 @@ import ctypes
 import decl_tree
 import parser.utils as p
 import token_kinds
-import tree
+import tree.nodes
 
 from parser.expression import parse_expression
 from parser.utils import (add_range, ParserError, match_token, token_is,
@@ -23,7 +23,7 @@ def parse_declaration(index):
 
     # If declaration specifiers are followed directly by semicolon
     if token_is(index, token_kinds.semicolon):
-        return tree.DeclarationNode([], []), index + 1
+        return tree.nodes.Declaration([], []), index + 1
 
     decls = []
     inits = []
@@ -49,7 +49,7 @@ def parse_declaration(index):
             break
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return tree.DeclarationNode(decls, inits), index
+    return tree.nodes.Declaration(decls, inits), index
 
 
 def parse_decl_specifiers(index):

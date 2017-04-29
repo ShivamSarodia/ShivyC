@@ -9,3 +9,5 @@ gcc_out
 a.out
 test.c
 \#*#
+tests/**/*.s
+tests/**/*.o

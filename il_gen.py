@@ -1,8 +1,7 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
-import ctypes
-from ctypes import PointerCType
-from errors import CompilerError, error_collector
+from copy import copy
+from errors import CompilerError
 
 
 class ILCode:
@@ -138,82 +137,6 @@ class ILValue:
         return str(self)
 
 
-class LValue:
-    """Represents an LValue.
-
-    There are two types of LValues, a direct LValue and indirect LValue. A
-    direct LValue stores an ILValue to which this LValue refers. An indirect
-    LValue stores an ILValue which points to the object this ILValue refers
-    to.
-
-    Note this is not directly related to the ILValue class above.
-
-    lvalue_type (DIRECT or INDIRECT) - See description above.
-    il_value (ILValue) - ILValue describing this lvalue. If this is an
-    indirect lvalue, the il_value will have pointer type.
-    """
-
-    DIRECT = 0
-    INDIRECT = 1
-
-    def __init__(self, lvalue_type, il_value):
-        """Initialize LValue."""
-        self.lvalue_type = lvalue_type
-        self.il_value = il_value
-
-    def modable(self):
-        """Return whether this is a modifiable lvalue."""
-        if self.lvalue_type == self.DIRECT:
-            ctype = self.il_value.ctype
-        else:  # self.lvalue_type == self.INDIRECT
-            ctype = self.il_value.ctype.arg
-
-        return ctype.is_arith() or ctype.is_pointer()
-
-    def set_to(self, rvalue, il_code, r):
-        """Emit code to set the given lvalue to the given ILValue.
-
-        rvalue (ILValue) - rvalue to set this lvalue to
-        il_code (ILCode) - ILCode object to add generated code
-        r (Range) - Range for warning/error messages
-        return - ILValue representing the result of this operation
-
-        """
-        # Import must be local to avoid circular imports
-        import il_commands
-
-        if self.lvalue_type == self.DIRECT:
-            check_cast(rvalue, self.il_value.ctype, r)
-            return set_type(rvalue, self.il_value.ctype,
-                            il_code, self.il_value)
-        elif self.lvalue_type == self.INDIRECT:
-            check_cast(rvalue, self.il_value.ctype.arg, r)
-            right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
-            il_code.add(il_commands.SetAt(self.il_value, right_cast))
-            return right_cast
-
-    def addr(self, il_code):
-        """Generate code for and return address of this lvalue."""
-
-        # Import must be local to avoid circular dependencies
-        import il_commands
-
-        if self.lvalue_type == self.DIRECT:
-            out = ILValue(PointerCType(self.il_value.ctype))
-            il_code.add(il_commands.AddrOf(out, self.il_value))
-            return out
-        else:
-            return self.il_value
-
-    def ctype(self):
-        """Return the ctype of this lvalue."""
-
-        if self.lvalue_type == self.DIRECT:
-            return self.il_value.ctype
-        else:
-            return self.il_value.ctype.arg
-
-
 class SymbolTable:
     """Symbol table for the IL -> AST phase.
 
@@ -280,71 +203,25 @@ class SymbolTable:
             raise CompilerError(descrip.format(name), identifier.r)
 
 
-def check_cast(il_value, ctype, range):
-    """Emit warnings/errors of casting il_value to given ctype.
+class Context:
+    """Object for passing current context to make_il functions.
 
-    This method does not actually cast the values. If values cannot be
-    cast, an error is raised by this method.
-
-    il_value - ILValue to convert
-    ctype - CType to convert to
-    range - Range for error reporting
-
+    break_label - Label to which a `break` statement in the current position
+    would jump.
+    continue_label - Label to which a `continue` statment in the current
+    position would jump.
+    is_global - Whether the current scope is global or within a function.
+    Used by declarations to modify emitted code.
     """
-    # Cast between same types is always okay
-    if il_value.ctype == ctype:
-        return
 
-    # Cast between arithmetic types is always okay
-    if ctype.is_arith() and il_value.ctype.is_arith():
-        return
+    def __init__(self):
+        """Initialize Context."""
+        self.break_label = None
+        self.continue_label = None
+        self.is_global = False
 
-    elif ctype.is_pointer() and il_value.ctype.is_pointer():
-
-        # Cast between compatible pointer types okay
-        if ctype.compatible(il_value.ctype):
-            return
-
-        # Cast between void pointer and pointer to object type okay
-        elif ctype.arg.is_void() and il_value.ctype.arg.is_object():
-            return
-        elif ctype.arg.is_object() and il_value.ctype.arg.is_void():
-            return
-
-        # Warn on any other kind of pointer cast
-        else:
-            descrip = "conversion from incompatible pointer type"
-            error_collector.add(CompilerError(descrip, range, True))
-            return
-
-    # Cast from null pointer constant to pointer okay
-    elif ctype.is_pointer() and il_value.null_ptr_const:
-        return
-
-    # Cast from pointer to boolean okay
-    elif ctype == ctypes.bool_t and il_value.ctype.is_pointer():
-        return
-
-    else:
-        descrip = "invalid conversion between types"
-        raise CompilerError(descrip, range)
-
-
-def set_type(il_value, ctype, il_code, output=None):
-    """If necessary, emit code to cast given il_value to the given ctype.
-
-    This function does no type checking and will never produce a warning or
-    error.
-
-    """
-    # Import must be local to avoid circular imports
-    import il_commands
-
-    # (no output value, and same types) OR (output is same as input)
-    if (not output and il_value.ctype == ctype) or output == il_value:
-        return il_value
-    else:
-        if not output:
-            output = ILValue(ctype)
-        il_code.add(il_commands.Set(output, il_value))
-        return output
+    def set_global(self, val):
+        """Return copy of self with is_global set to given value."""
+        c = copy(self)
+        c.is_global = val
+        return c

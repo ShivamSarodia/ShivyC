@@ -16,7 +16,7 @@ the function cannot parse the entity from the tokens.
 """
 import parser.utils as p
 import token_kinds
-import tree
+import tree.nodes
 
 from errors import error_collector
 from parser.utils import (add_range, log_error, match_token, ParserError,
@@ -68,7 +68,7 @@ def parse_root(index):
 
     # If there are tokens that remain unparsed, complain
     if not p.tokens[index:]:
-        return tree.RootNode(nodes), index
+        return tree.nodes.Root(nodes), index
     else:
         raise_error("unexpected token", index, ParserError.AT)
 
@@ -87,4 +87,4 @@ def parse_main(index):
     index = match_token(index, token_kinds.close_paren, ParserError.AT, err)
 
     node, index = parse_compound_statement(index)
-    return tree.MainNode(node), index
+    return tree.nodes.Main(node), index

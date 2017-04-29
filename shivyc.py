@@ -15,10 +15,8 @@ import preproc
 
 from errors import error_collector, CompilerError
 from parser.parser import parse
-from il_gen import ILCode
-from il_gen import SymbolTable
-from asm_gen import ASMCode
-from asm_gen import ASMGen
+from il_gen import ILCode, SymbolTable, Context
+from asm_gen import ASMCode, ASMGen
 
 
 def main():
@@ -71,7 +69,7 @@ def process_c_file(file, args):
         return None
 
     il_code = ILCode()
-    ast_root.make_code(il_code, SymbolTable())
+    ast_root.make_il(il_code, SymbolTable(), Context())
     if not error_collector.ok():
         return None
 
