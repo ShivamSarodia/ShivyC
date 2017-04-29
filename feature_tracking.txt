@@ -27,7 +27,7 @@ MAIN PROJECTS
 - Clarify distinction between ILCommand and TreeNode responsibilities
   - I think ILCommand should be entirely type agnostic?
 
-- Improve link library searching
+- Implement ShivyC as a proper Python package.
 
 - Improved treatment of command line flags.
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
