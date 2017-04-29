@@ -1,7 +1,7 @@
 """Nodes in the AST which represent expression values."""
 
 import ctypes
-import il_cmd
+import il_cmds
 import tree.nodes
 
 from ctypes import ArrayCType, PointerCType
@@ -250,7 +250,7 @@ class Plus(_ArithBinOp):
         """Initialize node."""
         super().__init__(left, right, op)
 
-    default_il_cmd = il_cmd.Add
+    default_il_cmd = il_cmds.Add
 
     def _nonarith(self, left, right, il_code):
         """Make addition code if either operand is non-arithmetic type."""
@@ -269,7 +269,7 @@ class Plus(_ArithBinOp):
         # Multiply by size of objects
         out = ILValue(pointer.ctype)
         shift = get_size(pointer.ctype.arg, arith, il_code)
-        il_code.add(il_cmd.Add(out, pointer, shift))
+        il_code.add(il_cmds.Add(out, pointer, shift))
         return out
 
 
@@ -285,7 +285,7 @@ class Minus(_ArithBinOp):
         """Initialize node."""
         super().__init__(left, right, op)
 
-    default_il_cmd = il_cmd.Subtr
+    default_il_cmd = il_cmds.Subtr
 
     def _nonarith(self, left, right, il_code):
         """Make subtraction code if both operands are non-arithmetic type."""
@@ -297,13 +297,13 @@ class Minus(_ArithBinOp):
 
             # Get raw difference in pointer values
             raw = ILValue(ctypes.longint)
-            il_code.add(il_cmd.Subtr(raw, left, right))
+            il_code.add(il_cmds.Subtr(raw, left, right))
 
             # Divide by size of object
             out = ILValue(ctypes.longint)
             size = ILValue(ctypes.longint)
             il_code.register_literal_var(size, str(left.ctype.arg.size))
-            il_code.add(il_cmd.Div(out, raw, size))
+            il_code.add(il_cmds.Div(out, raw, size))
 
             return out
 
@@ -312,7 +312,7 @@ class Minus(_ArithBinOp):
         elif left.ctype.is_pointer() and right.ctype.is_integral():
             out = ILValue(left.ctype)
             shift = get_size(left.ctype.arg, right, il_code)
-            il_code.add(il_cmd.Subtr(out, left, shift))
+            il_code.add(il_cmds.Subtr(out, left, shift))
             return out
 
         else:
@@ -327,7 +327,7 @@ class Mult(_ArithBinOp):
         """Initialize node."""
         super().__init__(left, right, op)
 
-    default_il_cmd = il_cmd.Mult
+    default_il_cmd = il_cmds.Mult
 
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for multiplication"
@@ -341,7 +341,7 @@ class Div(_ArithBinOp):
         """Initialize node."""
         super().__init__(left, right, op)
 
-    default_il_cmd = il_cmd.Div
+    default_il_cmd = il_cmds.Div
 
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for division"
@@ -400,13 +400,13 @@ class _Equality(_ArithBinOp):
 class Equality(_Equality):
     """Expression that checks equality of two expressions."""
 
-    eq_il_cmd = il_cmd.EqualCmp
+    eq_il_cmd = il_cmds.EqualCmp
 
 
 class Inequality(_Equality):
     """Expression that checks inequality of two expressions."""
 
-    eq_il_cmd = il_cmd.NotEqualCmp
+    eq_il_cmd = il_cmds.NotEqualCmp
 
 
 class _BoolAndOr(_RExprNode):
@@ -444,28 +444,28 @@ class _BoolAndOr(_RExprNode):
         end = il_code.get_label()
 
         left = self.left.make_il(il_code, symbol_table, c)
-        il_code.add(il_cmd.Set(out, init))
+        il_code.add(il_cmds.Set(out, init))
         il_code.add(self.jump_cmd(left, set_out))
         right = self.right.make_il(il_code, symbol_table, c)
         il_code.add(self.jump_cmd(right, set_out))
-        il_code.add(il_cmd.Jump(end))
-        il_code.add(il_cmd.Label(set_out))
-        il_code.add(il_cmd.Set(out, other))
-        il_code.add(il_cmd.Label(end))
+        il_code.add(il_cmds.Jump(end))
+        il_code.add(il_cmds.Label(set_out))
+        il_code.add(il_cmds.Set(out, other))
+        il_code.add(il_cmds.Label(end))
         return out
 
 
 class BoolAnd(_BoolAndOr):
     """Expression that performs boolean and of two values."""
 
-    jump_cmd = il_cmd.JumpZero
+    jump_cmd = il_cmds.JumpZero
     initial_value = 1
 
 
 class BoolOr(_BoolAndOr):
     """Expression that performs boolean or of two values."""
 
-    jump_cmd = il_cmd.JumpNotZero
+    jump_cmd = il_cmds.JumpNotZero
     initial_value = 0
 
 
@@ -529,7 +529,7 @@ class _IncrDecr(_RExprNode):
             return new_val
         else:
             old_val = ILValue(val.ctype)
-            il_code.add(il_cmd.Set(old_val, val))
+            il_code.add(il_cmds.Set(old_val, val))
             il_code.add(self.cmd(new_val, val, one))
             lval.set_to(new_val, il_code, self.expr.r)
             return old_val
@@ -539,7 +539,7 @@ class PreIncr(_IncrDecr):
     """Prefix increment."""
 
     descrip = "increment"
-    cmd = il_cmd.Add
+    cmd = il_cmds.Add
     return_new = True
 
 
@@ -547,7 +547,7 @@ class PostIncr(_IncrDecr):
     """Postfix increment."""
 
     descrip = "increment"
-    cmd = il_cmd.Add
+    cmd = il_cmds.Add
     return_new = False
 
 
@@ -555,7 +555,7 @@ class PreDecr(_IncrDecr):
     """Prefix decrement."""
 
     descrip = "decrement"
-    cmd = il_cmd.Subtr
+    cmd = il_cmds.Subtr
     return_new = True
 
 
@@ -563,7 +563,7 @@ class PostDecr(_IncrDecr):
     """Postfix decrement."""
 
     descrip = "decrement"
-    cmd = il_cmd.Subtr
+    cmd = il_cmds.Subtr
     return_new = False
 
 
@@ -593,10 +593,10 @@ class BoolNot(_RExprNode):
         end = il_code.get_label()
 
         expr = self.expr.make_il(il_code, symbol_table, c)
-        il_code.add(il_cmd.Set(out, one))
-        il_code.add(il_cmd.JumpZero(expr, end))
-        il_code.add(il_cmd.Set(out, zero))
-        il_code.add(il_cmd.Label(end))
+        il_code.add(il_cmds.Set(out, one))
+        il_code.add(il_cmds.JumpZero(expr, end))
+        il_code.add(il_cmds.Set(out, zero))
+        il_code.add(il_cmds.Label(end))
 
         return out
 
@@ -667,7 +667,7 @@ class ArraySubsc(_LExprNode):
 
         shift = get_size(point.ctype.arg, arith, il_code)
         out = ILValue(point.ctype)
-        il_code.add(il_cmd.Add(out, point, shift))
+        il_code.add(il_cmds.Add(out, point, shift))
         return LValue(LValue.INDIRECT, out)
 
 
@@ -697,7 +697,7 @@ class FuncCall(_RExprNode):
                 func.ctype.arg, il_code, symbol_table, c)
 
         ret = ILValue(func.ctype.arg.ret)
-        il_code.add(il_cmd.Call(func, final_args, ret))
+        il_code.add(il_cmds.Call(func, final_args, ret))
         return ret
 
     def _get_args_without_prototype(self, il_code, symbol_table, c):

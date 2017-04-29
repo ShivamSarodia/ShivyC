@@ -2,7 +2,7 @@
 
 import itertools
 
-import asm_cmd
+import asm_cmds
 import spots
 from spots import Spot
 
@@ -700,15 +700,15 @@ class ASMGen:
             max_offset += 16 - max_offset % 16
 
         # Back up rbp and move rsp
-        self.asm_code.add(asm_cmd.Push(spots.RBP, None, 8))
-        self.asm_code.add(asm_cmd.Mov(spots.RBP, spots.RSP, 8))
+        self.asm_code.add(asm_cmds.Push(spots.RBP, None, 8))
+        self.asm_code.add(asm_cmds.Mov(spots.RBP, spots.RSP, 8))
 
         offset_spot = Spot(Spot.LITERAL, str(max_offset))
-        self.asm_code.add(asm_cmd.Sub(spots.RSP, offset_spot, 8))
+        self.asm_code.add(asm_cmds.Sub(spots.RSP, offset_spot, 8))
 
         # Generate code for each command
         for i, command in enumerate(self.il_code):
-            self.asm_code.add(asm_cmd.Comment(type(command).__name__.upper()))
+            self.asm_code.add(asm_cmds.Comment(type(command).__name__.upper()))
 
             def get_reg(pref=None, conf=None):
                 if not pref: pref = []

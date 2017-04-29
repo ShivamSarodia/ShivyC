@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 
 import ctypes
-import il_cmd
+import il_cmds
 
 from ctypes import PointerCType
 from errors import CompilerError, error_collector
@@ -56,14 +56,14 @@ class LValue:
         elif self.lvalue_type == self.INDIRECT:
             check_cast(rvalue, self.il_value.ctype.arg, r)
             right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
-            il_code.add(il_cmd.SetAt(self.il_value, right_cast))
+            il_code.add(il_cmds.SetAt(self.il_value, right_cast))
             return right_cast
 
     def addr(self, il_code):
         """Generate code for and return address of this lvalue."""
         if self.lvalue_type == self.DIRECT:
             out = ILValue(PointerCType(self.il_value.ctype))
-            il_code.add(il_cmd.AddrOf(out, self.il_value))
+            il_code.add(il_cmds.AddrOf(out, self.il_value))
             return out
         else:
             return self.il_value
@@ -74,7 +74,7 @@ class LValue:
             return self.il_value
         else:
             out = ILValue(self.il_value.ctype.arg)
-            il_code.add(il_cmd.ReadAt(out, self.il_value))
+            il_code.add(il_cmds.ReadAt(out, self.il_value))
             return out
 
     def ctype(self):
@@ -157,7 +157,7 @@ def set_type(il_value, ctype, il_code, output=None):
     else:
         if not output:
             output = ILValue(ctype)
-        il_code.add(il_cmd.Set(output, il_value))
+        il_code.add(il_cmds.Set(output, il_value))
         return output
 
 
@@ -230,6 +230,6 @@ def get_size(ctype, num, il_code):
     total = ILValue(ctypes.longint)
     size = ILValue(ctypes.longint)
     il_code.register_literal_var(size, str(ctype.size))
-    il_code.add(il_cmd.Mult(total, long_num, size))
+    il_code.add(il_cmds.Mult(total, long_num, size))
 
     return total

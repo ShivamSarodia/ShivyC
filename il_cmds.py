@@ -11,7 +11,7 @@ used to cast.
 
 """
 
-import asm_cmd
+import asm_cmds
 import ctypes
 import spots
 from spots import Spot
@@ -192,44 +192,44 @@ class _AddMult(ILCommand):
                 asm_code.add(Inst(temp, arg2_spot, size))
             else:
                 temp2 = get_reg([], [temp])
-                asm_code.add(asm_cmd.Mov(temp2, arg2_spot, size))
+                asm_code.add(asm_cmds.Mov(temp2, arg2_spot, size))
                 asm_code.add(Inst(temp, temp2, size))
         elif temp == arg2_spot:
             if not self._is_imm64(arg1_spot):
                 asm_code.add(Inst(temp, arg1_spot, size))
             else:
                 temp2 = get_reg([], [temp])
-                asm_code.add(asm_cmd.Mov(temp2, arg1_spot, size))
+                asm_code.add(asm_cmds.Mov(temp2, arg1_spot, size))
                 asm_code.add(Inst(temp, temp2, size))
 
             if not comm:
-                asm_code.add(asm_cmd.Neg(temp, None, size))
+                asm_code.add(asm_cmds.Neg(temp, None, size))
 
         else:
             if (not self._is_imm64(arg1_spot) and
                  not self._is_imm64(arg2_spot)):
-                asm_code.add(asm_cmd.Mov(temp, arg1_spot, size))
+                asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
                 asm_code.add(Inst(temp, arg2_spot, size))
             elif (self._is_imm64(arg1_spot) and
                   not self._is_imm64(arg2_spot)):
-                asm_code.add(asm_cmd.Mov(temp, arg1_spot, size))
+                asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
                 asm_code.add(Inst(temp, arg2_spot, size))
             elif (not self._is_imm64(arg1_spot) and
                   self._is_imm64(arg2_spot)):
-                asm_code.add(asm_cmd.Mov(temp, arg2_spot, size))
+                asm_code.add(asm_cmds.Mov(temp, arg2_spot, size))
                 asm_code.add(Inst(temp, arg1_spot, size))
                 if not comm:
-                    asm_code.add(asm_cmd.Neg(temp, None, size))
+                    asm_code.add(asm_cmds.Neg(temp, None, size))
 
             else:  # both are imm64
                 temp2 = get_reg([], [temp])
 
-                asm_code.add(asm_cmd.Mov(temp, arg1_spot, size))
-                asm_code.add(asm_cmd.Mov(temp2, arg2_spot, size))
+                asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
+                asm_code.add(asm_cmds.Mov(temp2, arg2_spot, size))
                 asm_code.add(Inst(temp, temp2, size))
 
         if temp != spotmap[out]:
-            asm_code.add(asm_cmd.Mov(spotmap[out], temp, size))
+            asm_code.add(asm_cmds.Mov(spotmap[out], temp, size))
 
 
 class Add(_AddMult):
@@ -257,7 +257,7 @@ class Add(_AddMult):
         return {self.output: [self.arg1, self.arg2]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        self._shared_asm(asm_cmd.Add, True, self.output, self.arg1, self.arg2,
+        self._shared_asm(asm_cmds.Add, True, self.output, self.arg1, self.arg2,
                          spotmap, get_reg, asm_code)
 
 
@@ -282,7 +282,7 @@ class Subtr(_AddMult):
         return {self.out: [self.arg1]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        self._shared_asm(asm_cmd.Sub, False, self.out, self.arg1, self.arg2,
+        self._shared_asm(asm_cmds.Sub, False, self.out, self.arg1, self.arg2,
                          spotmap, get_reg, asm_code)
 
 
@@ -340,27 +340,27 @@ class Mult(_AddMult):
             else:
                 # If either is literal, move that one to RAX
                 if self._is_imm(arg2_spot):
-                    asm_code.add(asm_cmd.Mov(spots.RAX, arg2_spot, size))
+                    asm_code.add(asm_cmds.Mov(spots.RAX, arg2_spot, size))
                     mul_spot = arg1_spot
                 else:
-                    asm_code.add(asm_cmd.Mov(spots.RAX, arg1_spot, size))
+                    asm_code.add(asm_cmds.Mov(spots.RAX, arg1_spot, size))
                     mul_spot = arg2_spot
 
             # Operand is an immediate, move it to a register
             if self._is_imm(mul_spot):
                 r = get_reg([], [spots.RAX])
-                asm_code.add(asm_cmd.Mov(r, mul_spot, ctype.size))
+                asm_code.add(asm_cmds.Mov(r, mul_spot, ctype.size))
                 mul_spot = r
 
-            asm_code.add(asm_cmd.Mul(mul_spot, None, ctype.size))
+            asm_code.add(asm_cmds.Mul(mul_spot, None, ctype.size))
 
             if spotmap[self.output] != spots.RAX:
                 asm_code.add(
-                    asm_cmd.Mov(spotmap[self.output], spots.RAX, ctype.size))
+                    asm_cmds.Mov(spotmap[self.output], spots.RAX, ctype.size))
 
         # Signed multiplication
         else:
-            self._shared_asm(asm_cmd.Imul, True, self.output, self.arg1,
+            self._shared_asm(asm_cmds.Imul, True, self.output, self.arg1,
                              self.arg2, spotmap, get_reg, asm_code)
 
 
@@ -408,35 +408,35 @@ class Div(ILCommand):
         moved_to_rax = False
         if spotmap[self.arg1] != spots.RAX and spotmap[self.arg2] != spots.RAX:
             moved_to_rax = True
-            asm_code.add(asm_cmd.Mov(spots.RAX, arg1_spot, size))
+            asm_code.add(asm_cmds.Mov(spots.RAX, arg1_spot, size))
 
         # If the divisor is a literal or in a bad register, we must move it
         # to a register.
         if (self._is_imm(spotmap[self.arg2]) or
              spotmap[self.arg2] in [spots.RAX, spots.RDX]):
             r = get_reg([], [spots.RAX, spots.RDX])
-            asm_code.add(asm_cmd.Mov(r, arg2_spot, size))
+            asm_code.add(asm_cmds.Mov(r, arg2_spot, size))
             arg2_final_spot = r
         else:
             arg2_final_spot = arg2_spot
 
         # If we did not move to RAX above, do so here.
         if not moved_to_rax and arg1_spot != spots.RAX:
-            asm_code.add(asm_cmd.Mov(spots.RAX, arg1_spot, size))
+            asm_code.add(asm_cmds.Mov(spots.RAX, arg1_spot, size))
 
         if ctype.signed:
             if ctype.size == 4:
-                asm_code.add(asm_cmd.Cdq())
+                asm_code.add(asm_cmds.Cdq())
             elif ctype.size == 8:
-                asm_code.add(asm_cmd.Cqo())
-            asm_code.add(asm_cmd.Idiv(arg2_final_spot, None, size))
+                asm_code.add(asm_cmds.Cqo())
+            asm_code.add(asm_cmds.Idiv(arg2_final_spot, None, size))
         else:
             # zero out RDX register
-            asm_code.add(asm_cmd.Xor(spots.RDX, spots.RDX, size))
-            asm_code.add(asm_cmd.Div(arg2_final_spot, None, size))
+            asm_code.add(asm_cmds.Xor(spots.RDX, spots.RDX, size))
+            asm_code.add(asm_cmds.Div(arg2_final_spot, None, size))
 
         if spotmap[self.output] != spots.RAX:
-            asm_code.add(asm_cmd.Mov(output_spot, spots.RAX, size))
+            asm_code.add(asm_cmds.Mov(output_spot, spots.RAX, size))
 
 
 class _GeneralEqualCmp(ILCommand):
@@ -479,7 +479,7 @@ class _GeneralEqualCmp(ILCommand):
             # in this case both are literal/memory.
             r = get_reg([], regs)
             regs.append(r)
-            asm_code.add(asm_cmd.Mov(r, arg1_spot, self.arg1.ctype.size))
+            asm_code.add(asm_cmds.Mov(r, arg1_spot, self.arg1.ctype.size))
             return r, arg2_spot
         else:
             return arg1_spot, arg2_spot
@@ -491,7 +491,7 @@ class _GeneralEqualCmp(ILCommand):
         if self._is_imm64(arg1_spot):
             size = self.arg1.ctype.size
             new_arg1_spot = get_reg([], regs + [arg2_spot])
-            asm_code.add(asm_cmd.Mov(new_arg1_spot, arg1_spot, size))
+            asm_code.add(asm_cmds.Mov(new_arg1_spot, arg1_spot, size))
             return new_arg1_spot, arg2_spot
 
         # We cannot have both cases because _fix_both_literal is called
@@ -499,7 +499,7 @@ class _GeneralEqualCmp(ILCommand):
         elif self._is_imm64(arg2_spot):
             size = self.arg2.ctype.size
             new_arg2_spot = get_reg([], regs + [arg1_spot])
-            asm_code.add(asm_cmd.Mov(new_arg2_spot, arg2_spot, size))
+            asm_code.add(asm_cmds.Mov(new_arg2_spot, arg2_spot, size))
             return arg1_spot, new_arg2_spot
         else:
             return arg1_spot, arg2_spot
@@ -514,7 +514,7 @@ class _GeneralEqualCmp(ILCommand):
 
         out_size = self.output.ctype.size
         eq_val_spot = Spot(Spot.LITERAL, self.equal_value)
-        asm_code.add(asm_cmd.Mov(result, eq_val_spot, out_size))
+        asm_code.add(asm_cmds.Mov(result, eq_val_spot, out_size))
 
         arg1_spot, arg2_spot = self._fix_both_literal_or_mem(
             spotmap[self.arg1], spotmap[self.arg2], regs, get_reg, asm_code)
@@ -525,13 +525,13 @@ class _GeneralEqualCmp(ILCommand):
         neq_val_spot = Spot(Spot.LITERAL, self.not_equal_value)
         label = asm_code.get_label()
 
-        asm_code.add(asm_cmd.Cmp(arg1_spot, arg2_spot, arg_size))
-        asm_code.add(asm_cmd.Je(label))
-        asm_code.add(asm_cmd.Mov(result, neq_val_spot, out_size))
-        asm_code.add(asm_cmd.Label(label))
+        asm_code.add(asm_cmds.Cmp(arg1_spot, arg2_spot, arg_size))
+        asm_code.add(asm_cmds.Je(label))
+        asm_code.add(asm_cmds.Mov(result, neq_val_spot, out_size))
+        asm_code.add(asm_cmds.Label(label))
 
         if result != spotmap[self.output]:
-            asm_code.add(asm_cmd.Mov(spotmap[self.output], result, out_size))
+            asm_code.add(asm_cmds.Mov(spotmap[self.output], result, out_size))
 
 
 class NotEqualCmp(_GeneralEqualCmp):
@@ -586,7 +586,7 @@ class Set(ILCommand):
             out_spot = spotmap[self.output]
             arg_spot = spotmap[self.arg]
             size = self.output.ctype.size
-            asm_code.add(asm_cmd.Mov(out_spot, arg_spot, size))
+            asm_code.add(asm_cmds.Mov(out_spot, arg_spot, size))
         elif self.output.ctype.size <= self.arg.ctype.size:
             if spotmap[self.output] == spotmap[self.arg]:
                 return
@@ -602,30 +602,30 @@ class Set(ILCommand):
 
             size = self.output.ctype.size
             if r != spotmap[self.arg]:
-                asm_code.add(asm_cmd.Mov(r, spotmap[self.arg], size))
+                asm_code.add(asm_cmds.Mov(r, spotmap[self.arg], size))
 
             if r != spotmap[self.output]:
-                asm_code.add(asm_cmd.Mov(output_spot, r, size))
+                asm_code.add(asm_cmds.Mov(output_spot, r, size))
 
         else:
             r = get_reg([spotmap[self.output], spotmap[self.arg]])
 
             # Move from arg_asm -> r_asm
             if self.arg.ctype.signed:
-                asm_code.add(asm_cmd.Movsx(r, spotmap[self.arg],
-                                           self.output.ctype.size,
-                                           self.arg.ctype.size))
+                asm_code.add(asm_cmds.Movsx(r, spotmap[self.arg],
+                                            self.output.ctype.size,
+                                            self.arg.ctype.size))
             elif self.arg.ctype.size == 4:
-                asm_code.add(asm_cmd.Mov(r, spotmap[self.arg], 4))
+                asm_code.add(asm_cmds.Mov(r, spotmap[self.arg], 4))
             else:
-                asm_code.add(asm_cmd.Movzx(r, spotmap[self.arg],
-                                           self.output.ctype.size,
-                                           self.arg.ctype.size))
+                asm_code.add(asm_cmds.Movzx(r, spotmap[self.arg],
+                                            self.output.ctype.size,
+                                            self.arg.ctype.size))
 
             # If necessary, move from r_asm -> output_asm
             if r != spotmap[self.output]:
-                asm_code.add(asm_cmd.Mov(spotmap[self.output],
-                                         r, self.output.ctype.size))
+                asm_code.add(asm_cmds.Mov(spotmap[self.output],
+                                          r, self.output.ctype.size))
 
     def _set_bool(self, spotmap, get_reg, asm_code):
         """Emit code for SET command if arg is boolean type."""
@@ -636,7 +636,7 @@ class Set(ILCommand):
         if spotmap[self.arg].spot_type == Spot.LITERAL:
             r = get_reg([], [spotmap[self.output]])
             asm_code.add(
-                asm_cmd.Mov(r, spotmap[self.arg], self.arg.ctype.size))
+                asm_cmds.Mov(r, spotmap[self.arg], self.arg.ctype.size))
             arg_spot = r
         else:
             arg_spot = spotmap[self.arg]
@@ -647,11 +647,11 @@ class Set(ILCommand):
         zero = Spot(Spot.LITERAL, "0")
         one = Spot(Spot.LITERAL, "1")
 
-        asm_code.add(asm_cmd.Mov(output_spot, zero, self.output.ctype.size))
-        asm_code.add(asm_cmd.Cmp(arg_spot, zero, self.arg.ctype.size))
-        asm_code.add(asm_cmd.Je(label))
-        asm_code.add(asm_cmd.Mov(output_spot, one, self.output.ctype.size))
-        asm_code.add(asm_cmd.Label(label))
+        asm_code.add(asm_cmds.Mov(output_spot, zero, self.output.ctype.size))
+        asm_code.add(asm_cmds.Cmp(arg_spot, zero, self.arg.ctype.size))
+        asm_code.add(asm_cmds.Je(label))
+        asm_code.add(asm_cmds.Mov(output_spot, one, self.output.ctype.size))
+        asm_code.add(asm_cmds.Label(label))
 
 
 class Return(ILCommand):
@@ -680,11 +680,11 @@ class Return(ILCommand):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         if spotmap[self.arg] != spots.RAX:
             size = self.arg.ctype.size
-            asm_code.add(asm_cmd.Mov(spots.RAX, spotmap[self.arg], size))
+            asm_code.add(asm_cmds.Mov(spots.RAX, spotmap[self.arg], size))
 
-        asm_code.add(asm_cmd.Mov(spots.RSP, spots.RBP, 8))
-        asm_code.add(asm_cmd.Pop(spots.RBP, None, 8))
-        asm_code.add(asm_cmd.Ret())
+        asm_code.add(asm_cmds.Mov(spots.RSP, spots.RBP, 8))
+        asm_code.add(asm_cmds.Pop(spots.RBP, None, 8))
+        asm_code.add(asm_cmds.Ret())
 
 
 class Label(ILCommand):
@@ -704,7 +704,7 @@ class Label(ILCommand):
         return self.label
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        asm_code.add(asm_cmd.Label(self.label))
+        asm_code.add(asm_cmds.Label(self.label))
 
 
 class Jump(ILCommand):
@@ -723,7 +723,7 @@ class Jump(ILCommand):
         return [self.label]
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        asm_code.add(asm_cmd.Jmp(self.label))
+        asm_code.add(asm_cmds.Jmp(self.label))
 
 
 class _GeneralJumpZero(ILCommand):
@@ -747,26 +747,26 @@ class _GeneralJumpZero(ILCommand):
 
         if spotmap[self.cond].spot_type == Spot.LITERAL:
             r = get_reg()
-            asm_code.add(asm_cmd.Mov(r, spotmap[self.cond], size))
+            asm_code.add(asm_cmds.Mov(r, spotmap[self.cond], size))
             cond_spot = r
         else:
             cond_spot = spotmap[self.cond]
 
         zero_spot = Spot(Spot.LITERAL, "0")
-        asm_code.add(asm_cmd.Cmp(cond_spot, zero_spot, size))
+        asm_code.add(asm_cmds.Cmp(cond_spot, zero_spot, size))
         asm_code.add(self.command(self.label))
 
 
 class JumpZero(_GeneralJumpZero):
     """Jumps to a label if given condition is zero."""
 
-    command = asm_cmd.Je
+    command = asm_cmds.Je
 
 
 class JumpNotZero(_GeneralJumpZero):
     """Jumps to a label if given condition is zero."""
 
-    command = asm_cmd.Jne
+    command = asm_cmds.Jne
 
 
 class AddrOf(ILCommand):
@@ -791,11 +791,11 @@ class AddrOf(ILCommand):
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         r = get_reg([spotmap[self.output]])
-        asm_code.add(asm_cmd.Lea(r, home_spots[self.var]))
+        asm_code.add(asm_cmds.Lea(r, home_spots[self.var]))
 
         if r != spotmap[self.output]:
             size = self.output.ctype.size
-            asm_code.add(asm_cmd.Mov(spotmap[self.output], r, size))
+            asm_code.add(asm_cmds.Mov(spotmap[self.output], r, size))
 
 
 class ReadAt(ILCommand):
@@ -826,11 +826,11 @@ class ReadAt(ILCommand):
             indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
         else:
             r = get_reg()
-            asm_code.add(asm_cmd.Mov(r, addr_spot, 8))
+            asm_code.add(asm_cmds.Mov(r, addr_spot, 8))
             indir_spot = Spot(Spot.MEM, (r, 0))
 
         size = self.output.ctype.size
-        asm_code.add(asm_cmd.Mov(output_spot, indir_spot, size))
+        asm_code.add(asm_cmds.Mov(output_spot, indir_spot, size))
 
 
 class SetAt(ILCommand):
@@ -859,11 +859,11 @@ class SetAt(ILCommand):
             indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
         else:
             r = get_reg([], [spotmap[self.val]])
-            asm_code.add(asm_cmd.Mov(r, spotmap[self.addr], 8))
+            asm_code.add(asm_cmds.Mov(r, spotmap[self.addr], 8))
             indir_spot = Spot(Spot.MEM, (r, 0))
 
         asm_code.add(
-            asm_cmd.Mov(indir_spot, spotmap[self.val], size))
+            asm_cmds.Mov(indir_spot, spotmap[self.val], size))
 
 
 class Call(ILCommand):
@@ -927,15 +927,15 @@ class Call(ILCommand):
         if spotmap[self.func] in self.arg_regs[0:len(self.args)]:
             # Get a register which isn't one of the unallowed registers.
             r = get_reg([], self.arg_regs[0:len(self.args)])
-            asm_code.add(asm_cmd.Mov(r, spotmap[self.func], func_size))
+            asm_code.add(asm_cmds.Mov(r, spotmap[self.func], func_size))
             func_spot = r
 
         for arg, reg in zip(self.args, self.arg_regs):
             if spotmap[arg] == reg:
                 continue
-            asm_code.add(asm_cmd.Mov(reg, spotmap[arg], arg.ctype.size))
+            asm_code.add(asm_cmds.Mov(reg, spotmap[arg], arg.ctype.size))
 
-        asm_code.add(asm_cmd.Call(func_spot, None, self.func.ctype.size))
+        asm_code.add(asm_cmds.Call(func_spot, None, self.func.ctype.size))
 
         if not self.void_return and spotmap[self.ret] != spots.RAX:
-            asm_code.add(asm_cmd.Mov(self.ret, spots.RAX, ret_size))
+            asm_code.add(asm_cmds.Mov(self.ret, spots.RAX, ret_size))

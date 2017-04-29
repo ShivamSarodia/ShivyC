@@ -2,7 +2,7 @@
 
 import ctypes
 import decl_tree
-import il_cmd
+import il_cmds
 import token_kinds
 
 from ctypes import PointerCType, ArrayCType, FunctionCType
@@ -68,7 +68,7 @@ class Main(Node):
 
         zero = ILValue(ctypes.integer)
         il_code.register_literal_var(zero, 0)
-        il_code.add(il_cmd.Return(zero))
+        il_code.add(il_cmds.Return(zero))
 
 
 class Compound(Node):
@@ -102,7 +102,8 @@ class Return(Node):
         il_value = self.return_value.make_il(il_code, symbol_table, c)
 
         check_cast(il_value, ctypes.integer, self.return_value.r)
-        il_code.add(il_cmd.Return(set_type(il_value, ctypes.integer, il_code)))
+        il_code.add(
+            il_cmds.Return(set_type(il_value, ctypes.integer, il_code)))
 
 
 class ExprStatement(Node):
@@ -141,20 +142,20 @@ class IfStatement(Node):
         endif_label = il_code.get_label()
         with report_err():
             cond = self.cond.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmd.JumpZero(cond, endif_label))
+            il_code.add(il_cmds.JumpZero(cond, endif_label))
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
 
         if self.else_stat:
             end_label = il_code.get_label()
-            il_code.add(il_cmd.Jump(end_label))
-            il_code.add(il_cmd.Label(endif_label))
+            il_code.add(il_cmds.Jump(end_label))
+            il_code.add(il_cmds.Label(endif_label))
             with report_err():
                 self.else_stat.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmd.Label(end_label))
+            il_code.add(il_cmds.Label(end_label))
         else:
-            il_code.add(il_cmd.Label(endif_label))
+            il_code.add(il_cmds.Label(endif_label))
 
 
 class WhileStatement(Node):
@@ -176,17 +177,17 @@ class WhileStatement(Node):
         start = il_code.get_label()
         end = il_code.get_label()
 
-        il_code.add(il_cmd.Label(start))
+        il_code.add(il_cmds.Label(start))
 
         with report_err():
             cond = self.cond.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmd.JumpZero(cond, end))
+            il_code.add(il_cmds.JumpZero(cond, end))
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
 
-        il_code.add(il_cmd.Jump(start))
-        il_code.add(il_cmd.Label(end))
+        il_code.add(il_cmds.Jump(start))
+        il_code.add(il_cmds.Label(end))
 
 
 class Declaration(Node):
