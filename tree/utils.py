@@ -38,7 +38,7 @@ class LValue:
         else:  # self.lvalue_type == self.INDIRECT
             ctype = self.il_value.ctype.arg
 
-        return ctype.is_arith() or ctype.is_pointer()
+        return ctype.is_arith() or ctype.is_pointer() or ctype.is_void()
 
     def set_to(self, rvalue, il_code, r):
         """Emit code to set the given lvalue to the given ILValue.

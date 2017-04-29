@@ -5,4 +5,8 @@ int main() {
   int array[5];
   // error: operand of increment operator not a modifiable lvalue
   ++array;
+
+  void* p;
+  // error: invalid type for increment operator
+  (*p)++;
 }
