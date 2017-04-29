@@ -8,5 +8,5 @@ addons:
     packages:
     - binutils
     - gcc
-script: coverage run -m unittest discover
+script: coverage run --branch -m unittest discover
 after_success: codecov
