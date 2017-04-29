@@ -57,11 +57,7 @@ class Token:
         self.rep = rep
         self.r = r
 
-    def __eq__(self, other):
-        """Require equality of both token kind and content."""
-        return self.kind == other.kind and self.content == other.content
-
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return self.content
 
     def __str__(self):

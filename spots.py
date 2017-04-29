@@ -91,7 +91,7 @@ class Spot:
 
         raise NotImplementedError("Unsupported spot_type/size combo")
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return self.detail
 
     def __eq__(self, other):
