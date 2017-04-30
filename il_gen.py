@@ -166,7 +166,7 @@ class SymbolTable:
         name (str) - Identifier name to search for.
 
         """
-        for table in self.tables:
+        for table in self.tables[::-1]:
             if name in table: return table[name]
 
     def lookup_tok(self, identifier):

@@ -190,6 +190,51 @@ class WhileStatement(Node):
         il_code.add(il_cmds.Label(end))
 
 
+class ForStatement(Node):
+    """Node for a for statement.
+
+    first - First clause of the for-statement, or None if not provided.
+    second - Second clause of the for-statement, or None if not provided.
+    third - Third clause of the for-statement, or None if not provided.
+    stat - Body of the for-statement
+    """
+
+    def __init__(self, first, second, third, stat):
+        """Initialize node."""
+        super().__init__()
+        self.first = first
+        self.second = second
+        self.third = third
+        self.stat = stat
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        symbol_table.new_scope()
+        if self.first:
+            self.first.make_il(il_code, symbol_table, c)
+
+        start = il_code.get_label()
+        end = il_code.get_label()
+
+        il_code.add(il_cmds.Label(start))
+        with report_err():
+            if self.second:
+                cond = self.second.make_il(il_code, symbol_table, c)
+                il_code.add(il_cmds.JumpZero(cond, end))
+
+        with report_err():
+            self.stat.make_il(il_code, symbol_table, c)
+
+        with report_err():
+            if self.third:
+                self.third.make_il(il_code, symbol_table, c)
+
+        il_code.add(il_cmds.Jump(start))
+        il_code.add(il_cmds.Label(end))
+
+        symbol_table.end_scope()
+
+
 class Declaration(Node):
     """Line of a general variable declaration(s).
 
