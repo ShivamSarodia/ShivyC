@@ -672,7 +672,13 @@ class ArraySubsc(_LExprNode):
 
 
 class FuncCall(_RExprNode):
-    """Function call."""
+    """Function call.
+
+    func - Expression of type function pointer
+    args - List of expressions for each argument
+    tok - Opening parenthesis of this function call, for error reporting
+
+    """
 
     def __init__(self, func, args, tok):
         """Initialize node."""
@@ -683,6 +689,8 @@ class FuncCall(_RExprNode):
 
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
+
+        # This is of function pointer type, so func.arg is the function type.
         func = self.func.make_il(il_code, symbol_table, c)
 
         if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
