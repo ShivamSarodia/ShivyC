@@ -70,6 +70,11 @@ class _GeneralEqualCmp(ILCommand):
         else:
             return arg1_spot, arg2_spot
 
+    # Value to output when the two operands are equal
+    equal_value = None
+
+    # Value to output when the two operands are not equal
+    not_equal_value = None
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         regs = []
@@ -108,8 +113,8 @@ class NotEqualCmp(_GeneralEqualCmp):
 
     """
 
-    equal_value = "0"
-    not_equal_value = "1"
+    equal_value = 0
+    not_equal_value = 1
 
 
 class EqualCmp(_GeneralEqualCmp):
@@ -120,5 +125,5 @@ class EqualCmp(_GeneralEqualCmp):
 
     """
 
-    equal_value = "1"
-    not_equal_value = "0"
+    equal_value = 1
+    not_equal_value = 0

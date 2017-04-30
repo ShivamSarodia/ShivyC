@@ -45,8 +45,12 @@ class Jump(ILCommand):
         asm_code.add(asm_cmds.Jmp(self.label))
 
 
-class _GeneralJumpZero(ILCommand):
+class _GeneralJump(ILCommand):
     """General class for jumping to a label based on condition."""
+
+    # ASM command to output for this jump IL command.
+    # (asm_cmds.Je for JumpZero and asm_cmds.Jne for JumpNotZero)
+    asm_cmd = None
 
     def __init__(self, cond, label): # noqa D102
         self.cond = cond
@@ -76,13 +80,13 @@ class _GeneralJumpZero(ILCommand):
         asm_code.add(self.command(self.label))
 
 
-class JumpZero(_GeneralJumpZero):
+class JumpZero(_GeneralJump):
     """Jumps to a label if given condition is zero."""
 
     command = asm_cmds.Je
 
 
-class JumpNotZero(_GeneralJumpZero):
+class JumpNotZero(_GeneralJump):
     """Jumps to a label if given condition is zero."""
 
     command = asm_cmds.Jne
