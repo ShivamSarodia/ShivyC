@@ -1,8 +1,8 @@
 """IL commands for comparisons."""
 
-import asm_cmds
-from il_cmds.base import ILCommand
-from spots import Spot
+import shivyc.asm_cmds as asm_cmds
+from shivyc.il_cmds.base import ILCommand
+from shivyc.spots import Spot
 
 
 class _GeneralEqualCmp(ILCommand):

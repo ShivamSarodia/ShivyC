@@ -5,4 +5,5 @@ exclude_lines =
 
 [run]
 omit =
-    shivyc.py
+    shivyc/main.py
+    setup.py

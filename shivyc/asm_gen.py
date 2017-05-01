@@ -2,9 +2,9 @@
 
 import itertools
 
-import asm_cmds
-import spots
-from spots import Spot
+import shivyc.asm_cmds as asm_cmds
+import shivyc.spots as spots
+from shivyc.spots import Spot
 
 
 class ASMCode:

@@ -8,10 +8,10 @@ appear at the beginning of a line.
 """
 import pathlib
 
-import lexer
-import token_kinds
+import shivyc.lexer as lexer
+import shivyc.token_kinds as token_kinds
 
-from errors import error_collector, CompilerError
+from shivyc.errors import error_collector, CompilerError
 
 
 def process(tokens, this_file):

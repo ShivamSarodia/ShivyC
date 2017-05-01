@@ -1,6 +1,6 @@
 """Utilities for the parser."""
 
-from errors import CompilerError, Range
+from shivyc.errors import CompilerError, Range
 
 
 # This is a little bit messy, but worth the repetition it saves. In the

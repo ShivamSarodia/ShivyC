@@ -1,14 +1,14 @@
 """Nodes in the AST which represent statements or declarations."""
 
-import ctypes
-import decl_tree
-import il_cmds.control
-import token_kinds
+import shivyc.ctypes as ctypes
+import shivyc.decl_tree as decl_tree
+import shivyc.il_cmds.control as control_cmds
+import shivyc.token_kinds as token_kinds
 
-from ctypes import PointerCType, ArrayCType, FunctionCType
-from errors import CompilerError
-from il_gen import ILValue
-from tree.utils import LValue, report_err, set_type, check_cast
+from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType
+from shivyc.errors import CompilerError
+from shivyc.il_gen import ILValue
+from shivyc.tree.utils import LValue, report_err, set_type, check_cast
 
 
 class Node:
@@ -68,7 +68,7 @@ class Main(Node):
 
         zero = ILValue(ctypes.integer)
         il_code.register_literal_var(zero, 0)
-        il_code.add(il_cmds.control.Return(zero))
+        il_code.add(control_cmds.Return(zero))
 
 
 class Compound(Node):
@@ -104,7 +104,7 @@ class Return(Node):
         check_cast(il_value, ctypes.integer, self.return_value.r)
 
         ret = set_type(il_value, ctypes.integer, il_code)
-        il_code.add(il_cmds.control.Return(ret))
+        il_code.add(control_cmds.Return(ret))
 
 
 class ExprStatement(Node):
@@ -143,20 +143,20 @@ class IfStatement(Node):
         endif_label = il_code.get_label()
         with report_err():
             cond = self.cond.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmds.control.JumpZero(cond, endif_label))
+            il_code.add(control_cmds.JumpZero(cond, endif_label))
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
 
         if self.else_stat:
             end_label = il_code.get_label()
-            il_code.add(il_cmds.control.Jump(end_label))
-            il_code.add(il_cmds.control.Label(endif_label))
+            il_code.add(control_cmds.Jump(end_label))
+            il_code.add(control_cmds.Label(endif_label))
             with report_err():
                 self.else_stat.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmds.control.Label(end_label))
+            il_code.add(control_cmds.Label(end_label))
         else:
-            il_code.add(il_cmds.control.Label(endif_label))
+            il_code.add(control_cmds.Label(endif_label))
 
 
 class WhileStatement(Node):
@@ -178,17 +178,17 @@ class WhileStatement(Node):
         start = il_code.get_label()
         end = il_code.get_label()
 
-        il_code.add(il_cmds.control.Label(start))
+        il_code.add(control_cmds.Label(start))
 
         with report_err():
             cond = self.cond.make_il(il_code, symbol_table, c)
-            il_code.add(il_cmds.control.JumpZero(cond, end))
+            il_code.add(control_cmds.JumpZero(cond, end))
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
 
-        il_code.add(il_cmds.control.Jump(start))
-        il_code.add(il_cmds.control.Label(end))
+        il_code.add(control_cmds.Jump(start))
+        il_code.add(control_cmds.Label(end))
 
 
 class ForStatement(Node):
@@ -217,11 +217,11 @@ class ForStatement(Node):
         start = il_code.get_label()
         end = il_code.get_label()
 
-        il_code.add(il_cmds.control.Label(start))
+        il_code.add(control_cmds.Label(start))
         with report_err():
             if self.second:
                 cond = self.second.make_il(il_code, symbol_table, c)
-                il_code.add(il_cmds.control.JumpZero(cond, end))
+                il_code.add(control_cmds.JumpZero(cond, end))
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
@@ -230,8 +230,8 @@ class ForStatement(Node):
             if self.third:
                 self.third.make_il(il_code, symbol_table, c)
 
-        il_code.add(il_cmds.control.Jump(start))
-        il_code.add(il_cmds.control.Label(end))
+        il_code.add(control_cmds.Jump(start))
+        il_code.add(control_cmds.Label(end))
 
         symbol_table.end_scope()
 

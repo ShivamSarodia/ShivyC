@@ -22,12 +22,13 @@ Then, the test expects compilation to raise an error or warning on the
 following line whose message is the string "____".
 """
 
-from errors import error_collector
 import glob
 import pathlib
 import subprocess
-import shivyc
 import unittest
+
+import shivyc.main
+from shivyc.errors import error_collector
 
 
 def compile_with_shivyc(test_file_name):
@@ -42,12 +43,12 @@ def compile_with_shivyc(test_file_name):
         show_reg_alloc_perf = False
         variables_on_stack = False
 
-    shivyc.get_arguments = lambda: MockArguments()
+    shivyc.main.get_arguments = lambda: MockArguments()
 
     # Mock out error collector functions
     error_collector.show = lambda: True
 
-    shivyc.main()
+    shivyc.main.main()
 
 
 def new(glob_str, dct):

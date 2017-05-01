@@ -1,7 +1,7 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
 from copy import copy
-from errors import CompilerError
+from shivyc.errors import CompilerError
 
 
 class ILCode:
@@ -83,7 +83,7 @@ class ILCode:
         # ILCode label to an ASM code label.
 
         # Import is here to prevent circular import.
-        from asm_gen import ASMCode
+        from shivyc.asm_gen import ASMCode
         return ASMCode.get_label()
 
     def __str__(self):  # pragma: no cover

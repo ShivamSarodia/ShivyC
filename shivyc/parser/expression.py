@@ -1,11 +1,10 @@
 """Parser logic that parses expression nodes."""
 
-import parser.utils as p
-import token_kinds
-import tree.expr_nodes
-
-from parser.utils import (add_range, match_token, token_is, ParserError,
-                          raise_error)
+import shivyc.parser.utils as p
+import shivyc.token_kinds as token_kinds
+import shivyc.tree.expr_nodes as expr_nodes
+from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
+                                 raise_error)
 
 
 @add_range
@@ -29,7 +28,7 @@ def parse_assignment(index):
     if token_is(index, token_kinds.equals):
         op = p.tokens[index]
         right, index = parse_assignment(index + 1)
-        return tree.expr_nodes.Equals(left, right, op), index
+        return expr_nodes.Equals(left, right, op), index
     else:
         return left, index
 
@@ -46,7 +45,7 @@ def parse_logical_or(index):
     """Parse logical or expression."""
     return parse_series(
         index, parse_logical_and,
-        {token_kinds.bool_or: tree.expr_nodes.BoolOr})
+        {token_kinds.bool_or: expr_nodes.BoolOr})
 
 
 @add_range
@@ -55,7 +54,7 @@ def parse_logical_and(index):
     # TODO: Implement bitwise operators here.
     return parse_series(
         index, parse_equality,
-        {token_kinds.bool_and: tree.expr_nodes.BoolAnd})
+        {token_kinds.bool_and: expr_nodes.BoolAnd})
 
 
 @add_range
@@ -64,8 +63,8 @@ def parse_equality(index):
     # TODO: Implement relational and shift expressions here.
     return parse_series(
         index, parse_additive,
-        {token_kinds.twoequals: tree.expr_nodes.Equality,
-         token_kinds.notequal: tree.expr_nodes.Inequality})
+        {token_kinds.twoequals: expr_nodes.Equality,
+         token_kinds.notequal: expr_nodes.Inequality})
 
 
 @add_range
@@ -73,8 +72,8 @@ def parse_additive(index):
     """Parse additive expression."""
     return parse_series(
         index, parse_multiplicative,
-        {token_kinds.plus: tree.expr_nodes.Plus,
-         token_kinds.minus: tree.expr_nodes.Minus})
+        {token_kinds.plus: expr_nodes.Plus,
+         token_kinds.minus: expr_nodes.Minus})
 
 
 @add_range
@@ -82,8 +81,8 @@ def parse_multiplicative(index):
     """Parse multiplicative expression."""
     return parse_series(
         index, parse_unary,
-        {token_kinds.star: tree.expr_nodes.Mult,
-         token_kinds.slash: tree.expr_nodes.Div})
+        {token_kinds.star: expr_nodes.Mult,
+         token_kinds.slash: expr_nodes.Div})
 
 
 @add_range
@@ -98,19 +97,19 @@ def parse_unary(index):
     """Parse unary expression."""
     if token_is(index, token_kinds.incr):
         node, index = parse_unary(index + 1)
-        return tree.expr_nodes.PreIncr(node), index
+        return expr_nodes.PreIncr(node), index
     elif token_is(index, token_kinds.decr):
         node, index = parse_unary(index + 1)
-        return tree.expr_nodes.PreDecr(node), index
+        return expr_nodes.PreDecr(node), index
     elif token_is(index, token_kinds.amp):
         node, index = parse_cast(index + 1)
-        return tree.expr_nodes.AddrOf(node), index
+        return expr_nodes.AddrOf(node), index
     elif token_is(index, token_kinds.star):
         node, index = parse_cast(index + 1)
-        return tree.expr_nodes.Deref(node), index
+        return expr_nodes.Deref(node), index
     elif token_is(index, token_kinds.bool_not):
         node, index = parse_cast(index + 1)
-        return tree.expr_nodes.BoolNot(node), index
+        return expr_nodes.BoolNot(node), index
     else:
         return parse_postfix(index)
 
@@ -127,7 +126,7 @@ def parse_postfix(index):
         if token_is(index, token_kinds.open_sq_brack):
             index += 1
             arg, index = parse_expression(index)
-            cur = tree.expr_nodes.ArraySubsc(cur, arg, tok)
+            cur = expr_nodes.ArraySubsc(cur, arg, tok)
             match_token(index, token_kinds.close_sq_brack, ParserError.GOT)
             index += 1
 
@@ -136,7 +135,7 @@ def parse_postfix(index):
             index += 1
 
             if token_is(index, token_kinds.close_paren):
-                return tree.expr_nodes.FuncCall(cur, args, tok), index + 1
+                return expr_nodes.FuncCall(cur, args, tok), index + 1
 
             while True:
                 arg, index = parse_expression(index)
@@ -150,14 +149,14 @@ def parse_postfix(index):
             index = match_token(
                 index, token_kinds.close_paren, ParserError.GOT)
 
-            return tree.expr_nodes.FuncCall(cur, args, tok), index
+            return expr_nodes.FuncCall(cur, args, tok), index
 
         elif token_is(index, token_kinds.incr):
             index += 1
-            cur = tree.expr_nodes.PostIncr(cur)
+            cur = expr_nodes.PostIncr(cur)
         elif token_is(index, token_kinds.decr):
             index += 1
-            cur = tree.expr_nodes.PostDecr(cur)
+            cur = expr_nodes.PostDecr(cur)
         else:
             return cur, index
 
@@ -168,16 +167,16 @@ def parse_primary(index):
     if token_is(index, token_kinds.open_paren):
         node, index = parse_expression(index + 1)
         index = match_token(index, token_kinds.close_paren, ParserError.GOT)
-        return tree.expr_nodes.ParenExpr(node), index
+        return expr_nodes.ParenExpr(node), index
     elif token_is(index, token_kinds.number):
-        return tree.expr_nodes.Number(p.tokens[index]), index + 1
+        return expr_nodes.Number(p.tokens[index]), index + 1
     elif token_is(index, token_kinds.identifier):
-        return tree.expr_nodes.Identifier(p.tokens[index]), index + 1
+        return expr_nodes.Identifier(p.tokens[index]), index + 1
     elif token_is(index, token_kinds.string):
-        return tree.expr_nodes.String(p.tokens[index].content), index + 1
+        return expr_nodes.String(p.tokens[index].content), index + 1
     elif token_is(index, token_kinds.char_string):
         chars = p.tokens[index].content
-        return tree.expr_nodes.Number(chars[0]), index + 1
+        return expr_nodes.Number(chars[0]), index + 1
     else:
         raise_error("expected expression", index, ParserError.GOT)
 

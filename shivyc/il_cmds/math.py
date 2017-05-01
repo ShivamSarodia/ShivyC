@@ -1,8 +1,8 @@
 """IL commands for mathematical operations."""
 
-import asm_cmds
-import spots
-from il_cmds.base import ILCommand
+import shivyc.asm_cmds as asm_cmds
+import shivyc.spots as spots
+from shivyc.il_cmds.base import ILCommand
 
 
 class _AddMult(ILCommand):

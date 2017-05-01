@@ -2,13 +2,13 @@
 
 from contextlib import contextmanager
 
-import ctypes
-import il_cmds.value
-import il_cmds.math
+import shivyc.ctypes as ctypes
+import shivyc.il_cmds.value as value_cmds
+import shivyc.il_cmds.math as math_cmds
 
-from ctypes import PointerCType
-from errors import CompilerError, error_collector
-from il_gen import ILValue
+from shivyc.ctypes import PointerCType
+from shivyc.errors import CompilerError, error_collector
+from shivyc.il_gen import ILValue
 
 
 class LValue:
@@ -57,14 +57,14 @@ class LValue:
         elif self.lvalue_type == self.INDIRECT:
             check_cast(rvalue, self.il_value.ctype.arg, r)
             right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
-            il_code.add(il_cmds.value.SetAt(self.il_value, right_cast))
+            il_code.add(value_cmds.SetAt(self.il_value, right_cast))
             return right_cast
 
     def addr(self, il_code):
         """Generate code for and return address of this lvalue."""
         if self.lvalue_type == self.DIRECT:
             out = ILValue(PointerCType(self.il_value.ctype))
-            il_code.add(il_cmds.value.AddrOf(out, self.il_value))
+            il_code.add(value_cmds.AddrOf(out, self.il_value))
             return out
         else:
             return self.il_value
@@ -75,7 +75,7 @@ class LValue:
             return self.il_value
         else:
             out = ILValue(self.il_value.ctype.arg)
-            il_code.add(il_cmds.value.ReadAt(out, self.il_value))
+            il_code.add(value_cmds.ReadAt(out, self.il_value))
             return out
 
     def ctype(self):
@@ -158,7 +158,7 @@ def set_type(il_value, ctype, il_code, output=None):
     else:
         if not output:
             output = ILValue(ctype)
-        il_code.add(il_cmds.value.Set(output, il_value))
+        il_code.add(value_cmds.Set(output, il_value))
         return output
 
 
@@ -231,6 +231,6 @@ def get_size(ctype, num, il_code):
     total = ILValue(ctypes.longint)
     size = ILValue(ctypes.longint)
     il_code.register_literal_var(size, str(ctype.size))
-    il_code.add(il_cmds.math.Mult(total, long_num, size))
+    il_code.add(math_cmds.Mult(total, long_num, size))
 
     return total

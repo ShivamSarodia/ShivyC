@@ -1,6 +1,6 @@
 """All of the C types recognized by the compiler."""
 
-import token_kinds
+import shivyc.token_kinds as token_kinds
 
 
 class CType:

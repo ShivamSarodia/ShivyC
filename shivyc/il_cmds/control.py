@@ -1,9 +1,9 @@
 """IL commands for labels, jumps, and function calls."""
 
-import asm_cmds
-import spots
-from il_cmds.base import ILCommand
-from spots import Spot
+import shivyc.asm_cmds as asm_cmds
+import shivyc.spots as spots
+from shivyc.il_cmds.base import ILCommand
+from shivyc.spots import Spot
 
 
 class Label(ILCommand):

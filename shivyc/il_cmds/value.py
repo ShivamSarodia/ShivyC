@@ -1,9 +1,9 @@
 """IL commands for setting/reading values and getting value addresses."""
 
-import asm_cmds
-import ctypes
-from il_cmds.base import ILCommand
-from spots import Spot
+import shivyc.asm_cmds as asm_cmds
+import shivyc.ctypes as ctypes
+from shivyc.il_cmds.base import ILCommand
+from shivyc.spots import Spot
 
 
 class Set(ILCommand):

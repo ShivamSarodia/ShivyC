@@ -6,11 +6,10 @@ generates a flat list of tokens present in that input file.
 """
 import re
 
-import token_kinds
-
-from errors import CompilerError, Position, Range, error_collector
-from tokens import Token
-from token_kinds import symbol_kinds, keyword_kinds
+import shivyc.token_kinds as token_kinds
+from shivyc.errors import CompilerError, Position, Range, error_collector
+from shivyc.tokens import Token
+from shivyc.token_kinds import symbol_kinds, keyword_kinds
 
 
 class Tagged:

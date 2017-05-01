@@ -1,14 +1,13 @@
 """Parser logic that parses declaration nodes."""
 
-import ctypes
-import decl_tree
-import parser.utils as p
-import token_kinds
-import tree.nodes
-
-from parser.expression import parse_expression
-from parser.utils import (add_range, ParserError, match_token, token_is,
-                          raise_error)
+import shivyc.ctypes as ctypes
+import shivyc.decl_tree as decl_tree
+import shivyc.parser.utils as p
+import shivyc.token_kinds as token_kinds
+import shivyc.tree.nodes as nodes
+from shivyc.parser.expression import parse_expression
+from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
+                                 raise_error)
 
 
 @add_range
@@ -23,7 +22,7 @@ def parse_declaration(index):
 
     # If declaration specifiers are followed directly by semicolon
     if token_is(index, token_kinds.semicolon):
-        return tree.nodes.Declaration([], []), index + 1
+        return nodes.Declaration([], []), index + 1
 
     decls = []
     inits = []
@@ -49,7 +48,7 @@ def parse_declaration(index):
             break
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return tree.nodes.Declaration(decls, inits), index
+    return nodes.Declaration(decls, inits), index
 
 
 def parse_decl_specifiers(index):

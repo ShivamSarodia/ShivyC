@@ -10,13 +10,13 @@ import pathlib
 import subprocess
 import sys
 
-import lexer
-import preproc
+import shivyc.lexer as lexer
+import shivyc.preproc as preproc
 
-from errors import error_collector, CompilerError
-from parser.parser import parse
-from il_gen import ILCode, SymbolTable, Context
-from asm_gen import ASMCode, ASMGen
+from shivyc.errors import error_collector, CompilerError
+from shivyc.parser.parser import parse
+from shivyc.il_gen import ILCode, SymbolTable, Context
+from shivyc.asm_gen import ASMCode, ASMGen
 
 
 def main():
@@ -103,7 +103,7 @@ def get_arguments():
     desc = """Compile, assemble, and link C files. Option flags starting
     with `-z` are primarily for debugging or diagnostic purposes."""
     parser = argparse.ArgumentParser(
-        description=desc, usage="shivyc.py [-h] [options] files...")
+        description=desc, usage="shivyc [-h] [options] files...")
 
     # Files to compile
     parser.add_argument("files", metavar="files", nargs="+")

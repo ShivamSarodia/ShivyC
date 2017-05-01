@@ -14,15 +14,15 @@ if there are other possible parse paths to consider, and the second approach if
 the function cannot parse the entity from the tokens.
 
 """
-import parser.utils as p
-import token_kinds
-import tree.nodes
+import shivyc.parser.utils as p
+import shivyc.token_kinds as token_kinds
+import shivyc.tree.nodes as nodes
 
-from errors import error_collector
-from parser.utils import (add_range, log_error, match_token, ParserError,
-                          raise_error)
-from parser.statement import parse_compound_statement
-from parser.declaration import parse_declaration
+from shivyc.errors import error_collector
+from shivyc.parser.utils import (add_range, log_error, match_token,
+                                 ParserError, raise_error)
+from shivyc.parser.statement import parse_compound_statement
+from shivyc.parser.declaration import parse_declaration
 
 
 def parse(tokens_to_parse):
@@ -45,19 +45,19 @@ def parse(tokens_to_parse):
 @add_range
 def parse_root(index):
     """Parse the given tokens into an AST."""
-    nodes = []
+    items = []
     while True:
         try:
-            node, index = parse_main(index)
-            nodes.append(node)
+            item, index = parse_main(index)
+            items.append(item)
         except ParserError as e:
             log_error(e)
         else:
             continue
 
         try:
-            node, index = parse_declaration(index)
-            nodes.append(node)
+            item, index = parse_declaration(index)
+            items.append(item)
         except ParserError as e:
             log_error(e)
         else:
@@ -68,7 +68,7 @@ def parse_root(index):
 
     # If there are tokens that remain unparsed, complain
     if not p.tokens[index:]:
-        return tree.nodes.Root(nodes), index
+        return nodes.Root(items), index
     else:
         raise_error("unexpected token", index, ParserError.AT)
 
@@ -87,4 +87,4 @@ def parse_main(index):
     index = match_token(index, token_kinds.close_paren, ParserError.AT, err)
 
     node, index = parse_compound_statement(index)
-    return tree.nodes.Main(node), index
+    return nodes.Main(node), index

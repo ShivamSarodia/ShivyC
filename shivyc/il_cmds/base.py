@@ -1,7 +1,7 @@
 """Base ILCommand interface definition."""
 
-import ctypes
-from spots import Spot
+import shivyc.ctypes as ctypes
+from shivyc.spots import Spot
 
 
 class ILCommand:
