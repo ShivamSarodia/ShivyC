@@ -2,11 +2,12 @@
 
 import sys
 
+import shivyc
 from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-VERSION = '0.2.0'
+VERSION = str(shivyc.__version__)
 DOWNLOAD_URL = ("https://github.com/ShivamSarodia/ShivyC/archive/{}.tar.gz"
                 .format(VERSION))
 

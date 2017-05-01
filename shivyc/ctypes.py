@@ -1,4 +1,4 @@
-"""All of the C types recognized by the compiler."""
+"""This module defines all of the C types recognized by the compiler."""
 
 import shivyc.token_kinds as token_kinds
 
@@ -62,7 +62,7 @@ class IntegerCType(CType):
         super().__init__(size)
 
     def compatible(self, other):
-        """Return True iff other is a compatible type to self."""
+        """Check whether two types are compatible."""
         return other == self
 
     def is_object(self):

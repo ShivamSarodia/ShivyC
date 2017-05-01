@@ -1,4 +1,9 @@
-"""ASMCommand objects to represent different kinds of ASM commands."""
+"""This module defines and implements classes representing assembly commands.
+
+The _ASMCommand object is the base class for most ASM commands. Some commands
+inherit from _ASMCommandMultiSize or _JumpCommand instead.
+
+"""
 
 
 class _ASMCommand:
