@@ -1,8 +1,7 @@
 ShivyC
 ======
 
-| |Build Status|
-| |Code Coverage|
+| |Build Status| |Code Coverage|
 
 ShivyC is a C compiler written purely in Python 3, targeting Linux
 x86-64 machines. ShivyC seeks to eventually support the entire C11
