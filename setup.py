@@ -6,6 +6,10 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
+VERSION = '0.1.0'
+DOWNLOAD_URL = ("https://github.com/ShivamSarodia/ShivyC/archive/{}.tar.gz"
+                .format(VERSION))
+
 if sys.version_info[0] < 3:
     sys.exit("ShivyC only supports Python 3.")
 
@@ -17,7 +21,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='shivyc',
-    version='0.1.0',
+    version=VERSION,
 
     description='A C compiler written in Python',
     long_description=long_description,
@@ -53,7 +57,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[],
     package_data={
-        'sample': ['include/*.h'],
+        'shivyc': ['include/*.h'],
     },
 
     entry_points={
@@ -61,4 +65,6 @@ setup(
             'shivyc=shivyc.main:main',
         ],
     },
+
+    download_url=DOWNLOAD_URL
 )
