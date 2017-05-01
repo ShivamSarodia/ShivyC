@@ -31,8 +31,6 @@ MAIN PROJECTS
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
   - Create global flags module which all files can access
 
-- Remove error_collector dependency, opting to use report_err() instead lol
-
 --------------------------------------------------------------------------------
 
 FEATURES
