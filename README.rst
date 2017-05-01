@@ -85,8 +85,8 @@ References
 -  Iterated Register Coalescing (George and Appel) -
    https://www.cs.purdue.edu/homes/hosking/502/george.pdf
 
-.. _tests/general\_tests: tests/general_tests
-.. _tests/feature\_tests: tests/feature_tests
+.. _tests/general\_tests: https://github.com/ShivamSarodia/ShivyC/tree/master/tests/general_tests
+.. _tests/feature\_tests: https://github.com/ShivamSarodia/ShivyC/tree/master/tests/feature_tests
 .. _ShivC: https://github.com/ShivamSarodia/ShivC
 
 .. |Build Status| image:: https://travis-ci.org/ShivamSarodia/ShivyC.svg?branch=master
