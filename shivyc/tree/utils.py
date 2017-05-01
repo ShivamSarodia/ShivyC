@@ -128,8 +128,9 @@ def check_cast(il_value, ctype, range):
 
         # Warn on any other kind of pointer cast
         else:
-            err = "conversion from incompatible pointer type"
-            error_collector.add(CompilerError(err, range, True))
+            with report_err():
+                err = "conversion from incompatible pointer type"
+                raise CompilerError(err, range, True)
             return
 
     # Cast from null pointer constant to pointer okay

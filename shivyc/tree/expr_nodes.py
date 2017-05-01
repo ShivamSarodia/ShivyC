@@ -8,10 +8,10 @@ import shivyc.il_cmds.math as math_cmds
 import shivyc.il_cmds.value as value_cmds
 
 from shivyc.ctypes import ArrayCType, PointerCType
-from shivyc.errors import CompilerError, error_collector
+from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
 from shivyc.tree.utils import (LValue, check_cast, set_type, arith_convert,
-                               get_size)
+                               get_size, report_err)
 
 
 class _RExprNode(nodes.Node):
@@ -379,8 +379,9 @@ class _Equality(_ArithBinOp):
 
         # If both operands are not pointer types, warn!
         if not left.ctype.is_pointer() or not right.ctype.is_pointer():
-            err = "comparison between incomparable types"
-            error_collector.add(CompilerError(err, self.op.r, True))
+            with report_err():
+                err = "comparison between incomparable types"
+                raise CompilerError(err, self.op.r, True)
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg.is_void():
@@ -392,8 +393,9 @@ class _Equality(_ArithBinOp):
 
         # If both types are still incompatible, warn!
         elif not left.ctype.compatible(right.ctype):
-            descrip = "comparison between distinct pointer types"
-            error_collector.add(CompilerError(descrip, self.op.r, True))
+            with report_err():
+                err = "comparison between distinct pointer types"
+                raise CompilerError(err, self.op.r, True)
 
         # Now, we can do comparison
         out = ILValue(ctypes.integer)
