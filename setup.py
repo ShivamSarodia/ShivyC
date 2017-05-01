@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 DOWNLOAD_URL = ("https://github.com/ShivamSarodia/ShivyC/archive/{}.tar.gz"
                 .format(VERSION))
 

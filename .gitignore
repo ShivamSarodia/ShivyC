@@ -12,3 +12,5 @@ test.c
 tests/**/*.s
 tests/**/*.o
 shivyc.egg-info/*
+dist/*
+build/*
