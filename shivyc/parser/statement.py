@@ -28,6 +28,16 @@ def parse_statement(index):
         log_error(e)
 
     try:
+        return parse_break(index)
+    except ParserError as e:
+        log_error(e)
+
+    try:
+        return parse_continue(index)
+    except ParserError as e:
+        log_error(e)
+
+    try:
         return parse_if_statement(index)
     except ParserError as e:
         log_error(e)
@@ -91,6 +101,22 @@ def parse_return(index):
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
     return nodes.Return(node), index
+
+
+@add_range
+def parse_break(index):
+    """Parse a break statement."""
+    index = match_token(index, token_kinds.break_kw, ParserError.GOT)
+    index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
+    return nodes.Break(), index
+
+
+@add_range
+def parse_continue(index):
+    """Parse a continue statement."""
+    index = match_token(index, token_kinds.continue_kw, ParserError.GOT)
+    index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
+    return nodes.Continue(), index
 
 
 @add_range

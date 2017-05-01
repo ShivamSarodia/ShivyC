@@ -27,10 +27,10 @@ MAIN PROJECTS
 - Clarify distinction between ILCommand and TreeNode responsibilities
   - I think ILCommand should be entirely type agnostic?
 
-- Implement ShivyC as a proper Python package.
-
 - Improved treatment of command line flags.
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
+
+- Remove error_collector dependency, opting to use report_err() instead lol
 
 --------------------------------------------------------------------------------
 
@@ -62,9 +62,8 @@ PREPROCESSOR
 *   - static and function-form
 
 CONTROL STATEMENTS
-* - for
   - do-while
-* - break/continue
+  - switch
 
 FUNCTIONS
 * - Implement function definition
@@ -91,8 +90,6 @@ OPTIMIZAIONS
   - Speed up register allocator
 
 GENERAL
-* - Support compilation of multiple files
-  - Support linking on other systems
   - Support error recovery
     - Within parser
     - Between stages

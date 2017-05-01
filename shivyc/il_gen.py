@@ -225,3 +225,15 @@ class Context:
         c = copy(self)
         c.is_global = val
         return c
+
+    def set_break(self, lab):
+        """Return copy of self with break_label set to given value."""
+        c = copy(self)
+        c.break_label = lab
+        return c
+
+    def set_continue(self, lab):
+        """Return copy of self with break_label set to given value."""
+        c = copy(self)
+        c.continue_label = lab
+        return c

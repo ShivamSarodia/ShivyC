@@ -107,6 +107,45 @@ class Return(Node):
         il_code.add(control_cmds.Return(ret))
 
 
+class _BreakContinue(Node):
+    """Node for a break or continue statement."""
+
+    # Function which accepts a dummy variable and Context and returns the label
+    # to which to jump when this statement is encountered.
+    get_label = lambda _, c: None
+    # "break" if this is a break statement, or "continue" if this is a continue
+    # statement
+    descrip = None
+
+    def __init__(self):
+        """Initialize node."""
+        super().__init__()
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make IL code for returning this value."""
+        label = self.get_label(c)
+        if label:
+            il_code.add(control_cmds.Jump(label))
+        else:
+            with report_err():
+                err = "{} statement not in loop".format(self.descrip)
+                raise CompilerError(err, self.r)
+
+
+class Break(_BreakContinue):
+    """Node for a break statement."""
+
+    get_label = lambda _, c: c.break_label
+    descrip = "break"
+
+
+class Continue(_BreakContinue):
+    """Node for a continue statement."""
+
+    get_label = lambda _, c: c.continue_label
+    descrip = "continue"
+
+
 class ExprStatement(Node):
     """Node for a statement which contains one expression."""
 
@@ -179,6 +218,7 @@ class WhileStatement(Node):
         end = il_code.get_label()
 
         il_code.add(control_cmds.Label(start))
+        c = c.set_continue(start).set_break(end)
 
         with report_err():
             cond = self.cond.make_il(il_code, symbol_table, c)
@@ -215,7 +255,9 @@ class ForStatement(Node):
             self.first.make_il(il_code, symbol_table, c)
 
         start = il_code.get_label()
+        cont = il_code.get_label()
         end = il_code.get_label()
+        c = c.set_continue(cont).set_break(end)
 
         il_code.add(control_cmds.Label(start))
         with report_err():
@@ -225,6 +267,8 @@ class ForStatement(Node):
 
         with report_err():
             self.stat.make_il(il_code, symbol_table, c)
+
+        il_code.add(control_cmds.Label(cont))
 
         with report_err():
             if self.third:

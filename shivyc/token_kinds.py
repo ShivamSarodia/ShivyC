@@ -22,6 +22,8 @@ if_kw = TokenKind("if", keyword_kinds)
 else_kw = TokenKind("else", keyword_kinds)
 while_kw = TokenKind("while", keyword_kinds)
 for_kw = TokenKind("for", keyword_kinds)
+break_kw = TokenKind("break", keyword_kinds)
+continue_kw = TokenKind("continue", keyword_kinds)
 
 auto_kw = TokenKind("auto", keyword_kinds)
 static_kw = TokenKind("static", keyword_kinds)
