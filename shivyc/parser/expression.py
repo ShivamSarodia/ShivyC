@@ -18,17 +18,28 @@ def parse_expression(index):
 def parse_assignment(index):
     """Parse an assignment expression."""
 
-    # This is a slight departure from the offical grammar. The standard
+    # This is a slight departure from the official grammar. The standard
     # specifies that a program is syntactically correct only if the
     # left-hand side of an assignment expression is a unary expression. But,
     # to provide more helpful error messages, we permit the left side to be
     # any non-assignment expression.
 
     left, index = parse_conditional(index)
-    if token_is(index, token_kinds.equals):
+
+    if index < len(p.tokens):
         op = p.tokens[index]
+        kind = op.kind
+    else:
+        op = None
+        kind = None
+
+    node_types = {token_kinds.equals: expr_nodes.Equals,
+                  token_kinds.plusequals: expr_nodes.PlusEquals,
+                  token_kinds.minusequals: expr_nodes.MinusEquals}
+
+    if kind in node_types:
         right, index = parse_assignment(index + 1)
-        return expr_nodes.Equals(left, right, op), index
+        return node_types[kind](left, right, op), index
     else:
         return left, index
 

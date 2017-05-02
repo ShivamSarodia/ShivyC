@@ -497,6 +497,69 @@ class Equals(_RExprNode):
             raise CompilerError(err, self.left.r)
 
 
+class _CompoundPlusMinus(_RExprNode):
+    """Expression that is += or -=."""
+
+    # Command to execute to change the value of the variable.
+    # Use math_cmds.Add for += and math_cmds.Subtr for -=
+    command = None
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        super().__init__()
+        self.left = left
+        self.right = right
+        self.op = op
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        right = self.right.make_il(il_code, symbol_table, c)
+        lvalue = self.left.lvalue(il_code, symbol_table, c)
+        if not lvalue or not lvalue.modable():
+            err = "expression on left of '{}' is not assignable"
+            raise CompilerError(err.format(str(self.op)), self.left.r)
+
+        if lvalue.ctype().is_pointer() and right.ctype.is_integral():
+            # Because of caching requirement of make_il and lvalue functions,
+            # we know this call won't regenerate code for the left expression
+            # beyond just what's needed to get the value stored at the lvalue.
+            # This is important in cases like ``*func() += 10`` where func()
+            # may have side effects if called twice.
+            left = self.left.make_il(il_code, symbol_table, c)
+
+            out = ILValue(left.ctype)
+            shift = get_size(left.ctype.arg, right, il_code)
+
+            il_code.add(self.command(out, left, shift))
+            lvalue.set_to(out, il_code, self.op.r)
+            return out
+
+        elif lvalue.ctype().is_arith() and right.ctype.is_arith():
+            left = self.left.make_il(il_code, symbol_table, c)
+            out = ILValue(left.ctype)
+
+            left, right = arith_convert(left, right, il_code)
+            il_code.add(self.command(out, left, right))
+            lvalue.set_to(out, il_code, self.op.r)
+            return out
+
+        else:
+            err = "invalid types for '{}' operator".format(str(self.op))
+            raise CompilerError(err, self.op.r)
+
+
+class PlusEquals(_CompoundPlusMinus):
+    """Expression that is +=."""
+
+    command = math_cmds.Add
+
+
+class MinusEquals(_CompoundPlusMinus):
+    """Expression that is -=."""
+
+    command = math_cmds.Subtr
+
+
 class _IncrDecr(_RExprNode):
     """Base class for prefix/postfix increment/decrement operators."""
 
