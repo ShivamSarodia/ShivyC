@@ -500,9 +500,12 @@ class Equals(_RExprNode):
 class _CompoundPlusMinus(_RExprNode):
     """Expression that is += or -=."""
 
-    # Command to execute to change the value of the variable.
-    # Use math_cmds.Add for += and math_cmds.Subtr for -=
+    # Command to execute to change the value of the variable.  Use
+    # math_cmds.Add for +=, math_cmds.Subtr for -=, etc.
     command = None
+    # True if this command should accept a pointer as left operand. Set this to
+    # True for += and -=, and false for all others.
+    accept_pointer = False
 
     def __init__(self, left, right, op):
         """Initialize node."""
@@ -519,7 +522,9 @@ class _CompoundPlusMinus(_RExprNode):
             err = "expression on left of '{}' is not assignable"
             raise CompilerError(err.format(str(self.op)), self.left.r)
 
-        if lvalue.ctype().is_pointer() and right.ctype.is_integral():
+        if (lvalue.ctype().is_pointer()
+            and right.ctype.is_integral()
+             and self.accept_pointer):
             # Because of caching requirement of make_il and lvalue functions,
             # we know this call won't regenerate code for the left expression
             # beyond just what's needed to get the value stored at the lvalue.
@@ -552,12 +557,28 @@ class PlusEquals(_CompoundPlusMinus):
     """Expression that is +=."""
 
     command = math_cmds.Add
+    accept_pointer = True
 
 
 class MinusEquals(_CompoundPlusMinus):
     """Expression that is -=."""
 
     command = math_cmds.Subtr
+    accept_pointer = True
+
+
+class StarEquals(_CompoundPlusMinus):
+    """Expression that is *=."""
+
+    command = math_cmds.Mult
+    accept_pointer = False
+
+
+class DivEquals(_CompoundPlusMinus):
+    """Expression that is /=."""
+
+    command = math_cmds.Div
+    accept_pointer = False
 
 
 class _IncrDecr(_RExprNode):

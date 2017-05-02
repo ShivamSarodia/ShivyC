@@ -33,4 +33,14 @@ int main() {
   if(a != b) return 12;
   if(a + 5 != 0) return 13;
   if(b + 5 != 0) return 14;
+
+  a = 10;
+  b = a *= 1099511627776;
+  if(a != 0) return 15;
+  if(b != 0) return 16;
+
+  a = 10;
+  b = a /= 2;
+  if(a != 5) return 17;
+  if(b != 5) return 18;
 }
