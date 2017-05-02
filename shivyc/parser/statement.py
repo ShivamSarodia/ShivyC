@@ -226,6 +226,9 @@ def parse_expr_statement(index):
     Ex: a = 3 + 4
 
     """
+    if token_is(index, token_kinds.semicolon):
+        return nodes.EmptyStatement(), index + 1
+
     node, index = parse_expression(index)
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
     return nodes.ExprStatement(node), index

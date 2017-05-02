@@ -146,6 +146,18 @@ class Continue(_BreakContinue):
     descrip = "continue"
 
 
+class EmptyStatement(Node):
+    """Node for a statement which is just a semicolon."""
+
+    def __init__(self):
+        """Initialize node."""
+        super().__init__()
+
+    def make_il(self, il_code, symbol_table, c):
+        """Nothing to do for a blank statement."""
+        pass
+
+
 class ExprStatement(Node):
     """Node for a statement which contains one expression."""
 
