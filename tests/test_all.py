@@ -160,31 +160,49 @@ class IntegrationTests(TestUtils):
     These test the programs found in general_tests/* for proper functionality.
     """
 
-    def test_count(self):
-        """Test the Count.c program from the first pset of CPSC 223 at Yale."""
+    def io_test(self, rel_dir, cfile, stdin):
+        """Run a general I/O test.
 
-        rel_dir = "general_tests/count"
+        Args:
+            rel_dir (str): Directory for the test
+            cfile (str): The .c file to compile and run
+            stdin (str): The file to pipe into stdin of the executable, or None
+        """
         dir = str(pathlib.Path(__file__).parent.joinpath(rel_dir))
 
         # Remove leftover files from last test
         rm = "rm -f {0}/gcc_out {0}/out {0}/shivyc_output {0}/gcc_output"
         subprocess.run(rm.format(dir), shell=True, check=True)
 
-        # Compile Count.c with ShivyC
-        compile_with_shivyc(dir + "/Count.c")
+        # Compile with ShivyC
+        compile_with_shivyc(str(pathlib.Path(dir).joinpath(cfile)))
         self.assertEqual(error_collector.issues, [])
 
         # Compile Count.c with gcc
-        gcc_compile = "gcc {0}/Count.c -o gcc_out".format(dir)
+        gcc_compile = "gcc {0}/{1} -o gcc_out".format(dir, cfile)
         subprocess.run(gcc_compile, shell=True, check=True)
 
         # Run ShivyC executable on sample input
-        shivyc_run = "./out < {0}/input.c > {0}/shivyc_output".format(dir)
-        subprocess.run(shivyc_run, shell=True, check=True)
+        if stdin:
+            shivyc_run = "./out < {0}/input.c > {0}/shivyc_output".format(dir)
+            gcc_run = "./gcc_out < {0}/input.c > {0}/gcc_output".format(dir)
+        else:
+            shivyc_run = "./out > {0}/shivyc_output".format(dir)
+            gcc_run = "./gcc_out > {0}/gcc_output".format(dir)
 
-        # Run gcc executable on sample input
-        gcc_run = "./gcc_out < {0}/input.c > {0}/gcc_output".format(dir)
+        subprocess.run(shivyc_run, shell=True, check=True)
         subprocess.run(gcc_run, shell=True, check=True)
 
+        # Diff the two output files
         diff = "diff {0}/gcc_output {0}/shivyc_output".format(dir)
         subprocess.run(diff, shell=True, check=True)
+
+    def test_count(self):
+        """Test the Count.c program from the first pset of CPSC 223 at Yale."""
+
+        self.io_test("general_tests/count", "Count.c", "input.c")
+
+    def test_pi(self):
+        """Test the pi.c program."""
+
+        self.io_test("general_tests/pi", "pi.c", None)
