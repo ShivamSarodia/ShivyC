@@ -43,4 +43,9 @@ int main() {
   b = a /= 2;
   if(a != 5) return 17;
   if(b != 5) return 18;
+
+  a = 1234;
+  b = a %= 100;
+  if(a != 34) return 19;
+  if(b != 34) return 20;
 }

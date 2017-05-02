@@ -595,6 +595,13 @@ class DivEquals(_CompoundPlusMinus):
     accept_pointer = False
 
 
+class ModEquals(_CompoundPlusMinus):
+    """Expression that is %=."""
+
+    command = math_cmds.Mod
+    accept_pointer = False
+
+
 class _IncrDecr(_RExprNode):
     """Base class for prefix/postfix increment/decrement operators."""
 

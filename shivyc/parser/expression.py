@@ -37,7 +37,8 @@ def parse_assignment(index):
                   token_kinds.plusequals: expr_nodes.PlusEquals,
                   token_kinds.minusequals: expr_nodes.MinusEquals,
                   token_kinds.starequals: expr_nodes.StarEquals,
-                  token_kinds.divequals: expr_nodes.DivEquals}
+                  token_kinds.divequals: expr_nodes.DivEquals,
+                  token_kinds.modequals: expr_nodes.ModEquals}
 
     if kind in node_types:
         right, index = parse_assignment(index + 1)
