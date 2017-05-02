@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
-"""Main executable for ShivyC compiler.
-
-For usage, run "./shivyc.py --help".
-
-"""
+"""Main executable for ShivyC compiler."""
 
 import argparse
 import pathlib
+import platform
 import subprocess
 import sys
 
@@ -21,6 +17,12 @@ from shivyc.asm_gen import ASMCode, ASMGen
 
 def main():
     """Run the main compiler script."""
+
+    if platform.system() != "Linux":
+        err = "only x86_64 Linux is supported"
+        print(CompilerError(err))
+        return 1
+
     arguments = get_arguments()
 
     objs = []
