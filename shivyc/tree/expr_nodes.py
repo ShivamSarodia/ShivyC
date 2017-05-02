@@ -99,6 +99,21 @@ class _LExprNode(nodes.Node):
             return lvalue.val(il_code)
 
 
+class MultiExpr(_RExprNode):
+    """Expression that is two expressions joined by comma."""
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        self.left = left
+        self.right = right
+        self.op = op
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        self.left.make_il(il_code, symbol_table, c)
+        return self.right.make_il(il_code, symbol_table, c)
+
+
 class Number(_RExprNode):
     """Expression that is just a single number."""
 

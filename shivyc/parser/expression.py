@@ -10,8 +10,9 @@ from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
 @add_range
 def parse_expression(index):
     """Parse expression."""
-    # TODO: Support expressions separated by commas
-    return parse_assignment(index)
+    return parse_series(
+        index, parse_assignment,
+        {token_kinds.comma: expr_nodes.MultiExpr})
 
 
 @add_range
@@ -153,7 +154,7 @@ def parse_postfix(index):
                 return expr_nodes.FuncCall(cur, args, tok), index + 1
 
             while True:
-                arg, index = parse_expression(index)
+                arg, index = parse_assignment(index)
                 args.append(arg)
 
                 if token_is(index, token_kinds.comma):

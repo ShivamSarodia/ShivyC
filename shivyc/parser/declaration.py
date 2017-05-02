@@ -5,7 +5,7 @@ import shivyc.decl_tree as decl_tree
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.nodes as nodes
-from shivyc.parser.expression import parse_expression
+from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
                                  raise_error)
 
@@ -36,7 +36,7 @@ def parse_declaration(index):
         if token_is(index, token_kinds.equals):
             # Parse initializer expression
             # Currently, only simple initializers are supported
-            expr, index = parse_expression(index + 1)
+            expr, index = parse_assignment(index + 1)
             inits.append(expr)
         else:
             inits.append(None)
