@@ -214,8 +214,11 @@ def tokenize_line(line, in_comment):
         # If next character is another symbol, add previous chunk and then
         # add the symbol.
         elif symbol_kind:
-            symbol_token = Token(
-                symbol_kind, r=Range(line[chunk_end].p, line[chunk_end].p))
+            symbol_start_index = chunk_end
+            symbol_end_index = chunk_end + len(symbol_kind.text_repr) - 1
+
+            r = Range(line[symbol_start_index].p, line[symbol_end_index].p)
+            symbol_token = Token(symbol_kind, r=r)
 
             add_chunk(line[chunk_start:chunk_end], tokens)
             tokens.append(symbol_token)
