@@ -10,6 +10,12 @@ int main() {
   // error: invalid operand types for division
   a / b;
 
+  // error: invalid operand types for modulus
+  a % b;
+
+  // error: invalid operand types for modulus
+  3 % b;
+
   // error: invalid operand types for subtraction
   3 - a;
 }

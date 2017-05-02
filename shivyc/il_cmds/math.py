@@ -207,36 +207,34 @@ class Mult(_AddMult):
                              self.arg2, spotmap, get_reg, asm_code)
 
 
-class Div(ILCommand):
-    """DIV - divides arg1 and arg2, then saves to output.
+class _DivMod(ILCommand):
+    """Base class for ILCommand Div and Mod."""
 
-    IL values output, arg1, arg2 must all have the same type of size at least
-    int. No type conversion or promotion is done here.
+    # Register which contains the value we want after the x86 div or idiv
+    # command is executed. For the Div IL command, this is spots.RAX,
+    # and for the Mod IL command, this is spots.RDX.
+    return_reg = None
 
-    """
-
-    def __init__(self, output, arg1, arg2): # noqa D102
+    def __init__(self, output, arg1, arg2):
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
 
-        self._assert_same_ctype([output, arg1, arg2])
-
-    def inputs(self): # noqa D102
+    def inputs(self):  # noqa D102
         return [self.arg1, self.arg2]
 
-    def outputs(self): # noqa D102
+    def outputs(self):  # noqa D102
         return [self.output]
 
-    def clobber(self): # noqa D102
+    def clobber(self):  # noqa D102
         return [spots.RAX, spots.RDX]
-
-    def abs_spot_pref(self): # noqa D102
-        return {self.output: [spots.RAX],
-                self.arg1: [spots.RAX]}
 
     def abs_spot_conf(self): # noqa D102
         return {self.arg2: [spots.RDX, spots.RAX]}
+
+    def abs_spot_pref(self): # noqa D102
+        return {self.output: [self.return_reg],
+                self.arg1: [spots.RAX]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         ctype = self.arg1.ctype
@@ -264,7 +262,7 @@ class Div(ILCommand):
             arg2_final_spot = arg2_spot
 
         # If we did not move to RAX above, do so here.
-        if not moved_to_rax and arg1_spot != spots.RAX:
+        if not moved_to_rax and arg1_spot != self.return_reg:
             asm_code.add(asm_cmds.Mov(spots.RAX, arg1_spot, size))
 
         if ctype.signed:
@@ -278,5 +276,27 @@ class Div(ILCommand):
             asm_code.add(asm_cmds.Xor(spots.RDX, spots.RDX, size))
             asm_code.add(asm_cmds.Div(arg2_final_spot, None, size))
 
-        if spotmap[self.output] != spots.RAX:
-            asm_code.add(asm_cmds.Mov(output_spot, spots.RAX, size))
+        if spotmap[self.output] != self.return_reg:
+            asm_code.add(asm_cmds.Mov(output_spot, self.return_reg, size))
+
+
+class Div(_DivMod):
+    """Divides given IL values.
+
+    IL values output, arg1, arg2 must all have the same type of size at least
+    int. No type conversion or promotion is done here.
+
+    """
+
+    return_reg = spots.RAX
+
+
+class Mod(_DivMod):
+    """Divides given IL values.
+
+    IL values output, arg1, arg2 must all have the same type of size at least
+    int. No type conversion or promotion is done here.
+
+    """
+
+    return_reg = spots.RDX

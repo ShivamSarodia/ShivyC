@@ -95,7 +95,8 @@ def parse_multiplicative(index):
     return parse_series(
         index, parse_unary,
         {token_kinds.star: expr_nodes.Mult,
-         token_kinds.slash: expr_nodes.Div})
+         token_kinds.slash: expr_nodes.Div,
+         token_kinds.mod: expr_nodes.Mod})
 
 
 @add_range

@@ -352,6 +352,20 @@ class Div(_ArithBinOp):
         raise CompilerError(err, self.op.r)
 
 
+class Mod(_ArithBinOp):
+    """Expression that is modulus of two expressions."""
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        super().__init__(left, right, op)
+
+    default_il_cmd = math_cmds.Mod
+
+    def _nonarith(self, left, right, il_code):
+        err = "invalid operand types for modulus"
+        raise CompilerError(err, self.op.r)
+
+
 class _Equality(_ArithBinOp):
     """Base class for == and != nodes."""
 
