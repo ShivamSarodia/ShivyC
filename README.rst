@@ -29,21 +29,21 @@ For command line usage info:
 ::
 
     shivyc
-    
+
 To create, compile, and run an example program:
 ::
 
-    printf "%s\n" '#include <stdio.h>' >> test.c
+    printf "%s\n" '#include <stdio.h>' > test.c
     printf "%s\n" 'int main() { printf("hello, world!\n"); }' >> test.c
     shivyc test.c
-    ./out    
+    ./out
 
 To run the tests:
 ::
     git clone https://github.com/ShivamSarodia/ShivyC.git
     cd ShivyC
     python3 -m unittest discover
-    
+
 
 
 Implementation Overview
