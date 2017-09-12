@@ -40,6 +40,7 @@ To create, compile, and run an example program:
 
 To run the tests:
 ::
+
     git clone https://github.com/ShivamSarodia/ShivyC.git
     cd ShivyC
     python3 -m unittest discover
