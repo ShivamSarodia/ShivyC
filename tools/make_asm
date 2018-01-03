@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Compiles the given .c file into a .s file. Useful for examining how
+# GCC compiles a given example code.
+
+# usage: make_asm c_file.c
+# creates a .s file with the same name as the given .c file
+
+gcc -S -masm=intel -fno-asynchronous-unwind-tables -fno-stack-protector $1

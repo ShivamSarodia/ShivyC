@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Assembles and links the given assembly file into an executable on the provided Docker
+# machine. Useful for testing assembly programs.
+
+# usage: compile_asm asm_file.s
+# creates a binary file named `out`
+
+as -64 -o out.o $1
+ld -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o -lc out.o /usr/lib/x86_64-linux-gnu/crtn.o -o out

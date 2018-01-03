@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Used by maintainer to release updated versions of ShivyC.
+
+read -p "Have you updated version in setup.py and created a new release on GitHub? " -n 1 -r
+echo    # (optional) move to a new line
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+    rm -rf dist
+    python3 setup.py sdist
+    python3 setup.py bdist_wheel
+    twine upload dist/*
+fi
