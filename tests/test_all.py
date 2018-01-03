@@ -192,9 +192,7 @@ class IntegrationTests(TestUtils):
             gcc_run = "./gcc_out > {0}/gcc_output".format(dir)
 
         subprocess.run(shivyc_run, shell=True, check=True)
-
-        # TODO: Why does this return exit code of 10!?
-        subprocess.run(gcc_run, shell=True)
+        subprocess.run(gcc_run, shell=True, check=True)
 
         # Diff the two output files
         diff = "diff {0}/gcc_output {0}/shivyc_output".format(dir)
