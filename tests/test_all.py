@@ -51,63 +51,57 @@ def compile_with_shivyc(test_file_name):
     shivyc.main.main()
 
 
+def _read_params(test_file_name):
+    """Return expected errors, warnings, and return value for test file."""
+
+    with open(test_file_name) as f:
+        exp_ret_val = 0
+        exp_errors = []
+        exp_warnings = []
+
+        for index, line in enumerate(f.readlines()):
+            ret_mark = "// Return:"
+            error_mark = "// error:"
+            warning_mark = "// warning:"
+
+            if line.strip().startswith(ret_mark):
+                exp_ret_val = int(line.split(ret_mark)[-1])
+            elif line.strip().startswith(error_mark):
+                error_text = line.split(error_mark)[-1].strip()
+                exp_errors.append((error_text, index + 2))
+            elif line.strip().startswith(warning_mark):
+                warning_text = line.split(warning_mark)[-1].strip()
+                exp_warnings.append((warning_text, index + 2))
+
+    return exp_errors, exp_warnings, exp_ret_val
+
+
+def generate_test(test_file_name):
+    """Return a function that tests given file."""
+
+    def test_function(self):
+        exp_errors, exp_warnings, exp_ret_val = _read_params(test_file_name)
+
+        compile_with_shivyc(test_file_name)
+
+        act_errors = []
+        act_warnings = []
+
+        for issue in error_collector.issues:
+            issue_list = act_warnings if issue.warning else act_errors
+            issue_list.append((issue.descrip, issue.range.start.line))
+
+        self.assertListEqual(act_errors, exp_errors)
+        self.assertListEqual(act_warnings, exp_warnings)
+
+        if not act_errors:
+            self.assertEqual(subprocess.call(["./out"]), exp_ret_val)
+
+    return test_function
+
+
 def new(glob_str, dct):
     """The implementation of __new__ used for generating tests."""
-    def generate_test(test_file_name):
-        def test_function(self):
-            # Read test parameters from test file
-            with open(test_file_name) as f:
-                ret_val = 0
-
-                exp_errors = []
-                exp_error_lines = []
-
-                exp_warnings = []
-                exp_warning_lines = []
-
-                for index, line in enumerate(f.readlines()):
-                    ret_mark = "// Return:"
-                    error_mark = "// error:"
-                    warning_mark = "// warning:"
-
-                    if line.strip().startswith(ret_mark):
-                        ret_val = int(line.split(ret_mark)[-1])
-                    elif line.strip().startswith(error_mark):
-                        exp_errors.append(
-                            line.split(error_mark)[-1].strip())
-                        exp_error_lines.append(index + 2)
-                    elif line.strip().startswith(warning_mark):
-                        exp_warnings.append(
-                            line.split(warning_mark)[-1].strip())
-                        exp_warning_lines.append(index + 2)
-
-            compile_with_shivyc(test_file_name)
-
-            act_errors = []
-            act_error_lines = []
-
-            act_warnings = []
-            act_warning_lines = []
-
-            for issue in error_collector.issues:
-                if issue.warning:
-                    act_warnings.append(issue.descrip)
-                    act_warning_lines.append(issue.range.start.line)
-                else:
-                    act_errors.append(issue.descrip)
-                    act_error_lines.append(issue.range.start.line)
-
-            self.assertListEqual(act_errors, exp_errors)
-            self.assertListEqual(act_error_lines, exp_error_lines)
-
-            self.assertListEqual(act_warnings, exp_warnings)
-            self.assertListEqual(act_warning_lines, exp_warning_lines)
-
-            if not act_errors:
-                self.assertEqual(subprocess.call(["./out"]), ret_val)
-
-        return test_function
-
     test_file_name = glob.glob(glob_str)
     for test_file_name in test_file_name:
         short_name = test_file_name.split("/")[-1][:-2]
