@@ -18,6 +18,9 @@ improvements.
 Quickstart
 ------------
 
+x86-64 Linux
+^^^^^^^^^^^^
+
 For compilation of C code, ShivyC only requires Python 3. Assembling and linking are done using the GNU binutils and glibc, which you almost certainly already have installed.
 
 To install ShivyC:
@@ -45,6 +48,26 @@ To run the tests:
     cd ShivyC
     python3 -m unittest discover
 
+Other Architectures
+^^^^^^^^^^^^
+
+For the convenience of those not running Linux, the `docker/`_ directory provides a Dockerfile that sets up an x86-64 Linux Ubuntu environment with everything necessary for ShivyC. To use this, run:
+
+::
+
+    git clone https://github.com/ShivamSarodia/ShivyC.git  
+    cd ShivyC
+    docker build -t shivyc docker/
+    docker/shell
+
+This will open up a shell in an environment with ShivyC installed and ready to use with
+
+::
+
+    python3 -m unittest discover  # to run tests
+    shivyc any_c_file.c           # to compile a file
+    
+The Docker ShivyC executable will update live with any changes made in your local ShivyC directory. 
 
 
 Implementation Overview
@@ -96,7 +119,7 @@ Contributing
 ------------
 
 ShivyC has so far been an entirely individual project. That said, pull
-requests are welcome if they pass flake8 and are well-tested.
+requests are welcome if they pass flake8 and are well-tested. Make sure to copy the hooks in the `hooks/`_ directory into your .git/ folder.
 
 References
 ----------
