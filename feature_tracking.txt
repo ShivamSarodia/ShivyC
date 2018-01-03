@@ -17,15 +17,26 @@ Current target: fully compile nmake.c from CS323 pset
 IMMEDIATE TIMELINE
 ------------------
 
+- Figure out why my pi test is really sketchy.
 
+- Update error mechanisms
+  - Subclass CompilerError for every error type
+  - Get rid of error collector. tree/*.py functions should return list of
+  warnings and errors generated, or add to Context object?
+  - These changes allow the parent node in the AST to capture errors and emit
+    more relevant errors.
+
+- Consider adding casts into the AST
+
+- Clarify distinction between ILCommand and TreeNode responsibilities
+  - Split up Set IL command
+  - Switch other commands to signed/unsigned agnostic
+  - I think ILCommand should be entirely type agnostic?
 
 --------------------------------------------------------------------------------
 
 MAIN PROJECTS
 -------------
-
-- Clarify distinction between ILCommand and TreeNode responsibilities
-  - I think ILCommand should be entirely type agnostic?
 
 - Improved treatment of command line flags.
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
@@ -71,10 +82,9 @@ FUNCTIONS
 *   - Struct as return value
     - Over 6 arguments
 * - Support argc and argv
-
+x
 EXPRESSION
 * - Comparison (>, etc.)
-* - Assignment (*=, +=, etc.)
   - Bitwise (&, |, etc.)
   - Ternary
 * - sizeof
@@ -84,7 +94,10 @@ EXPRESSION
 * - Hex sequences in strings (`\0`)
 
 OPTIMIZAIONS
-  - Conditionals in if-statements
+  - General dataflow analysis
+    - Conditionals in if-statements
+    - Simplify "lea -> mult -> add -> (read/set)at" chain
+    - Simplify repeated Set IL commands
   - Live range splitting in register allocator
   - Speed up register allocator
 
