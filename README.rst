@@ -51,7 +51,7 @@ To run the tests:
 Other Architectures
 ^^^^^^^^^^^^
 
-For the convenience of those not running Linux, the `docker/`_ directory provides a Dockerfile that sets up an x86-64 Linux Ubuntu environment with everything necessary for ShivyC. To use this, run:
+For the convenience of those not running Linux, the ``docker/`` directory provides a Dockerfile that sets up an x86-64 Linux Ubuntu environment with everything necessary for ShivyC. To use this, run:
 
 ::
 
@@ -119,7 +119,7 @@ Contributing
 ------------
 
 ShivyC has so far been an entirely individual project. That said, pull
-requests are welcome if they pass flake8 and are well-tested. Make sure to copy the hooks in the `hooks/`_ directory into your .git/ folder.
+requests are welcome if they pass flake8 and are well-tested. Make sure to copy the hooks in the ``hooks/`` directory into your .git/ folder.
 
 References
 ----------
