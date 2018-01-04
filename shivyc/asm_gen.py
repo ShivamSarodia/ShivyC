@@ -4,7 +4,7 @@ import itertools
 
 import shivyc.asm_cmds as asm_cmds
 import shivyc.spots as spots
-from shivyc.spots import Spot
+from shivyc.spots import Spot, RegSpot, MemSpot, LiteralSpot
 
 
 class ASMCode:
@@ -269,7 +269,7 @@ class ASMGen:
         for v in referenced:
             if v in free_values:
                 self.offset += v.ctype.size
-                global_spotmap[v] = Spot(Spot.MEM, (spots.RBP, -self.offset))
+                global_spotmap[v] = MemSpot(spots.RBP, -self.offset)
                 free_values.remove(v)
 
         # Perform liveliness analysis
@@ -328,7 +328,7 @@ class ASMGen:
         # Assign stack values to the spilled nodes
         for v in spilled_nodes:
             self.offset += v.ctype.size
-            spotmap[v] = Spot(Spot.MEM, (spots.RBP, -self.offset))
+            spotmap[v] = MemSpot(spots.RBP, -self.offset)
 
         # Merge global spotmap into this spotmap
         for v in global_spotmap:
@@ -380,11 +380,11 @@ class ASMGen:
         for value in all_values:
             if value in self.il_code.literals:
                 # If literal, assign it a preassigned literal spot
-                s = Spot(Spot.LITERAL, self.il_code.literals[value])
+                s = LiteralSpot(self.il_code.literals[value])
                 global_spotmap[value] = s
             elif value in self.il_code.externs:
                 # If extern, assign assign spot and add the extern to asm code
-                s = Spot(Spot.MEM, (self.il_code.externs[value], 0))
+                s = MemSpot(self.il_code.externs[value])
                 global_spotmap[value] = s
 
                 self.asm_code.add_extern(self.il_code.externs[value])
@@ -395,12 +395,12 @@ class ASMGen:
 
                 self.asm_code.add_string_literal(
                     name, self.il_code.string_literals[value])
-                global_spotmap[value] = Spot(Spot.MEM, (name, 0))
+                global_spotmap[value] = MemSpot(name)
             elif (self.arguments.variables_on_stack and
                   value in self.il_code.variables):  # pragma: no cover
                 # If all variables are allocated on the stack
                 self.offset += value.ctype.size
-                s = Spot(Spot.MEM, (spots.RBP, -self.offset))
+                s = MemSpot(spots.RBP, -self.offset)
                 global_spotmap[value] = s
             else:
                 # Value is free and needs an assignment
@@ -693,8 +693,7 @@ class ASMGen:
         # This is kinda hacky...
         max_offset = 0
         for spot in spotmap.values():
-            if spot.spot_type == Spot.MEM and spot.detail[0] == spots.RBP:
-                max_offset = max(max_offset, -spot.detail[1])
+            max_offset = max(max_offset, spot.rbp_offset())
 
         if max_offset % 16 != 0:
             max_offset += 16 - max_offset % 16
@@ -703,7 +702,7 @@ class ASMGen:
         self.asm_code.add(asm_cmds.Push(spots.RBP, None, 8))
         self.asm_code.add(asm_cmds.Mov(spots.RBP, spots.RSP, 8))
 
-        offset_spot = Spot(Spot.LITERAL, str(max_offset))
+        offset_spot = LiteralSpot(str(max_offset))
         self.asm_code.add(asm_cmds.Sub(spots.RSP, offset_spot, 8))
 
         # Generate code for each command
@@ -727,7 +726,7 @@ class ASMGen:
                 bad_spots |= set(conf)
 
                 for s in (pref + self.all_registers):
-                    if s.spot_type == Spot.REGISTER and s not in bad_spots:
+                    if isinstance(s, RegSpot) and s not in bad_spots:
                         return s
 
                 raise NotImplementedError("spill required for get_reg")

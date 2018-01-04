@@ -11,22 +11,16 @@ class Spot:
 
     """
 
-    # Register spot. The `detail` attribute is the full 64-bit register name
-    # (rax, rdi, etc.) as a string.
-    REGISTER = 1
-    # Memory spot, like on the stack or in .data section. The `detail`
-    # attribute is a tuple with first argument base as a register Spot or
-    # string literal, and second argument offset as an integer. For example,
-    # (Spots.RBP, -5) or ("isalpha", 0).
     MEM = 2
-    # A literal value. This is a bit of a hack, since a literal value isn't
-    # /really/ a storage spot. The detail attribute is the integer
-    # representation of the value of this literal.
+    # A literal value.
     LITERAL = 3
 
-    def __init__(self, spot_type, detail):
-        """Initialize a spot."""
-        self.spot_type = spot_type
+    def __init__(self, detail):
+        """Initialize a spot.
+
+        `detail` should uniquely represent this Spot for this specific spot
+        type, because it will be used for hashing and equality testing.
+        """
         self.detail = detail
 
     def asm_str(self, size):
@@ -44,79 +38,151 @@ class Spot:
         return (str) - ASM form of this spot.
 
         """
-        # TODO: Do I need rex prefix on any of the 8-bit?
-        spot_map = {"rax": ["rax", "eax", "ax", "al"],
-                    "rbx": ["rbx", "ebx", "bx", "bl"],
-                    "rcx": ["rcx", "ecx", "cx", "cl"],
-                    "rdx": ["rdx", "edx", "dx", "dl"],
-                    "rsi": ["rsi", "esi", "si", "sil"],
-                    "rdi": ["rdi", "edi", "di", "dil"],
-                    "r8": ["r8", "r8d", "r8w", "r8b"],
-                    "r9": ["r9", "r9d", "r9w", "r9b"],
-                    "r10": ["r10", "r10d", "r10w", "r10b"],
-                    "r11": ["r11", "r11d", "r11w", "r11b"],
-                    "rbp": ["rbp", "", "", ""],
-                    "rsp": ["rsp", "", "", ""]}
+        raise NotImplementedError
 
-        if self.spot_type == self.REGISTER:
-            if size == 0: return spot_map[self.detail][0]
-            elif size == 1: return spot_map[self.detail][3]
-            elif size == 2: return spot_map[self.detail][2]
-            elif size == 4: return spot_map[self.detail][1]
-            elif size == 8: return spot_map[self.detail][0]
-        elif self.spot_type == self.MEM:
-            if size == 1: size_desc = "BYTE PTR "
-            elif size == 2: size_desc = "WORD PTR "
-            elif size == 4: size_desc = "DWORD PTR "
-            elif size == 8: size_desc = "QWORD PTR "
-            else: size_desc = ""
+    def rbp_offset(self):
+        """Return this spot's offset from RBP.
 
-            if isinstance(self.detail[0], Spot):
-                base_str = self.detail[0].asm_str(0)
-            else:
-                base_str = self.detail[0]
+        If this is a memory spot which resides at a certain negative offset
+        away from RBP, then return that offset. This is used by the register
+        allocator to figure out how much memory to allocate for this spot.
 
-            if self.detail[1] > 0:
-                t = "{}[{}+{}]"
-                return t.format(size_desc, base_str, self.detail[1])
-            elif self.detail[1] == 0:
-                t = "{}[{}]"
-                return t.format(size_desc, base_str)
-            else:  # self.detail[1] < 0
-                t = "{}[{}-{}]"
-                return t.format(size_desc, base_str, -self.detail[1])
-
-        elif self.spot_type == self.LITERAL:
-            return str(self.detail)
-
-        raise NotImplementedError("Unsupported spot_type/size combo")
+        If this is not a memory spot relative to RBP, just return 0.
+        """
+        return 0
 
     def __repr__(self):  # pragma: no cover
         return self.detail
 
     def __eq__(self, other):
-        """Test equality by comparing type and detail."""
-        if not isinstance(other, Spot): return False
-        return (self.spot_type, self.detail) == (other.spot_type, other.detail)
+        """Test equality by comparing Spot type and detail."""
+        if self.__class__.__name__ != other.__class__.__name__:
+            return False
+
+        return self.detail == other.detail
 
     def __hash__(self):
         """Hash based on type and detail."""
-        return hash((self.spot_type, self.detail))
+        return hash((self.__class__.__name__, self.detail))
 
-# RBX is callee-saved
-# RBX = Spot(Spot.REGISTER, "rbx")
 
-RAX = Spot(Spot.REGISTER, "rax")
-RCX = Spot(Spot.REGISTER, "rcx")
-RDX = Spot(Spot.REGISTER, "rdx")
-RSI = Spot(Spot.REGISTER, "rsi")
-RDI = Spot(Spot.REGISTER, "rdi")
-R8 = Spot(Spot.REGISTER, "r8")
-R9 = Spot(Spot.REGISTER, "r9")
-R10 = Spot(Spot.REGISTER, "r10")
-R11 = Spot(Spot.REGISTER, "r11")
+class RegSpot(Spot):
+    """Spot representing a machine register."""
 
-RBP = Spot(Spot.REGISTER, "rbp")
-RSP = Spot(Spot.REGISTER, "rsp")
+    # Mapping from the 64-bit register name to the 64-bit, 32-bit, 16-bit,
+    # and 8-bit register names for each register.
+    # TODO: Do I need rex prefix on any of the 8-bit?
+    reg_map = {"rax": ["rax", "eax", "ax", "al"],
+               "rbx": ["rbx", "ebx", "bx", "bl"],
+               "rcx": ["rcx", "ecx", "cx", "cl"],
+               "rdx": ["rdx", "edx", "dx", "dl"],
+               "rsi": ["rsi", "esi", "si", "sil"],
+               "rdi": ["rdi", "edi", "di", "dil"],
+               "r8": ["r8", "r8d", "r8w", "r8b"],
+               "r9": ["r9", "r9d", "r9w", "r9b"],
+               "r10": ["r10", "r10d", "r10w", "r10b"],
+               "r11": ["r11", "r11d", "r11w", "r11b"],
+               "rbp": ["rbp", "", "", ""],
+               "rsp": ["rsp", "", "", ""]}
+
+    def __init__(self, name):
+        """Initialize this spot.
+
+        `name` is the string representation of the 64-bit register (e.g.
+        "rax").
+        """
+        super().__init__(name)
+        self.name = name
+
+    def asm_str(self, size):  # noqa D102
+        if size == 0 or size == 8:
+            i = 0
+        elif size == 1:
+            i = 3
+        elif size == 2:
+            i = 2
+        elif size == 4:
+            i = 1
+        else:
+            raise NotImplementedError("unexpected register size")
+
+        return self.reg_map[self.name][i]
+
+
+class MemSpot(Spot):
+    """Spot representing a region in memory, like on stack or .data section.
+
+    `base` can be either a string or a Spot. The string form is used when
+    this spot represents an external variable. The Spot form is used when
+    this spot represents an offset in memory, like [rbp-5].
+    """
+
+    size_map = {1: "BYTE PTR ",
+                2: "WORD PTR ",
+                4: "DWORD PTR ",
+                8: "QWORD PTR "}
+
+    def __init__(self, base, offset=0):
+        super().__init__((base, offset))
+
+        self.base = base
+        self.offset = offset
+
+    def asm_str(self, size):
+        size_desc = self.size_map.get(size, "")
+
+        if isinstance(self.base, Spot):
+            base_str = self.base.asm_str(0)
+        else:
+            base_str = self.base
+
+        if self.detail[1] > 0:
+            t = "{}[{}+{}]"
+            return t.format(size_desc, base_str, self.offset)
+        elif self.detail[1] == 0:
+            t = "{}[{}]"
+            return t.format(size_desc, base_str)
+        else:  # self.detail[1] < 0
+            t = "{}[{}-{}]"
+            return t.format(size_desc, base_str, -self.offset)
+
+    def rbp_offset(self):
+        if self.base == RBP:
+            return -self.offset
+        else:
+            return 0
+
+
+class LiteralSpot(Spot):
+    """Spot representing a literal value.
+
+    This is a bit of a hack, since a literal value isn't /really/ a storage
+    spot. The value attribute is the integer representation of the value of
+    this literal.
+    """
+
+    def __init__(self, value):
+        super().__init__(value)
+        self.value = value
+
+    def asm_str(self, size):  # noqa D102
+        return str(self.value)
+
+
+# RBX is callee-saved, which is still unsupported
+# RBX = RegSpot("rbx")
+
+RAX = RegSpot("rax")
+RCX = RegSpot("rcx")
+RDX = RegSpot("rdx")
+RSI = RegSpot("rsi")
+RDI = RegSpot("rdi")
+R8 = RegSpot("r8")
+R9 = RegSpot("r9")
+R10 = RegSpot("r10")
+R11 = RegSpot("r11")
 
 registers = [RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11]
+
+RBP = RegSpot("rbp")
+RSP = RegSpot("rsp")

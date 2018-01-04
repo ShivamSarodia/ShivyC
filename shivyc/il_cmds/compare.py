@@ -2,7 +2,7 @@
 
 import shivyc.asm_cmds as asm_cmds
 from shivyc.il_cmds.base import ILCommand
-from shivyc.spots import Spot
+from shivyc.spots import MemSpot, LiteralSpot
 
 
 class _GeneralEqualCmp(ILCommand):
@@ -36,10 +36,10 @@ class _GeneralEqualCmp(ILCommand):
         first element is new spot of arg1 and second element is new spot of
         arg2.
         """
-        if ((arg1_spot.spot_type == Spot.LITERAL and
-             arg2_spot.spot_type == Spot.LITERAL) or
-            (arg1_spot.spot_type == Spot.MEM and
-             arg2_spot.spot_type == Spot.MEM)):
+        if ((isinstance(arg1_spot, LiteralSpot) and
+             isinstance(arg2_spot, LiteralSpot)) or
+            (isinstance(arg1_spot, MemSpot) and
+             isinstance(arg2_spot, MemSpot))):
 
             # No need to worry about r overlapping with arg1 or arg2 because
             # in this case both are literal/memory.
@@ -84,7 +84,7 @@ class _GeneralEqualCmp(ILCommand):
         regs.append(result)
 
         out_size = self.output.ctype.size
-        eq_val_spot = Spot(Spot.LITERAL, self.equal_value)
+        eq_val_spot = LiteralSpot(self.equal_value)
         asm_code.add(asm_cmds.Mov(result, eq_val_spot, out_size))
 
         arg1_spot, arg2_spot = self._fix_both_literal_or_mem(
@@ -93,7 +93,7 @@ class _GeneralEqualCmp(ILCommand):
             arg1_spot, arg2_spot, regs, get_reg, asm_code)
 
         arg_size = self.arg1.ctype.size
-        neq_val_spot = Spot(Spot.LITERAL, self.not_equal_value)
+        neq_val_spot = LiteralSpot(self.not_equal_value)
         label = asm_code.get_label()
 
         asm_code.add(asm_cmds.Cmp(arg1_spot, arg2_spot, arg_size))

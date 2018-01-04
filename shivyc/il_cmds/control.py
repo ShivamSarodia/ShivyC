@@ -3,7 +3,7 @@
 import shivyc.asm_cmds as asm_cmds
 import shivyc.spots as spots
 from shivyc.il_cmds.base import ILCommand
-from shivyc.spots import Spot
+from shivyc.spots import LiteralSpot
 
 
 class Label(ILCommand):
@@ -68,14 +68,14 @@ class _GeneralJump(ILCommand):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         size = self.cond.ctype.size
 
-        if spotmap[self.cond].spot_type == Spot.LITERAL:
+        if isinstance(spotmap[self.cond], LiteralSpot):
             r = get_reg()
             asm_code.add(asm_cmds.Mov(r, spotmap[self.cond], size))
             cond_spot = r
         else:
             cond_spot = spotmap[self.cond]
 
-        zero_spot = Spot(Spot.LITERAL, "0")
+        zero_spot = LiteralSpot("0")
         asm_code.add(asm_cmds.Cmp(cond_spot, zero_spot, size))
         asm_code.add(self.command(self.label))
 

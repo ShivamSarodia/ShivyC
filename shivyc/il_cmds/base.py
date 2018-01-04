@@ -1,7 +1,7 @@
 """Base ILCommand interface definition."""
 
 import shivyc.ctypes as ctypes
-from shivyc.spots import Spot
+from shivyc.spots import LiteralSpot
 
 
 class ILCommand:
@@ -140,10 +140,10 @@ class ILCommand:
 
     def _is_imm(self, spot):
         """Return True iff given spot is an immediate operand."""
-        return spot.spot_type == Spot.LITERAL
+        return isinstance(spot, LiteralSpot)
 
     def _is_imm64(self, spot):
         """Return True iff given spot is a 64-bit immediate operand."""
-        return (spot.spot_type == Spot.LITERAL and
+        return (isinstance(spot, LiteralSpot) and
                 (int(spot.detail) > ctypes.int_max or
                  int(spot.detail) < ctypes.int_min))

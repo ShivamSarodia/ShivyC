@@ -3,7 +3,7 @@
 import shivyc.asm_cmds as asm_cmds
 import shivyc.ctypes as ctypes
 from shivyc.il_cmds.base import ILCommand
-from shivyc.spots import Spot
+from shivyc.spots import RegSpot, MemSpot, LiteralSpot
 
 
 class Set(ILCommand):
@@ -30,7 +30,7 @@ class Set(ILCommand):
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         if self.output.ctype == ctypes.bool_t:
             return self._set_bool(spotmap, get_reg, asm_code)
-        elif spotmap[self.arg].spot_type == Spot.LITERAL:
+        elif isinstance(spotmap[self.arg], LiteralSpot):
             out_spot = spotmap[self.output]
             arg_spot = spotmap[self.arg]
             size = self.output.ctype.size
@@ -41,9 +41,9 @@ class Set(ILCommand):
 
             output_spot = spotmap[self.output]
 
-            if output_spot.spot_type == Spot.REGISTER:
+            if isinstance(output_spot, RegSpot):
                 r = output_spot
-            elif spotmap[self.arg].spot_type == Spot.REGISTER:
+            elif isinstance(spotmap[self.arg], RegSpot):
                 r = spotmap[self.arg]
             else:
                 r = get_reg()
@@ -81,7 +81,7 @@ class Set(ILCommand):
         # value compares equal to 0; otherwise, the result is 1
 
         # If arg_asm is a LITERAL, move to register.
-        if spotmap[self.arg].spot_type == Spot.LITERAL:
+        if isinstance(spotmap[self.arg], LiteralSpot):
             r = get_reg([], [spotmap[self.output]])
             asm_code.add(
                 asm_cmds.Mov(r, spotmap[self.arg], self.arg.ctype.size))
@@ -92,8 +92,8 @@ class Set(ILCommand):
         label = asm_code.get_label()
         output_spot = spotmap[self.output]
 
-        zero = Spot(Spot.LITERAL, "0")
-        one = Spot(Spot.LITERAL, "1")
+        zero = LiteralSpot("0")
+        one = LiteralSpot("1")
 
         asm_code.add(asm_cmds.Mov(output_spot, zero, self.output.ctype.size))
         asm_code.add(asm_cmds.Cmp(arg_spot, zero, self.arg.ctype.size))
@@ -155,12 +155,12 @@ class ReadAt(ILCommand):
         addr_spot = spotmap[self.addr]
         output_spot = spotmap[self.output]
 
-        if spotmap[self.addr].spot_type == Spot.REGISTER:
-            indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
+        if isinstance(spotmap[self.addr], RegSpot):
+            indir_spot = MemSpot(spotmap[self.addr])
         else:
             r = get_reg()
             asm_code.add(asm_cmds.Mov(r, addr_spot, 8))
-            indir_spot = Spot(Spot.MEM, (r, 0))
+            indir_spot = MemSpot(r)
 
         size = self.output.ctype.size
         asm_code.add(asm_cmds.Mov(output_spot, indir_spot, size))
@@ -188,12 +188,12 @@ class SetAt(ILCommand):
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         size = self.val.ctype.size
-        if spotmap[self.addr].spot_type == Spot.REGISTER:
-            indir_spot = Spot(Spot.MEM, (spotmap[self.addr], 0))
+        if isinstance(spotmap[self.addr], RegSpot):
+            indir_spot = MemSpot(spotmap[self.addr])
         else:
             r = get_reg([], [spotmap[self.val]])
             asm_code.add(asm_cmds.Mov(r, spotmap[self.addr], 8))
-            indir_spot = Spot(Spot.MEM, (r, 0))
+            indir_spot = MemSpot(r)
 
         asm_code.add(
             asm_cmds.Mov(indir_spot, spotmap[self.val], size))
