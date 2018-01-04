@@ -173,8 +173,8 @@ class IntegrationTests(TestUtils):
         compile_with_shivyc(str(pathlib.Path(dir).joinpath(cfile)))
         self.assertEqual(error_collector.issues, [])
 
-        # Compile Count.c with gcc
-        gcc_compile = "gcc {0}/{1} -o gcc_out".format(dir, cfile)
+        # Compile with gcc
+        gcc_compile = "gcc -std=c11 {0}/{1} -o gcc_out".format(dir, cfile)
         subprocess.run(gcc_compile, shell=True, check=True)
 
         # Run ShivyC executable on sample input
