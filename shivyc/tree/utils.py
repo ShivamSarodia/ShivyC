@@ -12,34 +12,15 @@ from shivyc.il_gen import ILValue
 
 
 class LValue:
-    """Represents an LValue.
+    """Represents an LValue."""
 
-    There are two types of LValues, a direct LValue and indirect LValue. A
-    direct LValue stores an ILValue to which this LValue refers. An indirect
-    LValue stores an ILValue which points to the object this ILValue refers
-    to.
+    def ctype(self):
+        """Return the ctype that is stored by this LValue.
 
-    lvalue_type (DIRECT or INDIRECT) - See description above.
-    il_value (ILValue) - ILValue describing this lvalue. If this is an
-    indirect lvalue, the il_value will have pointer type.
-    """
-
-    DIRECT = 0
-    INDIRECT = 1
-
-    def __init__(self, lvalue_type, il_value):
-        """Initialize LValue."""
-        self.lvalue_type = lvalue_type
-        self.il_value = il_value
-
-    def modable(self):
-        """Return whether this is a modifiable lvalue."""
-        if self.lvalue_type == self.DIRECT:
-            ctype = self.il_value.ctype
-        else:  # self.lvalue_type == self.INDIRECT
-            ctype = self.il_value.ctype.arg
-
-        return ctype.is_arith() or ctype.is_pointer() or ctype.is_void()
+        For example, if this LValue represents a dereferenced pointer to an
+        integer, then this function returns a ctype of integer.
+        """
+        raise NotImplementedError
 
     def set_to(self, rvalue, il_code, r):
         """Emit code to set the given lvalue to the given ILValue.
@@ -50,40 +31,90 @@ class LValue:
         return - ILValue representing the result of this operation
 
         """
-        if self.lvalue_type == self.DIRECT:
-            check_cast(rvalue, self.il_value.ctype, r)
-            return set_type(rvalue, self.il_value.ctype,
-                            il_code, self.il_value)
-        elif self.lvalue_type == self.INDIRECT:
-            check_cast(rvalue, self.il_value.ctype.arg, r)
-            right_cast = set_type(rvalue, self.il_value.ctype.arg, il_code)
-            il_code.add(value_cmds.SetAt(self.il_value, right_cast))
-            return right_cast
+        raise NotImplementedError
 
     def addr(self, il_code):
         """Generate code for and return address of this lvalue."""
-        if self.lvalue_type == self.DIRECT:
-            out = ILValue(PointerCType(self.il_value.ctype))
-            il_code.add(value_cmds.AddrOf(out, self.il_value))
-            return out
-        else:
-            return self.il_value
+        raise NotImplementedError
 
     def val(self, il_code):
-        """Generate code for and return this value."""
-        if self.lvalue_type == LValue.DIRECT:
-            return self.il_value
-        else:
-            out = ILValue(self.il_value.ctype.arg)
-            il_code.add(value_cmds.ReadAt(out, self.il_value))
-            return out
+        """Generate code for and return the value currently stored."""
+        raise NotImplementedError
 
-    def ctype(self):
-        """Return the ctype of this lvalue."""
-        if self.lvalue_type == self.DIRECT:
-            return self.il_value.ctype
-        else:
-            return self.il_value.ctype.arg
+    def modable(self):
+        """Return whether this is a modifiable lvalue."""
+
+        return (self.ctype().is_arith() or
+                self.ctype().is_pointer() or
+                self.ctype().is_void())
+
+
+class DirectLValue(LValue):
+    """Represents a direct LValue.
+
+    A direct LValue stores an ILValue to which this LValue refers. For
+    example, a variable is a direct LValue.
+    """
+    def __init__(self, il_value):
+        """Initialize DirectLValue with the IL value it represents."""
+        self.il_value = il_value
+
+    def ctype(self):  # noqa D102
+        return self.il_value.ctype
+
+    def set_to(self, rvalue, il_code, r):  # noqa D102
+        check_cast(rvalue, self.ctype(), r)
+        return set_type(rvalue, self.ctype(), il_code, self.il_value)
+
+    def addr(self, il_code):  # noqa D102
+        out = ILValue(PointerCType(self.il_value.ctype))
+        il_code.add(value_cmds.AddrOf(out, self.il_value))
+        return out
+
+    def val(self, il_code):  # noqa D102
+        return self.il_value
+
+
+class IndirectLValue(LValue):
+    """Represents an indirect LValue.
+
+    An indirect LValue stores an ILValue which is the address of the object
+    represented by this LValue. For example, a dereferenced pointer or an
+    array subscripted value is an IndirectLValue.
+    """
+    def __init__(self, addr_val, offset=None, size=0):
+        """Initialize the IndirectLValue.
+
+        addr_val must be an ILValue.
+        offset may be either an integral ILValue or a Python integer.
+        size must be a Python integer among {1, 2, 4, 8, 16}
+
+        Then, the object pointed to by this LValue is at:
+
+        addr_val + offset * size
+
+        TODO: offset/size are currently unimplemented!
+        """
+        self.addr_val = addr_val
+        self.offset = offset
+        self.size = size
+
+    def ctype(self):  # noqa D102
+        return self.addr_val.ctype.arg
+
+    def set_to(self, rvalue, il_code, r):  # noqa D102
+        check_cast(rvalue, self.ctype(), r)
+        right_cast = set_type(rvalue, self.ctype(), il_code)
+        il_code.add(value_cmds.SetAt(self.addr_val, right_cast))
+        return right_cast
+
+    def addr(self, il_code):  # noqa D102
+        return self.addr_val
+
+    def val(self, il_code):  # noqa D102
+        out = ILValue(self.ctype())
+        il_code.add(value_cmds.ReadAt(out, self.addr_val))
+        return out
 
 
 @contextmanager

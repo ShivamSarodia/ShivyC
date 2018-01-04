@@ -8,7 +8,7 @@ import shivyc.token_kinds as token_kinds
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
-from shivyc.tree.utils import LValue, report_err, set_type, check_cast
+from shivyc.tree.utils import DirectLValue, report_err, set_type, check_cast
 
 
 class Node:
@@ -362,7 +362,7 @@ class Declaration(Node):
         # Initialize variable if needed
         if init:
             init_val = init.make_il(il_code, symbol_table, c)
-            lval = LValue(LValue.DIRECT, var)
+            lval = DirectLValue(var)
             if lval.modable():
                 lval.set_to(init_val, il_code, identifier.r)
             else:
