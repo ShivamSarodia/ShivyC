@@ -17,8 +17,6 @@ Current target: fully compile nmake.c from CS323 pset
 IMMEDIATE TIMELINE
 ------------------
 
-- Figure out why my pi test is really sketchy.
-
 - Update error mechanisms
   - Subclass CompilerError for every error type
   - Get rid of error collector. tree/*.py functions should return list of
