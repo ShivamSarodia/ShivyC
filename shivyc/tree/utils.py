@@ -82,22 +82,13 @@ class IndirectLValue(LValue):
     represented by this LValue. For example, a dereferenced pointer or an
     array subscripted value is an IndirectLValue.
     """
-    def __init__(self, addr_val, offset=None, size=0):
+    def __init__(self, addr_val):
         """Initialize the IndirectLValue.
 
-        addr_val must be an ILValue.
-        offset may be either an integral ILValue or a Python integer.
-        size must be a Python integer among {1, 2, 4, 8, 16}
-
-        Then, the object pointed to by this LValue is at:
-
-        addr_val + offset * size
-
-        TODO: offset/size are currently unimplemented!
+        addr_val must be an ILValue containing the address of the object
+        pointed to by this LValue.
         """
         self.addr_val = addr_val
-        self.offset = offset
-        self.size = size
 
     def ctype(self):  # noqa D102
         return self.addr_val.ctype.arg
