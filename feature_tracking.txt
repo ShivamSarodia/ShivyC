@@ -80,7 +80,7 @@ FUNCTIONS
 *   - Struct as return value
     - Over 6 arguments
 * - Support argc and argv
-x
+
 EXPRESSION
 * - Comparison (>, etc.)
   - Bitwise (&, |, etc.)
