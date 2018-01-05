@@ -55,9 +55,14 @@ int main() {
   array5[2][3] = 10;
   if(array5[2][3] != 10) return 19;
 
-  void *p1, *p2;
-  p1 = (&array5[0] + 1);
-  p2 = &array5[0];
+  void *void_p1, *void_p2;
+  char *p1, *p2;
+
+  void_p1 = (&array5[0] + 1);
+  void_p2 = &array5[0];
+  p1 = void_p1;
+  p2 = void_p2;
+
   p2 = p2 + 6 * 4;
   if(p1 != p2) {
     return 20;

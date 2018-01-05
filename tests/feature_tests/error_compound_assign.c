@@ -31,4 +31,10 @@ int main() {
   p %= q;
   // error: expression on left of '%=' is not assignable
   10 %= a;
+
+  void* v;
+  // error: invalid arithmetic on pointer to incomplete type
+  v += 1;
+  // error: invalid arithmetic on pointer to incomplete type
+  v -= 1;
 }

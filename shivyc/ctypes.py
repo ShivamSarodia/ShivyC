@@ -17,6 +17,10 @@ class CType:
         """Check whether given `other` C type is compatible with self."""
         raise NotImplementedError
 
+    def is_complete(self):
+        """Check whether this is a complete type."""
+        return False
+
     def is_object(self):
         """Check whether this is an object type."""
         return False
@@ -65,6 +69,10 @@ class IntegerCType(CType):
         """Check whether two types are compatible."""
         return other == self
 
+    def is_complete(self):
+        """Check if this is a complete type."""
+        return True
+
     def is_object(self):
         """Check if this is an object type."""
         return True
@@ -93,6 +101,10 @@ class VoidCType(CType):
         """Return True iff other is a compatible type to self."""
         return other == self
 
+    def is_complete(self):
+        """Check if this is a complete type."""
+        return False
+
     def is_void(self):
         """Check whether this is a void type."""
         return True
@@ -114,6 +126,10 @@ class PointerCType(CType):
         """Return True iff other is a compatible type to self."""
         return other.is_pointer() and self.arg.compatible(other.arg)
 
+    def is_complete(self):
+        """Check if this is a complete type."""
+        return True
+
     def is_pointer(self):
         """Check whether this is a pointer type."""
         return True
@@ -127,7 +143,7 @@ class ArrayCType(CType):
     """Represents an array C type.
 
     el (CType) - Type of each element in array.
-    n (int) - Size of array
+    n (int) - Size of array (or None if this is incomplete)
 
     """
 
@@ -140,7 +156,11 @@ class ArrayCType(CType):
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
         return (other.is_array() and self.el.compatible(other.el) and
-                self.n == other.n)
+                (self.n is None or other.n is None or self.n == other.n))
+
+    def is_complete(self):
+        """Check if this is a complete type."""
+        return self.n is not None
 
     def is_object(self):
         """Check if this is an object type."""
@@ -183,6 +203,9 @@ class FunctionCType(CType):
             return False
 
         return True
+
+    def is_complete(self):
+        return False
 
     def is_function(self):
         """Check if this is a function type."""

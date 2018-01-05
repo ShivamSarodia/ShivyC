@@ -95,7 +95,7 @@ OPTIMIZAIONS
   - Remove unnecessary lea before function calls
   - General dataflow analysis
     - Conditionals in if-statements
-    - Simplify "lea -> mult -> add -> (read/set)at" chain in 2D arrays
+    - Simplify output code for chained [] or . or ->
     - Simplify repeated Set IL commands
   - Live range splitting in register allocator
   - Speed up register allocator

@@ -307,13 +307,16 @@ class Plus(_ArithBinOp):
 
         # One operand should be pointer to complete object type, and the
         # other should be any integer type.
-        # TODO: "complete object type", not just pointer.
         if left.ctype.is_pointer() and right.ctype.is_integral():
             arith, pointer = right, left
         elif right.ctype.is_pointer() and left.ctype.is_integral():
             arith, pointer = left, right
         else:
             err = "invalid operand types for addition"
+            raise CompilerError(err, self.op.r)
+
+        if not pointer.ctype.arg.is_complete():
+            err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
 
         # Multiply by size of objects
@@ -340,10 +343,14 @@ class Minus(_ArithBinOp):
     def _nonarith(self, left, right, il_code):
         """Make subtraction code if both operands are non-arithmetic type."""
 
-        # Both operands are pointers to compatible object types
         # TODO: this isn't quite right when we allow qualifiers
         if (left.ctype.is_pointer() and right.ctype.is_pointer()
              and left.ctype.compatible(right.ctype)):
+
+            if not (left.ctype.arg.is_complete()
+                    and right.ctype.arg.is_complete()):
+                err = "invalid arithmetic on pointers to incomplete types"
+                raise CompilerError(err, self.op.r)
 
             # Get raw difference in pointer values
             raw = ILValue(ctypes.longint)
@@ -360,6 +367,10 @@ class Minus(_ArithBinOp):
         # Left operand is pointer to complete object type, and right operand
         # is integer.
         elif left.ctype.is_pointer() and right.ctype.is_integral():
+            if not left.ctype.arg.is_complete():
+                err = "invalid arithmetic on pointer to incomplete type"
+                raise CompilerError(err, self.op.r)
+
             out = ILValue(left.ctype)
             shift = get_size(left.ctype.arg, right, il_code)
             il_code.add(math_cmds.Subtr(out, left, shift))
@@ -585,6 +596,11 @@ class _CompoundPlusMinus(_RExprNode):
         if (lvalue.ctype().is_pointer()
             and right.ctype.is_integral()
              and self.accept_pointer):
+
+            if not lvalue.ctype().arg.is_complete():
+                err = "invalid arithmetic on pointer to incomplete type"
+                raise CompilerError(err, self.op.r)
+
             # Because of caching requirement of make_il and lvalue functions,
             # we know this call won't regenerate code for the left expression
             # beyond just what's needed to get the value stored at the lvalue.
@@ -672,8 +688,11 @@ class _IncrDecr(_RExprNode):
         one = ILValue(val.ctype)
         if val.ctype.is_arith():
             il_code.register_literal_var(one, 1)
-        elif val.ctype.is_pointer():
+        elif val.ctype.is_pointer() and val.ctype.arg.is_complete():
             il_code.register_literal_var(one, val.ctype.arg.size)
+        elif val.ctype.is_pointer() and not val.ctype.arg.is_complete():
+            err = "invalid arithmetic on pointer to incomplete type"
+            raise CompilerError(err, self.op.r)
         else:
             err = "invalid type for {} operator"
             raise CompilerError(err.format(self.descrip), self.expr.r)
@@ -871,6 +890,10 @@ class ArraySubsc(_LExprNode):
         This function is called in the case where one operand is a pointer
         and the other operand is an integer.
         """
+        if not point.ctype.arg.is_complete():
+            err = "cannot subscript pointer to incomplete type"
+            raise CompilerError(err, self.op.r)
+
         shift = get_size(point.ctype.arg, arith, il_code)
         out = ILValue(point.ctype)
         il_code.add(math_cmds.Add(out, point, shift))

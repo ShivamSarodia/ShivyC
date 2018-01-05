@@ -12,4 +12,8 @@ int main() {
 
   // error: declared variable is not of assignable type
   int array1[5] = 1;
+
+  void* p;
+  // error: cannot subscript pointer to incomplete type
+  p[4];
 }
