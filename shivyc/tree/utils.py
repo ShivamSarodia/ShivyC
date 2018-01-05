@@ -122,12 +122,10 @@ class RelativeLValue(LValue):
     base - ILValue representing the base object. Note this is the base
     object itself, not the address of the base object.
 
-    chunk - A Python integer representing the size of each chunk of offset
-    (see below for a more clear explanation)
+    chunk - A Python integer representing the size of each chunk of offset.
 
     count - If provided, an integral ILValue representing the number of
-    chunks of offset. If this value is provided, then `chunk` must be in {1,
-    2, 4, 8, 16}.
+    chunks of offset.
 
     In summary, if `count` is provided, then the address of the object
     represented by this LValue is:
@@ -145,36 +143,74 @@ class RelativeLValue(LValue):
         self.chunk = chunk
         self.count = count
 
-    def _count(self, il_code):
-        """Move self.count to a 64-bit memory spot."""
-        if self.count and self.count.ctype.size < 8:
-            return set_type(self.count, ctypes.longint, il_code)
-        else:
-            return self.count
+        self.fixed_count = None
+        self.fixed_chunk = None
+
+    def _fix_chunk_count(self, il_code):
+        """Convert chunk and count so that chunk is in {1, 2, 4, 8, 16}.
+
+        The Rel commands requre that chunk be in {1, 2, 4, 8, 16}. If the
+        given chunk value is not in this set, we multiply count and divide
+        chunk by an appropriate value so that chunk is in {1, 2, 4, 8, 16},
+        and then return the new value of chunk and the new value of count.
+
+        In addition, this command moves `count` to a 64-bit value.
+        """
+        # Cache the value of fixed_chunk and fixed_count so it is not
+        # recomputed unnecessarily
+        if self.fixed_chunk or self.fixed_count:
+            return
+
+        if not self.count:
+            self.fixed_chunk, self.fixed_count = self.chunk, self.count
+            return
+
+        # TODO: Technically, if count is an unsigned long and `chunk` is in
+        # `sizes`, we don't need to emit a SET command.
+        resized_count = set_type(self.count, ctypes.longint, il_code)
+
+        sizes = [16, 8, 4, 2, 1]
+        if self.chunk in sizes:
+            self.fixed_chunk, self.fixed_count = self.chunk, resized_count
+            return
+
+        # Select the biggest legal size that divides given chunk size
+        for new_chunk in sizes:
+            if self.chunk % new_chunk == 0:
+                break
+
+        self.fixed_chunk = new_chunk
+
+        scale = ILValue(ctypes.longint)
+        scale_factor = str(int(self.chunk / new_chunk))
+        il_code.register_literal_var(scale, scale_factor)
+
+        self.fixed_count = ILValue(ctypes.longint)
+        il_code.add(math_cmds.Mult(self.fixed_count, resized_count, scale))
 
     def ctype(self):
         return self._ctype
 
     def set_to(self, rvalue, il_code, r):
-        count = self._count(il_code)
+        self._fix_chunk_count(il_code)
         check_cast(rvalue, self.ctype(), r)
         right_cast = set_type(rvalue, self.ctype(), il_code)
         il_code.add(value_cmds.SetRel(
-            right_cast, self.base, self.chunk, count))
+            right_cast, self.base, self.fixed_chunk, self.fixed_count))
         return right_cast
 
     def addr(self, il_code):
+        self._fix_chunk_count(il_code)
         out = ILValue(PointerCType(self.ctype()))
-        count = self._count(il_code)
         il_code.add(value_cmds.AddrRel(
-            out, self.base, self.chunk, count))
+            out, self.base, self.fixed_chunk, self.fixed_count))
         return out
 
     def val(self, il_code):
+        self._fix_chunk_count(il_code)
         out = ILValue(self.ctype())
-        count = self._count(il_code)
         il_code.add(value_cmds.ReadRel(
-            out, self.base, self.chunk, count))
+            out, self.base, self.fixed_chunk, self.fixed_count))
         return out
 
 
