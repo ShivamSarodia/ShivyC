@@ -11,10 +11,6 @@ class Spot:
 
     """
 
-    MEM = 2
-    # A literal value.
-    LITERAL = 3
-
     def __init__(self, detail):
         """Initialize a spot.
 
@@ -122,35 +118,58 @@ class MemSpot(Spot):
                 4: "DWORD PTR ",
                 8: "QWORD PTR "}
 
-    def __init__(self, base, offset=0):
-        super().__init__((base, offset))
+    def __init__(self, base, offset=0, chunk=0, count=None):  # noqa D102
+        super().__init__((base, offset, chunk, count))
 
         self.base = base
         self.offset = offset
+        self.chunk = chunk
+        self.count = count
 
-    def asm_str(self, size):
-        size_desc = self.size_map.get(size, "")
-
+    def asm_str(self, size):  # noqa D102
         if isinstance(self.base, Spot):
             base_str = self.base.asm_str(0)
         else:
             base_str = self.base
 
-        if self.detail[1] > 0:
-            t = "{}[{}+{}]"
-            return t.format(size_desc, base_str, self.offset)
-        elif self.detail[1] == 0:
-            t = "{}[{}]"
-            return t.format(size_desc, base_str)
-        else:  # self.detail[1] < 0
-            t = "{}[{}-{}]"
-            return t.format(size_desc, base_str, -self.offset)
+        total_offset = self.offset
+        if not self.count:
+            total_offset = self.offset + self.chunk
 
-    def rbp_offset(self):
+        if total_offset == 0:
+            simple = base_str
+        elif total_offset > 0:
+            simple = "{}+{}".format(base_str, total_offset)
+        else:  # total_offset < 0
+            simple = "{}-{}".format(base_str, -total_offset)
+
+        if self.count and self.chunk > 0:
+            final = "{}+{}*{}".format(
+                simple, self.chunk, self.count.asm_str(8))
+        elif self.count and self.chunk < 0:
+            final = "{}-{}*{}".format(
+                simple, -self.chunk, self.count.asm_str(8))
+        else:
+            final = simple
+
+        size_desc = self.size_map.get(size, "")
+        return "{}[{}]".format(size_desc, final)
+
+    def rbp_offset(self):  # noqa D102
         if self.base == RBP:
             return -self.offset
         else:
             return 0
+
+    def shift(self, chunk, count=None):  # noqa D102
+        """Return a new memory spot shifted relative to this one.
+
+        chunk - A Python integer representing the size of each chunk of offset
+        count - If provided, a register spot storing the number of chunks to
+        be offset. If this value is provided, then `chunk` must be in {1, 2,
+        4, 8, 16}.
+        """
+        return MemSpot(self.base, self.offset, chunk, count)
 
 
 class LiteralSpot(Spot):

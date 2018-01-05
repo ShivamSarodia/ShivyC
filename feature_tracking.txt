@@ -17,17 +17,12 @@ Current target: fully compile nmake.c from CS323 pset
 IMMEDIATE TIMELINE
 ------------------
 
-- Consider adding casts into the AST
-
-- Clarify distinction between ILCommand and TreeNode responsibilities
-  - Split up Set IL command
-  - Switch other commands to signed/unsigned agnostic
-  - I think ILCommand should be entirely type agnostic?
-
 --------------------------------------------------------------------------------
 
 MAIN PROJECTS
 -------------
+
+- Implement structs.
 
 - Improved treatment of command line flags.
   - Allow certain features to be enabled and disabled (e.g. allowing void* math)
@@ -39,6 +34,11 @@ MAIN PROJECTS
   warnings and errors generated, or add to Context object?
   - These changes allow the parent node in the AST to capture errors and emit
     more relevant errors.
+
+- Clarify distinction between ILCommand and TreeNode responsibilities
+  - Split up Set IL command
+  - Switch other commands to signed/unsigned agnostic
+  - I think ILCommand should be entirely type agnostic?
 
 --------------------------------------------------------------------------------
 
@@ -92,9 +92,10 @@ EXPRESSION
 * - Hex sequences in strings (`\0`)
 
 OPTIMIZAIONS
+  - Remove unnecessary lea before function calls
   - General dataflow analysis
     - Conditionals in if-statements
-    - Simplify "lea -> mult -> add -> (read/set)at" chain
+    - Simplify "lea -> mult -> add -> (read/set)at" chain in 2D arrays
     - Simplify repeated Set IL commands
   - Live range splitting in register allocator
   - Speed up register allocator

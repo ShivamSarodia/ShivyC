@@ -82,6 +82,10 @@ class ILCommand:
         other ILValue(s) v1, v2, etc., then PRL[k] must include v1, v2,
         etc. That is, suppose the PRL was {t1: [t2]}. This means that
         ILValue t1 output from this command may be a pointer to the ILValue t2.
+
+        In addition, the PRL may have a None key. The value of this key is a
+        list of ILValue which are being internally referenced, but no
+        pointers to them are being externally returned.
         """
         return {}
 

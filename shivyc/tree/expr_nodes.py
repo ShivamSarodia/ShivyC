@@ -10,28 +10,23 @@ import shivyc.il_cmds.value as value_cmds
 from shivyc.ctypes import ArrayCType, PointerCType
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
-from shivyc.tree.utils import (IndirectLValue, DirectLValue, check_cast,
-                               set_type, arith_convert, get_size, report_err)
+from shivyc.tree.utils import (IndirectLValue, DirectLValue, RelativeLValue,
+                               check_cast, set_type, arith_convert,
+                               get_size, report_err)
 
 
-class _RExprNode(nodes.Node):
-    """Base class for representing an rvalue expression node in the AST.
+class _ExprNode(nodes.Node):
+    """Base class for representing expression nodes in the AST.
 
     There are two types of expression nodes, RExprNode and LExprNode.
     An expression node which can be used as an lvalue (that is, an expression
     node which can be the argument of an address-of operator) derives from
     LExprNode. Expression nodes which cannot be used as lvalues derive from
     RExprNode.
-
-    An RExprNode-derived node implements only the make_il function.
     """
-
     def __init__(self):
+        """Initialize this ExprNode."""
         super().__init__()
-
-    def lvalue(self, il_code, symbol_table, c):
-        """Return None, because this node does not represent an LValue."""
-        return None
 
     def make_il(self, il_code, symbol_table, c):
         """Generate IL code for this node and returns ILValue.
@@ -49,21 +44,77 @@ class _RExprNode(nodes.Node):
         """
         raise NotImplementedError
 
+    def make_il_raw(self, il_code, symbol_table, c):
+        """As above, but do not decay the result."""
+        raise NotImplementedError
+
+    def lvalue(self, il_code, symbol_table, c):
+        """Return the LValue representing this node.
+
+        If this node has no LValue representation, return None.
+        """
+        raise NotImplementedError
+
+
+class _RExprNode(nodes.Node):
+    """Base class for representing an rvalue expression node in the AST.
+
+    An RExprNode-derived node implements only the _make_il function.
+    """
+    def __init__(self):  # noqa D102
+        super().__init__()
+        self._cache_raw_ilvalue = None
+
+    def make_il(self, il_code, symbol_table, c):  # noqa D102
+        raise NotImplementedError
+
+    def make_il_raw(self, il_code, symbol_table, c):  # noqa D102
+        return self.make_il(il_code, symbol_table, c)
+
+    def lvalue(self, il_code, symbol_table, c):  # noqa D102
+        return None
+
 
 class _LExprNode(nodes.Node):
     """Base class for representing an lvalue expression node in the AST.
-
-    See RExprNode for general explanation.
 
     An LExprNode-derived node implements only the _lvalue function. This
     function returns an LValue object representing this node. The
     implementation of this class automatically sets up the appropriate
     make_il function which calls the lvalue implementation.
+
+    Note that calling both make_il and make_il_raw for a single node may
+    generate unnecessary or repeated code!
     """
 
-    def __init__(self):
+    def __init__(self):  # noqa D102
         super().__init__()
         self._cache_lvalue = None
+
+    def make_il(self, il_code, symbol_table, c):  # noqa D102
+        lvalue = self.lvalue(il_code, symbol_table, c)
+
+        # Decay array
+        if lvalue.ctype().is_array():
+            addr = lvalue.addr(il_code)
+            return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
+
+        # Decay function
+        elif lvalue.ctype().is_function():
+            return lvalue.addr(il_code)
+
+        # Nothing to decay
+        else:
+            return lvalue.val(il_code)
+
+    def make_il_raw(self, il_code, symbol_table, c):  # noqa D102
+        return self.lvalue(il_code, symbol_table, c).val(il_code)
+
+    def lvalue(self, il_code, symbol_table, c):
+        """Return an LValue object representing this node."""
+        if not self._cache_lvalue:
+            self._cache_lvalue = self._lvalue(il_code, symbol_table, c)
+        return self._cache_lvalue
 
     def _lvalue(self, il_code, symbol_table, c):
         """Return an LValue object representing this node.
@@ -73,30 +124,6 @@ class _LExprNode(nodes.Node):
         messages or output repeated code to il_code.
         """
         raise NotImplementedError
-
-    def lvalue(self, il_code, symbol_table, c):
-        """Return an LValue object representing this node."""
-        if not self._cache_lvalue:
-            self._cache_lvalue = self._lvalue(il_code, symbol_table, c)
-        return self._cache_lvalue
-
-    def make_il(self, il_code, symbol_table, c):
-        """Make code for this node and return decayed version of result."""
-
-        lvalue = self.lvalue(il_code, symbol_table, c)
-
-        # Decay array
-        if lvalue and lvalue.ctype().is_array():
-            addr = lvalue.addr(il_code)
-            return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
-
-        # Decay function
-        elif lvalue and lvalue.ctype().is_function():
-            return lvalue.addr(il_code)
-
-        # Nothing to decay
-        else:
-            return lvalue.val(il_code)
 
 
 class MultiExpr(_RExprNode):
@@ -201,6 +228,10 @@ class ParenExpr(nodes.Node):
     def make_il(self, il_code, symbol_table, c):
         """Make IL code for this expression."""
         return self.expr.make_il(il_code, symbol_table, c)
+
+    def make_il_raw(self, il_code, symbol_table, c):
+        """Make raw IL code for this expression."""
+        return self.expr.make_il_raw(il_code, symbol_table, c)
 
 
 class _ArithBinOp(_RExprNode):
@@ -774,27 +805,85 @@ class ArraySubsc(_LExprNode):
         self.op = op
 
     def _lvalue(self, il_code, symbol_table, c):
-        """Return lvalue form of this node."""
+        """Return lvalue form of this node.
+
+        We have two main cases here. The first case covers most simple
+        situations, like `array[5]` or `array[x+3]`, and the second case
+        covers more complex situations like `array[4][2]` or an array
+        within a struct.
+
+        In the first case, one of the two operands is a DirectLValue array
+        (i.e. just a variable, not a lookup into another object). This
+        means it will have a spot in memory assigned to it by the register
+        allocator, and we can return a RelativeLValue object from this
+        function. This case corresponds to `matched` being True. A
+        RelativeLValue object usually becomes an assembly command like
+        `[rbp-40+3*rax]`, which is more efficient than manually computing
+        the address like happens in the second case.
+
+        In the second case, neither operand is a DirectLValue array. This is
+        the case for two-dimensional arrays, for example. Here, we proceed
+        naively and get the address for the pointer side. This is a little
+        bit less efficient. Ideally, in cases like `array[2][4]` where the
+        lookup address could be computed at compile-time, we'd be able to do
+        that, but this is not yet supported (TODO).
+
+        """
 
         # One operand should be pointer to complete object type, and the
         # other should be any integer type.
 
-        head_val = self.head.make_il(il_code, symbol_table, c)
-        arg_val = self.arg.make_il(il_code, symbol_table, c)
+        head_lv = self.head.lvalue(il_code, symbol_table, c)
+        arg_lv = self.arg.lvalue(il_code, symbol_table, c)
 
-        # Otherwise, compute the lvalue
-        if head_val.ctype.is_pointer() and arg_val.ctype.is_integral():
-            arith, point = arg_val, head_val
-        elif head_val.ctype.is_integral() and arg_val.ctype.is_pointer():
-            arith, point = head_val, arg_val
+        matched = False
+        if isinstance(head_lv, DirectLValue) and head_lv.ctype().is_array():
+            array, arith = self.head, self.arg
+            matched = True
+        elif isinstance(arg_lv, DirectLValue) and arg_lv.ctype().is_array():
+            array, arith = self.arg, self.head
+            matched = True
+
+        if matched:
+            # If one operand was a DirectLValue array
+            array_val = array.make_il_raw(il_code, symbol_table, c)
+            arith_val = arith.make_il(il_code, symbol_table, c)
+
+            if arith_val.ctype.is_integral():
+                return self.array_subsc(array_val, arith_val)
+
         else:
-            descrip = "invalid operand types for array subscriping"
-            raise CompilerError(descrip, self.r)
+            # Neither operand was a DirectLValue array
+            head_val = self.head.make_il(il_code, symbol_table, c)
+            arg_val = self.arg.make_il(il_code, symbol_table, c)
 
+            if head_val.ctype.is_pointer() and arg_val.ctype.is_integral():
+                return self.pointer_subsc(head_val, arg_val, il_code)
+            elif arg_val.ctype.is_pointer() and head_val.ctype.is_integral():
+                return self.pointer_subsc(head_val, arg_val, il_code)
+
+        descrip = "invalid operand types for array subscriping"
+        raise CompilerError(descrip, self.r)
+
+    def pointer_subsc(self, point, arith, il_code):
+        """Return the LValue for this node.
+
+        This function is called in the case where one operand is a pointer
+        and the other operand is an integer.
+        """
         shift = get_size(point.ctype.arg, arith, il_code)
         out = ILValue(point.ctype)
         il_code.add(math_cmds.Add(out, point, shift))
         return IndirectLValue(out)
+
+    def array_subsc(self, array, arith):
+        """Return the LValue for this node.
+
+        This function is called in the case where one operand is an array
+        and the other operand is an integer.
+        """
+        el = array.ctype.el
+        return RelativeLValue(el, array, el.size, arith)
 
 
 class FuncCall(_RExprNode):
@@ -805,7 +894,6 @@ class FuncCall(_RExprNode):
     tok - Opening parenthesis of this function call, for error reporting
 
     """
-
     def __init__(self, func, args, tok):
         """Initialize node."""
         super().__init__()

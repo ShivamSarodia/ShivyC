@@ -108,6 +108,76 @@ class IndirectLValue(LValue):
         return out
 
 
+class RelativeLValue(LValue):
+    """Represents a relative LValue.
+
+    A relative LValue is used to represent an LValue that is located in
+    memory relative to the position of another ILValue. For example,
+    in the expression `array[5] = 3`, the `array[5]` is a RelativeLValue
+    because it represents a value offset by 5 from the ILValue of array.
+
+    ctype - The ctype that can be stored in this RelativeLValue. In the
+    example above, this would be the integer ctype.
+
+    base - ILValue representing the base object. Note this is the base
+    object itself, not the address of the base object.
+
+    chunk - A Python integer representing the size of each chunk of offset
+    (see below for a more clear explanation)
+
+    count - If provided, an integral ILValue representing the number of
+    chunks of offset. If this value is provided, then `chunk` must be in {1,
+    2, 4, 8, 16}.
+
+    In summary, if `count` is provided, then the address of the object
+    represented by this LValue is:
+
+        &base + chunk * count
+
+    and if `count` is not provided, the address is just
+
+        &base + chunk
+
+    """
+    def __init__(self, ctype, base, chunk=0, count=None):
+        self._ctype = ctype
+        self.base = base
+        self.chunk = chunk
+        self.count = count
+
+    def _count(self, il_code):
+        """Move self.count to a 64-bit memory spot."""
+        if self.count and self.count.ctype.size < 8:
+            return set_type(self.count, ctypes.longint, il_code)
+        else:
+            return self.count
+
+    def ctype(self):
+        return self._ctype
+
+    def set_to(self, rvalue, il_code, r):
+        count = self._count(il_code)
+        check_cast(rvalue, self.ctype(), r)
+        right_cast = set_type(rvalue, self.ctype(), il_code)
+        il_code.add(value_cmds.SetRel(
+            right_cast, self.base, self.chunk, count))
+        return right_cast
+
+    def addr(self, il_code):
+        out = ILValue(PointerCType(self.ctype()))
+        count = self._count(il_code)
+        il_code.add(value_cmds.AddrRel(
+            out, self.base, self.chunk, count))
+        return out
+
+    def val(self, il_code):
+        out = ILValue(self.ctype())
+        count = self._count(il_code)
+        il_code.add(value_cmds.ReadRel(
+            out, self.base, self.chunk, count))
+        return out
+
+
 @contextmanager
 def report_err():
     """Catch and add any errors to error collector."""

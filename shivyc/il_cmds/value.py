@@ -197,3 +197,160 @@ class SetAt(ILCommand):
 
         asm_code.add(
             asm_cmds.Mov(indir_spot, spotmap[self.val], size))
+
+
+class _RelCommand(ILCommand):
+    """Parent class for the relative commands."""
+
+    def __init__(self, reg_val, base, chunk, count):  # noqa D102
+        self.reg_val = reg_val
+        self.base = base
+        self.chunk = chunk
+        self.count = count
+
+        # Keep track of which registers have been used from a call to
+        # get_reg so we don't accidentally reuse them.
+        self._used_regs = []
+
+    def get_rel_spot(self, spotmap, get_reg, asm_code):
+        """Get a relative spot for the relative value."""
+
+        # If there's no count, we only need to shift by the chunk
+        if not self.count:
+            return spotmap[self.base].shift(self.chunk)
+
+        # If there is a count in a literal spot, we're good to go. Also,
+        # if count is already in a register, we're good to go by just using
+        # that register for the count. (Because we require the count be 32-
+        # or 64-bit, we know the full register stores exactly the value of
+        # count).
+        if (isinstance(spotmap[self.count], LiteralSpot) or
+             isinstance(spotmap[self.count], RegSpot)):
+            return spotmap[self.base].shift(self.chunk, spotmap[self.count])
+
+        # Otherwise, move count to a register.
+        r = get_reg([], [spotmap[self.reg_val]] + self._used_regs)
+        self._used_regs.append(r)
+
+        count_size = self.count.ctype.size
+        asm_code.add(asm_cmds.Mov(r, spotmap[self.count], count_size))
+
+        return spotmap[self.base].shift(self.chunk, r)
+
+    def get_reg_spot(self, spotmap, get_reg, asm_code):
+        """Get a register or literal spot for self.reg_val."""
+
+        if (isinstance(spotmap[self.reg_val], LiteralSpot) or
+             isinstance(spotmap[self.reg_val], RegSpot)):
+            return spotmap[self.reg_val]
+
+        val_spot = get_reg([], [spotmap[self.count]] + self._used_regs)
+        self._used_regs.append(val_spot)
+
+        val_size = self.reg_val.ctype.size
+        asm_code.add(asm_cmds.Mov(val_spot, spotmap[self.reg_val], val_size))
+        return val_spot
+
+
+class SetRel(_RelCommand):
+    """Sets value relative to given object.
+
+    val - ILValue representing the value to set at given location.
+
+    base - ILValue representing the base object. Note this is the base
+    object itself, not the address of the base object.
+
+    chunk - A Python integer representing the size of each chunk of offset
+    (see below for a more clear explanation)
+
+    count - If provided, a 64-bit integral ILValue representing the
+    number of chunks of offset. If this value is provided, then `chunk`
+    must be in {1, 2, 4, 8, 16}.
+
+    In summary, if `count` is provided, then the address of the object
+    represented by this LValue is:
+
+        &base + chunk * count
+
+    and if `count` is not provided, the address is just
+
+        &base + chunk
+    """
+
+    def __init__(self, val, base, chunk=0, count=None):  # noqa D102
+        super().__init__(val, base, chunk, count)
+        self.val = val
+
+    def inputs(self):  # noqa D102
+        return [self.val, self.base, self.count]
+
+    def outputs(self):  # noqa D102
+        return []
+
+    def references(self):  # noqa D102
+        return {None: [self.base]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
+        if not isinstance(spotmap[self.base], MemSpot):
+            raise NotImplementedError("expected base in memory spot")
+
+        rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
+        val_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
+        asm_code.add(asm_cmds.Mov(rel_spot, val_spot, self.val.ctype.size))
+
+
+class AddrRel(_RelCommand):
+    """Gets the address of a location relative to a given object.
+
+    For further documentation, see SetRel.
+
+    """
+    def __init__(self, output, base, chunk=0, count=None):  # noqa D102
+        super().__init__(output, base, chunk, count)
+        self.output = output
+
+    def inputs(self):  # noqa D102
+        return [self.base, self.count]
+
+    def outputs(self):  # noqa D102
+        return [self.output]
+
+    def references(self):  # noqa D102
+        return {self.output: [self.base]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
+        if not isinstance(spotmap[self.base], MemSpot):
+            raise NotImplementedError("expected base in memory spot")
+
+        rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
+        out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
+        asm_code.add(asm_cmds.Lea(out_spot, rel_spot))
+
+
+class ReadRel(_RelCommand):
+    """Reads the value at a location relative to a given object.
+
+    For further documentation, see SetRel.
+
+    """
+
+    def __init__(self, output, base, chunk=0, count=None):  # noqa D102
+        super().__init__(output, base, chunk, count)
+        self.output = output
+
+    def inputs(self):  # noqa D102
+        return [self.base, self.count]
+
+    def outputs(self):  # noqa D102
+        return [self.output]
+
+    def references(self):  # noqa D102
+        return {None: [self.base]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
+        if not isinstance(spotmap[self.base], MemSpot):
+            raise NotImplementedError("expected base in memory spot")
+
+        rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
+        out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
+        asm_code.add(asm_cmds.Mov(out_spot, rel_spot, self.output.ctype.size))
