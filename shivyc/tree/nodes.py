@@ -405,43 +405,78 @@ class Declaration(Node):
         """
         spec_range = specs[0].r + specs[-1].r
 
-        spec_kinds = [spec.kind for spec in specs]
-        base_type_list = list(set(ctypes.simple_types.keys()) &
-                              set(spec_kinds))
-        if len(base_type_list) == 0:
-            base_type = ctypes.integer
-        elif len(base_type_list) == 1:
-            base_type = ctypes.simple_types[base_type_list[0]]
+        # We determine the type specifier by brute force.
+
+        all_type_specs = (set(ctypes.simple_types) |
+                          {token_kinds.signed_kw, token_kinds.unsigned_kw,
+                           token_kinds.struct_kw})
+
+        type_specs = [str(spec.kind) for spec in specs
+                      if spec.kind in all_type_specs]
+        specs_str = " ".join(sorted(type_specs))
+
+        if specs_str == "struct":
+            raise NotImplementedError
         else:
-            descrip = "two or more data types in declaration specifiers"
-            raise CompilerError(descrip, spec_range)
+            base_type = self.get_base_ctype(specs_str, spec_range)
 
-        signed_list = list({token_kinds.signed_kw, token_kinds.unsigned_kw} &
-                            set(spec_kinds))
-
-        if len(signed_list) == 1 and signed_list[0] == token_kinds.unsigned_kw:
-            base_type = ctypes.to_unsigned(base_type)
-        elif len(signed_list) > 1:
-            descrip = "both signed and unsigned in declaration specifiers"
-            raise CompilerError(descrip, spec_range)
-
-        # Create set of storage class specifiers that are present
-        storage_class_set = {token_kinds.auto_kw,
-                             token_kinds.static_kw,
-                             token_kinds.extern_kw}
-        storage_class_single = storage_class_set & set(spec_kinds)
-
-        if len(storage_class_single) == 0:
-            storage = self.AUTO
-        elif len(storage_class_single) == 1:
-            if token_kinds.static_kw in storage_class_single:
-                storage = self.STATIC
-            elif token_kinds.extern_kw in storage_class_single:
-                storage = self.EXTERN
-            else:  # must be `auto` kw
-                storage = self.AUTO
-        else:
-            descrip = "two or more storage classes in declaration specifiers"
-            raise CompilerError(descrip, spec_range)
-
+        storage = self.get_storage([spec.kind for spec in specs], spec_range)
         return base_type, storage
+
+    def get_base_ctype(self, specs_str, spec_range):
+        """Return a ctype given a sorted space-separated specifier string."""
+
+        # replace "long long" with "long" for convenience
+        specs_str = specs_str.replace("long long", "long")
+
+        specs = {
+            "void": ctypes.void,
+
+            "_Bool": ctypes.bool_t,
+
+            "char": ctypes.char,
+            "char signed": ctypes.char,
+            "char unsigned": ctypes.unsig_char,
+
+            "short": ctypes.short,
+            "short signed": ctypes.short,
+            "int short": ctypes.short,
+            "int short signed": ctypes.short,
+            "short unsigned": ctypes.unsig_short,
+            "int short unsigned": ctypes.unsig_short,
+
+            "int": ctypes.integer,
+            "signed": ctypes.integer,
+            "int signed": ctypes.integer,
+            "unsigned": ctypes.unsig_int,
+            "int unsigned": ctypes.unsig_int,
+
+            "long": ctypes.longint,
+            "long signed": ctypes.longint,
+            "int long": ctypes.longint,
+            "int long signed": ctypes.longint,
+            "long unsigned": ctypes.unsig_longint,
+            "int long unsigned": ctypes.unsig_longint,
+        }
+
+        if specs_str in specs:
+            return specs[specs_str]
+
+        descrip = "unrecognized set of type specifiers"
+        raise CompilerError(descrip, spec_range)
+
+    def get_storage(self, spec_kinds, spec_range):
+
+        storage_classes = {token_kinds.auto_kw: self.AUTO,
+                             token_kinds.static_kw: self.STATIC,
+                             token_kinds.extern_kw: self.EXTERN}
+
+        storage = None
+        for kind in spec_kinds:
+            if kind in storage_classes and not storage:
+                storage = storage_classes[kind]
+            elif kind in storage_classes:
+                descrip = "too many storage classes in declaration specifiers"
+                raise CompilerError(descrip, spec_range)
+
+        return storage if storage else self.AUTO

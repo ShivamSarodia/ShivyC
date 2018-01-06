@@ -23,6 +23,7 @@ array of 3 integers. The DeclarationNode class in tree.py performs the task
 of reversing these trees when forming the ctype.
 
 """
+import shivyc.token_kinds as token_kinds
 
 
 class Node:
@@ -34,7 +35,7 @@ class Node:
 class Root(Node):
     """Represents a list of declaration specifiers.
 
-    specs (List(Tokens)) - list of the declaration specifiers, as tokens
+    specs (List(Tokens/Nodes)) - list of the declaration specifiers, as tokens
     child (Node) - child declaration node
     r (Range) - range that this declaration node covers
     """
@@ -92,4 +93,26 @@ class Identifier(Node):
     def __init__(self, identifier):
         """Generate identifier node from an identifier token."""
         self.identifier = identifier
+        super().__init__()
+
+
+class Struct(Node):
+    """Represents a struct.
+
+    name (Token) - Token containing the name of this struct
+    members (List(Node)) - List of ctypes of struct members
+    r (Range) - range that the struct specifier covers
+    """
+
+    def __init__(self, name, members, r):
+        self.name = name
+        self.members = members
+
+        # These two members are a little hacky. They allow the
+        # make_specs_ctype function in tree.nodes.Declaration to treat this
+        # as a Token for the purposes of determining the base type of the
+        # declaration.
+        self.r = r
+        self.kind = token_kinds.struct_kw
+
         super().__init__()

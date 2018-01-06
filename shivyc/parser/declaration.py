@@ -18,11 +18,20 @@ def parse_declaration(index):
         int *a, (*b)[], c
 
     """
+    decls, inits, index = parse_decls_inits(index)
+    return nodes.Declaration(decls, inits), index
+
+
+def parse_decls_inits(index, parse_inits=True):
+    """Parse declarations and initializers into a list of decl_tree nodes.
+
+    If `parse_inits` is false, do not permit initializers.
+    """
     specs, index = parse_decl_specifiers(index)
 
     # If declaration specifiers are followed directly by semicolon
     if token_is(index, token_kinds.semicolon):
-        return nodes.Declaration([], []), index + 1
+        return ([], [], index + 1) if parse_inits else ([], index + 1)
 
     decls = []
     inits = []
@@ -33,7 +42,7 @@ def parse_declaration(index):
         decls.append(t)
 
         index = end
-        if token_is(index, token_kinds.equals):
+        if token_is(index, token_kinds.equals) and parse_inits:
             # Parse initializer expression
             # Currently, only simple initializers are supported
             expr, index = parse_assignment(index + 1)
@@ -48,7 +57,7 @@ def parse_declaration(index):
             break
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return nodes.Declaration(decls, inits), index
+    return (decls, inits, index) if parse_inits else (decls, index)
 
 
 def parse_decl_specifiers(index):
@@ -59,6 +68,9 @@ def parse_decl_specifiers(index):
         const char
         typedef int
 
+    The returned `specs` list may contain two types of elements: tokens and
+    Node objects. A Node object will be included for a struct or union
+    declaration.
     """
     decl_specifiers = (list(ctypes.simple_types.keys()) +
                        [token_kinds.signed_kw, token_kinds.unsigned_kw,
@@ -66,15 +78,24 @@ def parse_decl_specifiers(index):
                         token_kinds.extern_kw])
 
     specs = []
-    while True:
+    matching = True
+    while matching:
+        matching = False
+
+        # Parse a struct specifier if there is one.
+        if token_is(index, token_kinds.struct_kw):
+            node, index = parse_struct_spec(index + 1)
+            specs.append(node)
+            matching = True
+            continue
+
+        # Try parsing any of the other specifiers
         for spec in decl_specifiers:
             if token_is(index, spec):
                 specs.append(p.tokens[index])
                 index += 1
+                matching = True
                 break
-        else:
-            # If the for loop did not break, quit the while loop
-            break
 
     if specs:
         return specs, index
@@ -231,3 +252,44 @@ def parse_parameter_list(index):
             break
 
     return params, index
+
+
+def parse_struct_spec(index):
+    """Parse a struct specifier as a decl_tree.Struct node.
+
+    index - index right past the `struct` keyword
+    """
+    start_r = p.tokens[index - 1].r
+
+    name = None
+    if token_is(index, token_kinds.identifier):
+        name = p.tokens[index]
+        index += 1
+
+    members = None
+    if token_is(index, token_kinds.open_brack):
+        members, index = parse_struct_members(index + 1)
+
+    if name is None and members is None:
+        err = "expected identifier or member list"
+        raise_error(err, index, ParserError.AFTER)
+
+    r = start_r + p.tokens[index - 1].r
+    return decl_tree.Struct(name, members, r), index
+
+
+def parse_struct_members(index):
+    """Parse the list of members of a struct as a list of Root nodes.
+
+    index - first index past the open bracket starting the members list.
+    """
+    members = []
+
+    while True:
+        if token_is(index, token_kinds.close_brack):
+            return members, index + 1
+
+        nodes, index = parse_decls_inits(index, False)
+        members += nodes
+
+    return members, index
