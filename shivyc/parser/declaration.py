@@ -12,34 +12,40 @@ from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
 
 @add_range
 def parse_declaration(index):
-    """Parse a declaration.
+    """Parse a declaration into a tree.nodes.Declaration node.
 
     Example:
         int *a, (*b)[], c
 
     """
-    decls, inits, index = parse_decls_inits(index)
-    return nodes.Declaration(decls, inits), index
+    node, index = parse_decls_inits(index)
+    return nodes.Declaration(node), index
 
 
 def parse_decls_inits(index, parse_inits=True):
-    """Parse declarations and initializers into a list of decl_tree nodes.
+    """Parse declarations and initializers into a decl_tree.Root node.
 
-    If `parse_inits` is false, do not permit initializers.
+    The decl_tree node is used by the caller to create a
+    tree.nodes.Declaration node, and the decl_tree node is traversed during
+    the IL generation step to convert it into an appropriate ctype.
+
+    If `parse_inits` is false, do not permit initializers. This is useful
+    for parsing struct objects.
     """
     specs, index = parse_decl_specifiers(index)
 
     # If declaration specifiers are followed directly by semicolon
     if token_is(index, token_kinds.semicolon):
-        return ([], [], index + 1) if parse_inits else ([], index + 1)
+        return decl_tree.Root(specs, [], [], []), index + 1
 
     decls = []
+    ranges = []
     inits = []
+
     while True:
         end = find_decl_end(index)
-        t = decl_tree.Root(specs, parse_declarator(index, end))
-        t.r = p.tokens[index].r + p.tokens[end - 1].r
-        decls.append(t)
+        decls.append(parse_declarator(index, end))
+        ranges.append(p.tokens[index].r + p.tokens[end - 1].r)
 
         index = end
         if token_is(index, token_kinds.equals) and parse_inits:
@@ -57,7 +63,9 @@ def parse_decls_inits(index, parse_inits=True):
             break
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return (decls, inits, index) if parse_inits else (decls, index)
+
+    node = decl_tree.Root(specs, decls, inits, ranges)
+    return node, index
 
 
 def parse_decl_specifiers(index):
@@ -70,7 +78,7 @@ def parse_decl_specifiers(index):
 
     The returned `specs` list may contain two types of elements: tokens and
     Node objects. A Node object will be included for a struct or union
-    declaration.
+    declaration, and a token for all other declaration specifiers.
     """
     decl_specifiers = (list(ctypes.simple_types.keys()) +
                        [token_kinds.signed_kw, token_kinds.unsigned_kw,
@@ -240,8 +248,9 @@ def parse_parameter_list(index):
         specs, index = parse_decl_specifiers(index)
 
         end = find_decl_end(index)
-        params.append(
-            decl_tree.Root(specs, parse_declarator(index, end)))
+        range = p.tokens[index].r + p.tokens[end - 1].r
+        decl = parse_declarator(index, end)
+        params.append(decl_tree.Root(specs, [decl], None, [range]))
 
         index = end
 
@@ -281,7 +290,7 @@ def parse_struct_spec(index):
 def parse_struct_members(index):
     """Parse the list of members of a struct as a list of Root nodes.
 
-    index - first index past the open bracket starting the members list.
+    index - index right past the open bracket starting the members list
     """
     members = []
 
@@ -289,5 +298,5 @@ def parse_struct_members(index):
         if token_is(index, token_kinds.close_brack):
             return members, index + 1
 
-        nodes, index = parse_decls_inits(index, False)
-        members += nodes
+        node, index = parse_decls_inits(index, False)
+        members.append(node)

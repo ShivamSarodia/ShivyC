@@ -292,65 +292,102 @@ class ForStatement(Node):
         symbol_table.end_scope()
 
 
-class Declaration(Node):
-    """Line of a general variable declaration(s).
+class DeclInfo:
+    """Contains information about the declaration of one identifier.
 
-    decls (List(decl_tree.Node)) - list of declaration trees
-    inits (List(Expression Node)) - list of initializer expressions, or None
-    if a variable is not initialized
+    identifier - the identifier being declared
+    ctype - the ctype of this identifier
+    storage - the storage class of this identifier
+    init - the initial value of this identifier
     """
-
-    def __init__(self, decls, inits):
-        """Initialize node."""
-        super().__init__()
-        self.decls = decls
-        self.inits = inits
 
     # Storage class specifiers for declarations
     AUTO = 0
     STATIC = 1
     EXTERN = 2
 
+    def __init__(self, identifier, ctype, range, storage=0, init=None):
+        self.identifier = identifier
+        self.ctype = ctype
+        self.range = range
+        self.storage = storage
+        self.init = init
+
+
+class Declaration(Node):
+    """Line of a general variable declaration(s).
+
+    node (decl_tree.Root) - a declaration tree for this line
+    inits (List(Expression Node)) - list of initializer expressions, or None
+    if a variable is not initialized
+    """
+
+    def __init__(self, node):
+        """Initialize node."""
+        super().__init__()
+        self.node = node
+
     def make_il(self, il_code, symbol_table, c):
         """Make code for this declaration."""
-        for decl, init in zip(self.decls, self.inits):
+
+        decl_infos = self.get_decl_infos(self.node, symbol_table)
+        for info in decl_infos:
+            self.process(info, il_code, symbol_table, c)
+
+    def get_decl_infos(self, node, symbol_table):
+        """Given a node, returns a list of decl_info objects for that node."""
+        any_dec = bool(node.decls)
+        base_type, storage = self.make_specs_ctype(
+            node.specs, any_dec, symbol_table)
+
+        proc = zip(node.decls, node.ranges, node.inits)
+
+        out = []
+        for decl, range, init in proc:
             with report_err():
-                self.process(decl, init, il_code, symbol_table, c)
+                ctype, identifier = self.make_ctype(
+                    decl, base_type, symbol_table)
 
-    def process(self, decl, init, il_code, symbol_table, c):
-        """Process givn decl/init pair."""
-        ctype, identifier, storage = self.make_ctype(
-            decl, il_code, symbol_table)
+                out.append(DeclInfo(identifier, ctype, range, storage, init))
 
-        if not identifier:
+        return out
+
+    def process(self, decl_info, il_code, symbol_table, c):
+        """Process given DeclInfo object.
+
+        This includes error checking, adding the variable to the symbol
+        table, and registering it with the IL.
+        """
+        if not decl_info.identifier:
             err = "missing identifier name in declaration"
-            raise CompilerError(err, decl.r)
+            raise CompilerError(err, decl_info.range)
 
-        if ctype == ctypes.void:
+        # TODO: prohibit all declarations of incomplete types?
+        if decl_info.ctype == ctypes.void:
             err = "variable of void type declared"
-            raise CompilerError(err, decl.r)
+            raise CompilerError(err, decl_info.range)
 
-        var = symbol_table.add(identifier, ctype)
+        var = symbol_table.add(decl_info.identifier, decl_info.ctype)
 
         # Variables declared to be EXTERN
-        if storage == self.EXTERN:
-            il_code.register_extern_var(var, identifier.content)
+        if decl_info.storage == DeclInfo.EXTERN:
+            il_code.register_extern_var(var, decl_info.identifier.content)
 
             # Extern variable should not have initializer
-            if init:
+            if decl_info.init:
                 err = "extern variable has initializer"
-                raise CompilerError(err, decl.r)
+                raise CompilerError(err, decl_info.range)
 
         # Variables declared to be static
-        elif storage == self.STATIC:
+        elif decl_info.storage == DeclInfo.STATIC:
             # These should be in .data section, but not global
             raise NotImplementedError("static variables unsupported")
 
         # Global variables
         elif c.is_global:
             # Global functions are extern by default
-            if ctype.is_function():
-                il_code.register_extern_var(var, identifier.content)
+            if decl_info.ctype.is_function():
+                il_code.register_extern_var(var, decl_info.identifier.content)
             else:
                 # These should be common if uninitialized, or data if
                 # initialized
@@ -362,17 +399,16 @@ class Declaration(Node):
             il_code.register_local_var(var)
 
         # Initialize variable if needed
-        if init:
-            init_val = init.make_il(il_code, symbol_table, c)
+        if decl_info.init:
+            init_val = decl_info.init.make_il(il_code, symbol_table, c)
             lval = DirectLValue(var)
             if lval.modable():
-                lval.set_to(init_val, il_code, identifier.r)
+                lval.set_to(init_val, il_code, decl_info.identifier.r)
             else:
                 err = "declared variable is not of assignable type"
-                raise CompilerError(err, decl.r)
+                raise CompilerError(err, decl_info.range)
 
-    def make_ctype(self, decl, il_code, symbol_table,
-                   prev_ctype=None, storage=0):
+    def make_ctype(self, decl, prev_ctype, symbol_table):
         """Generate a ctype from the given declaration.
 
         Return a `ctype, identifier token, storage class` triple.
@@ -383,31 +419,34 @@ class Declaration(Node):
         current one.
         storage - The storage class of this declaration.
         """
-        if isinstance(decl, decl_tree.Root):
-            new_ctype, storage = self.make_specs_ctype(
-                decl.specs, il_code, symbol_table)
-        elif isinstance(decl, decl_tree.Pointer):
+        if isinstance(decl, decl_tree.Pointer):
             new_ctype = PointerCType(prev_ctype)
         elif isinstance(decl, decl_tree.Array):
             new_ctype = ArrayCType(prev_ctype, decl.n)
         elif isinstance(decl, decl_tree.Function):
             # Create a new scope because if we create a new struct type inside
             # the function parameters, it should be local to those parameters.
+
+            # TODO: Prohibit storage class specifiers, etc. in fctn params
             symbol_table.new_scope()
             args = [
-                self.make_ctype(decl, il_code, symbol_table)[0]
+                self.get_decl_infos(decl, symbol_table)[0].ctype
                 for decl in decl.args
             ]
             symbol_table.end_scope()
             new_ctype = FunctionCType(args, prev_ctype)
         elif isinstance(decl, decl_tree.Identifier):
-            return prev_ctype, decl.identifier, storage
+            return prev_ctype, decl.identifier
 
-        return self.make_ctype(decl.child, il_code, symbol_table,
-                               new_ctype, storage)
+        return self.make_ctype(decl.child, new_ctype, symbol_table)
 
-    def make_specs_ctype(self, specs, il_code, symbol_table):
+    def make_specs_ctype(self, specs, any_dec, symbol_table):
         """Make a ctype out of the provided list of declaration specifiers.
+
+        any_dec - Whether these specifiers are used to declare a variable.
+        This value is important because `struct A;` has a different meaning
+        than `struct A *p;`, since the former forward-declares a new struct
+        while the latter may reuse a struct A that already exists in scope.
 
         Return a `ctype, storage class` pair, where storage class is one of
         the above values.
@@ -422,13 +461,19 @@ class Declaration(Node):
                       if spec.kind in all_type_specs]
         specs_str = " ".join(sorted(type_specs))
 
+        storage, storage_set = self.get_storage(
+            [spec.kind for spec in specs], spec_range)
+
         if specs_str == "struct":
             s = [s for s in specs if s.kind == token_kinds.struct_kw][0]
-            base_type = self.parse_struct_spec(s, il_code, symbol_table)
+
+            # This is a redeclaration of a struct if there are no storage
+            # specifiers and it declares no variables.
+            redec = not (any_dec or storage_set)
+            base_type = self.parse_struct_spec(s, redec, symbol_table)
         else:
             base_type = self.get_base_ctype(specs_str, spec_range)
 
-        storage = self.get_storage([spec.kind for spec in specs], spec_range)
         return base_type, storage
 
     def get_base_ctype(self, specs_str, spec_range):
@@ -475,11 +520,16 @@ class Declaration(Node):
         raise CompilerError(descrip, spec_range)
 
     def get_storage(self, spec_kinds, spec_range):
-        """Return the storage class from given specifier token kinds."""
+        """Determine the storage class from given specifier token kinds.
 
-        storage_classes = {token_kinds.auto_kw: self.AUTO,
-                           token_kinds.static_kw: self.STATIC,
-                           token_kinds.extern_kw: self.EXTERN}
+        Returns tuple of two values. First value is the storage class. The
+        second value is a boolean indicating whether a storage class was
+        explicitly set. If the second value is False, the first value will
+        always be DeclInfo.AUTO.
+        """
+        storage_classes = {token_kinds.auto_kw: DeclInfo.AUTO,
+                           token_kinds.static_kw: DeclInfo.STATIC,
+                           token_kinds.extern_kw: DeclInfo.EXTERN}
 
         storage = None
         for kind in spec_kinds:
@@ -489,9 +539,9 @@ class Declaration(Node):
                 descrip = "too many storage classes in declaration specifiers"
                 raise CompilerError(descrip, spec_range)
 
-        return storage if storage else self.AUTO
+        return (storage, True) if storage else (DeclInfo.AUTO, False)
 
-    def parse_struct_spec(self, spec, redec, il_code, symbol_table):
+    def parse_struct_spec(self, spec, redec, symbol_table):
         """Parse a struct ctype from the given decl_tree.Struct node.
 
         spec (decl_tree.Struct) - the Struct node to parse

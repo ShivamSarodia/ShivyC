@@ -7,7 +7,7 @@ the following:
 
 parses to:
 
-    Root([token_kinds.int_kw], Pointer(Array(3, Identifier(tok))))
+    Root([token_kinds.int_kw], [Pointer(Array(3, Identifier(tok)))])
 
 while the following:
 
@@ -15,7 +15,7 @@ while the following:
 
 parses to:
 
-    Root([token_kinds.int_kw], Array(3, Pointer(Identifier(tok))))
+    Root([token_kinds.int_kw], [Array(3, Pointer(Identifier(tok)))])
 
 Declaration trees are to be read inside-out. So, the first example above is
 an array of 3 pointers to int, and the second example is a pointer to an
@@ -33,18 +33,28 @@ class Node:
 
 
 class Root(Node):
-    """Represents a list of declaration specifiers.
+    """Represents a list of declaration specifiers and declarators.
 
     specs (List(Tokens/Nodes)) - list of the declaration specifiers, as tokens
-    child (Node) - child declaration node
-    r (Range) - range that this declaration node covers
+    decls (List(Node)) - list of declarator nodes
+    ranges (List(Range)) - range of each declarator
     """
 
-    def __init__(self, specs, child):
+    def __init__(self, specs, decls, inits=None, ranges=None):
         """Generate root node."""
         self.specs = specs
-        self.child = child
-        self.r = None
+        self.decls = decls
+
+        if inits:
+            self.inits = inits
+        else:
+            self.inits = [None] * len(self.decls)
+
+        if ranges:
+            self.ranges = ranges
+        else:
+            self.ranges = [None] * len(self.decls)
+
         super().__init__()
 
 
