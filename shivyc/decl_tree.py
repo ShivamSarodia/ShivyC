@@ -99,13 +99,13 @@ class Identifier(Node):
 class Struct(Node):
     """Represents a struct.
 
-    name (Token) - Token containing the name of this struct
+    tag (Token) - Token containing the tag of this struct
     members (List(Node)) - List of ctypes of struct members
     r (Range) - range that the struct specifier covers
     """
 
-    def __init__(self, name, members, r):
-        self.name = name
+    def __init__(self, tag, members, r):
+        self.tag = tag
         self.members = members
 
         # These two members are a little hacky. They allow the

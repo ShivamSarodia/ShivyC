@@ -291,5 +291,3 @@ def parse_struct_members(index):
 
         nodes, index = parse_decls_inits(index, False)
         members += nodes
-
-    return members, index

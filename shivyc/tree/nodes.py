@@ -319,7 +319,9 @@ class Declaration(Node):
 
     def process(self, decl, init, il_code, symbol_table, c):
         """Process givn decl/init pair."""
-        ctype, identifier, storage = self.make_ctype(decl)
+        ctype, identifier, storage = self.make_ctype(
+            decl, il_code, symbol_table)
+
         if not identifier:
             err = "missing identifier name in declaration"
             raise CompilerError(err, decl.r)
@@ -369,7 +371,8 @@ class Declaration(Node):
                 err = "declared variable is not of assignable type"
                 raise CompilerError(err, decl.r)
 
-    def make_ctype(self, decl, prev_ctype=None, storage=0):
+    def make_ctype(self, decl, il_code, symbol_table,
+                   prev_ctype=None, storage=0):
         """Generate a ctype from the given declaration.
 
         Return a `ctype, identifier token, storage class` triple.
@@ -381,31 +384,35 @@ class Declaration(Node):
         storage - The storage class of this declaration.
         """
         if isinstance(decl, decl_tree.Root):
-            ctype, storage = self.make_specs_ctype(decl.specs)
-            return self.make_ctype(decl.child, ctype, storage)
+            new_ctype, storage = self.make_specs_ctype(
+                decl.specs, il_code, symbol_table)
         elif isinstance(decl, decl_tree.Pointer):
-            return self.make_ctype(decl.child, PointerCType(prev_ctype),
-                                   storage)
+            new_ctype = PointerCType(prev_ctype)
         elif isinstance(decl, decl_tree.Array):
-            return self.make_ctype(decl.child, ArrayCType(prev_ctype, decl.n),
-                                   storage)
+            new_ctype = ArrayCType(prev_ctype, decl.n)
         elif isinstance(decl, decl_tree.Function):
-            args = [self.make_ctype(decl)[0] for decl in decl.args]
-            return self.make_ctype(decl.child,
-                                   FunctionCType(args, prev_ctype),
-                                   storage)
+            # Create a new scope because if we create a new struct type inside
+            # the function parameters, it should be local to those parameters.
+            symbol_table.new_scope()
+            args = [
+                self.make_ctype(decl, il_code, symbol_table)[0]
+                for decl in decl.args
+            ]
+            symbol_table.end_scope()
+            new_ctype = FunctionCType(args, prev_ctype)
         elif isinstance(decl, decl_tree.Identifier):
             return prev_ctype, decl.identifier, storage
 
-    def make_specs_ctype(self, specs):
+        return self.make_ctype(decl.child, il_code, symbol_table,
+                               new_ctype, storage)
+
+    def make_specs_ctype(self, specs, il_code, symbol_table):
         """Make a ctype out of the provided list of declaration specifiers.
 
         Return a `ctype, storage class` pair, where storage class is one of
         the above values.
         """
         spec_range = specs[0].r + specs[-1].r
-
-        # We determine the type specifier by brute force.
 
         all_type_specs = (set(ctypes.simple_types) |
                           {token_kinds.signed_kw, token_kinds.unsigned_kw,
@@ -416,7 +423,8 @@ class Declaration(Node):
         specs_str = " ".join(sorted(type_specs))
 
         if specs_str == "struct":
-            raise NotImplementedError
+            s = [s for s in specs if s.kind == token_kinds.struct_kw][0]
+            base_type = self.parse_struct_spec(s, il_code, symbol_table)
         else:
             base_type = self.get_base_ctype(specs_str, spec_range)
 
@@ -462,14 +470,16 @@ class Declaration(Node):
         if specs_str in specs:
             return specs[specs_str]
 
+        # TODO: provide more helpful feedback on what is wrong
         descrip = "unrecognized set of type specifiers"
         raise CompilerError(descrip, spec_range)
 
     def get_storage(self, spec_kinds, spec_range):
+        """Return the storage class from given specifier token kinds."""
 
         storage_classes = {token_kinds.auto_kw: self.AUTO,
-                             token_kinds.static_kw: self.STATIC,
-                             token_kinds.extern_kw: self.EXTERN}
+                           token_kinds.static_kw: self.STATIC,
+                           token_kinds.extern_kw: self.EXTERN}
 
         storage = None
         for kind in spec_kinds:
@@ -480,3 +490,64 @@ class Declaration(Node):
                 raise CompilerError(descrip, spec_range)
 
         return storage if storage else self.AUTO
+
+    def parse_struct_spec(self, spec, redec, il_code, symbol_table):
+        """Parse a struct ctype from the given decl_tree.Struct node.
+
+        spec (decl_tree.Struct) - the Struct node to parse
+        redec (bool) - Whether this declaration is alone like so:
+
+           struct S;
+
+        or declares variables/has storage specifiers:
+
+           struct S *p;
+           extern struct S;
+
+        If it's the first, then this is always a forward declaration for a
+        new `struct S` but if it's the second and a `struct S` already
+        exists in higher scope, it's just using the higher scope struct.
+        """
+
+        # symbol table functions
+        # lookup_struct()
+        #  - looks up and returns struct with given tag
+        #  - return peacefully if not found
+        # add_struct(tag, struct)
+        #  - if an struct with the same tag already exists at topmost
+        #    scope, does nothing
+        #  - otherwise, adds an incomplete struct with this tag to topmost
+        #    scope
+        # complete_struct()
+        #  - searches for struct with same tag at topmost scope
+        #  - if none exists, error (idk if this will ever happen)
+        #  - if one does exist, and it's complete, error
+        #  - if one does exist, and it's incomplete, then complete it
+
+        # if spec.tag:
+        #   this_struct = lookup_struct()
+        #   if not this_struct or spec.members or redec:
+        #       this_struct = add_struct(tag, incomplete-struct)
+        # if not spec.tag:
+        #   this_struct = StructCType(tag is None)
+
+        # if spec.members:
+        #   for each member, make a ctype out of it, then figure out if it
+        #    includes something it shouldn't (array, incomp type, typedef,
+        #    extern)
+        #   this_struct.complete()
+
+        # return this_struct
+
+        # ALSO rn creating a new struct type with no actual variables
+        # doesn't even create a new type, so fix that!
+
+        # ^^^ actually this is an even more fundamental issue. RN, I just
+        # copy the specs to each and every declarator in a single
+        # declaration. But that's not okay because if the specs are a
+        # struct, then each time you parse the specs, you generate a new
+        # struct object. Yikes. This is even an issue for struct members,
+        # because somewhere I do some sketchy merging of lists for getting
+        # a convenient list but this removes information on the distinct specs.
+
+        raise NotImplementedError
