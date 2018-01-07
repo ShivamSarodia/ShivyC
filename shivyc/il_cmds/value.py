@@ -326,6 +326,10 @@ class AddrRel(_RelCommand):
         out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
         asm_code.add(asm_cmds.Lea(out_spot, rel_spot))
 
+        if out_spot != spotmap[self.output]:
+            asm_code.add(asm_cmds.Mov(spotmap[self.output], out_spot,
+                                      self.output.ctype.size))
+
 
 class ReadRel(_RelCommand):
     """Reads the value at a location relative to a given object.
@@ -354,3 +358,7 @@ class ReadRel(_RelCommand):
         rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
         out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
         asm_code.add(asm_cmds.Mov(out_spot, rel_spot, self.output.ctype.size))
+
+        if out_spot != spotmap[self.output]:
+            asm_code.add(asm_cmds.Mov(spotmap[self.output], out_spot,
+                                      self.output.ctype.size))
