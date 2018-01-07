@@ -35,7 +35,9 @@ class _ValueCmd(ILCommand):
             start_spot = start_spot.shift(shift)
             target_spot = target_spot.shift(shift)
 
-            if reg != start_spot:
+            if isinstance(start_spot, LiteralSpot):
+                reg = start_spot
+            elif reg != start_spot:
                 asm_code.add(asm_cmds.Mov(reg, start_spot, reg_size))
 
             if reg != target_spot:
@@ -332,7 +334,10 @@ class SetRel(_RelCommand):
         self.val = val
 
     def inputs(self):  # noqa D102
-        return [self.val, self.base, self.count]
+        if self.count:
+            return [self.val, self.base, self.count]
+        else:
+            return [self.base, self.val]
 
     def outputs(self):  # noqa D102
         return []
@@ -362,7 +367,7 @@ class AddrRel(_RelCommand):
         self.output = output
 
     def inputs(self):  # noqa D102
-        return [self.base, self.count]
+        return [self.base, self.count] if self.count else [self.base]
 
     def outputs(self):  # noqa D102
         return [self.output]
@@ -394,7 +399,7 @@ class ReadRel(_RelCommand):
         self.output = output
 
     def inputs(self):  # noqa D102
-        return [self.base, self.count]
+        return [self.base, self.count] if self.count else [self.base]
 
     def outputs(self):  # noqa D102
         return [self.output]
