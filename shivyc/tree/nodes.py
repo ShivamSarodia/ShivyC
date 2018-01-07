@@ -583,6 +583,11 @@ class Declaration(Node):
 
             for decl_info in decl_infos:
                 with report_err():
+                    if decl_info.identifier is None:
+                        # someone snuck an abstract declarator into here!
+                        err = "missing name of struct member"
+                        raise CompilerError(err, decl_info.range)
+
                     if decl_info.storage is not None:
                         err = "cannot have storage specifier on struct member"
                         raise CompilerError(err, decl_info.range)

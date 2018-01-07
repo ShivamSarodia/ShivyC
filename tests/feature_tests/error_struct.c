@@ -11,6 +11,9 @@ int main() {
 
     // error: cannot have function type as struct member
     int function(int);
+
+    // error: missing name of struct member
+    int*;
   };
 
   struct S {

@@ -9,6 +9,7 @@ int main() {
       int d;
     } q;
     int e, f;
+    int;
   } a;
 
   q = &a;
