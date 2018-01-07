@@ -68,5 +68,10 @@ int main() {
     return 20;
   }
 
+
+  int power_of_two_arr[10][10];
+  power_of_two_arr[3][4] = 10;
+  if(power_of_two_arr[3][4] != 10) return 21;
+
   return 0;
 }
