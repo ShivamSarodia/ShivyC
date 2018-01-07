@@ -202,8 +202,8 @@ class SetAt(ILCommand):
 class _RelCommand(ILCommand):
     """Parent class for the relative commands."""
 
-    def __init__(self, reg_val, base, chunk, count):  # noqa D102
-        self.reg_val = reg_val
+    def __init__(self, val, base, chunk, count):  # noqa D102
+        self.val = val
         self.base = base
         self.chunk = chunk
         self.count = count
@@ -229,7 +229,7 @@ class _RelCommand(ILCommand):
             return spotmap[self.base].shift(self.chunk, spotmap[self.count])
 
         # Otherwise, move count to a register.
-        r = get_reg([], [spotmap[self.reg_val]] + self._used_regs)
+        r = get_reg([], [spotmap[self.val]] + self._used_regs)
         self._used_regs.append(r)
 
         count_size = self.count.ctype.size
@@ -237,18 +237,15 @@ class _RelCommand(ILCommand):
 
         return spotmap[self.base].shift(self.chunk, r)
 
-    def get_reg_spot(self, spotmap, get_reg, asm_code):
+    def get_reg_spot(self, reg_val, spotmap, get_reg):
         """Get a register or literal spot for self.reg_val."""
 
-        if (isinstance(spotmap[self.reg_val], LiteralSpot) or
-             isinstance(spotmap[self.reg_val], RegSpot)):
-            return spotmap[self.reg_val]
+        if (isinstance(spotmap[reg_val], LiteralSpot) or
+             isinstance(spotmap[reg_val], RegSpot)):
+            return spotmap[reg_val]
 
         val_spot = get_reg([], [spotmap[self.count]] + self._used_regs)
         self._used_regs.append(val_spot)
-
-        val_size = self.reg_val.ctype.size
-        asm_code.add(asm_cmds.Mov(val_spot, spotmap[self.reg_val], val_size))
         return val_spot
 
 
@@ -295,8 +292,12 @@ class SetRel(_RelCommand):
             raise NotImplementedError("expected base in memory spot")
 
         rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
-        val_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
-        asm_code.add(asm_cmds.Mov(rel_spot, val_spot, self.val.ctype.size))
+        val_spot = self.get_reg_spot(self.val, spotmap, get_reg)
+
+        val_size = self.val.ctype.size
+        if val_spot != spotmap[self.val]:
+            asm_code.add(asm_cmds.Mov(val_spot, spotmap[self.val], val_size))
+        asm_code.add(asm_cmds.Mov(rel_spot, val_spot, val_size))
 
 
 class AddrRel(_RelCommand):
@@ -323,7 +324,7 @@ class AddrRel(_RelCommand):
             raise NotImplementedError("expected base in memory spot")
 
         rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
-        out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
+        out_spot = self.get_reg_spot(self.output, spotmap, get_reg)
         asm_code.add(asm_cmds.Lea(out_spot, rel_spot))
 
         if out_spot != spotmap[self.output]:
@@ -356,7 +357,7 @@ class ReadRel(_RelCommand):
             raise NotImplementedError("expected base in memory spot")
 
         rel_spot = self.get_rel_spot(spotmap, get_reg, asm_code)
-        out_spot = self.get_reg_spot(spotmap, get_reg, asm_code)
+        out_spot = self.get_reg_spot(self.output, spotmap, get_reg)
         asm_code.add(asm_cmds.Mov(out_spot, rel_spot, self.output.ctype.size))
 
         if out_spot != spotmap[self.output]:
