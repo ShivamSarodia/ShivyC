@@ -44,9 +44,9 @@ class LValue:
     def modable(self):
         """Return whether this is a modifiable lvalue."""
 
-        return (self.ctype().is_arith() or
-                self.ctype().is_pointer() or
-                self.ctype().is_void())
+        # TODO: add "is not const qualified" and "if struct/union, has no
+        # const qualified member"
+        return not self.ctype().is_array() and self.ctype().is_complete()
 
 
 class DirectLValue(LValue):

@@ -49,6 +49,10 @@ class CType:
         """Check whether this is an array type."""
         return False
 
+    def is_scalar(self):
+        """Check whether this has scalar type."""
+        return self.is_arith() or self.is_pointer()
+
 
 class IntegerCType(CType):
     """Represents an integer C type, like 'unsigned long' or 'bool'.

@@ -503,6 +503,15 @@ class _BoolAndOr(_RExprNode):
     initial_value = 1
 
     def make_il(self, il_code, symbol_table, c):
+        left = self.left.make_il(il_code, symbol_table, c)
+        right = self.right.make_il(il_code, symbol_table, c)
+
+        err = "'{}' operator requires scalar operands".format(str(self.op))
+        if not left.ctype.is_scalar():
+            raise CompilerError(err, self.left.r)
+        if not right.ctype.is_scalar():
+            raise CompilerError(err, self.right.r)
+
         # ILValue for storing the output of this boolean operation
         out = ILValue(ctypes.integer)
 
@@ -520,10 +529,8 @@ class _BoolAndOr(_RExprNode):
         # Label which skips the line which sets out to 0 or 1.
         end = il_code.get_label()
 
-        left = self.left.make_il(il_code, symbol_table, c)
         il_code.add(value_cmds.Set(out, init))
         il_code.add(self.jump_cmd(left, set_out))
-        right = self.right.make_il(il_code, symbol_table, c)
         il_code.add(self.jump_cmd(right, set_out))
         il_code.add(control_cmds.Jump(end))
         il_code.add(control_cmds.Label(set_out))
@@ -754,6 +761,11 @@ class BoolNot(_RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
 
+        expr = self.expr.make_il(il_code, symbol_table, c)
+        if not expr.ctype.is_scalar():
+            err = "'!' operator requires scalar operand"
+            raise CompilerError(err, self.r)
+
         # ILValue for storing the output
         out = ILValue(ctypes.integer)
 
@@ -768,7 +780,6 @@ class BoolNot(_RExprNode):
         # Label which skips the line which sets out to 0.
         end = il_code.get_label()
 
-        expr = self.expr.make_il(il_code, symbol_table, c)
         il_code.add(value_cmds.Set(out, one))
         il_code.add(control_cmds.JumpZero(expr, end))
         il_code.add(value_cmds.Set(out, zero))

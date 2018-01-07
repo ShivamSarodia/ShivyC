@@ -7,6 +7,6 @@ int main() {
   ++array;
 
   void* p;
-  // error: invalid type for increment operator
+  // error: operand of increment operator not a modifiable lvalue
   (*p)++;
 }

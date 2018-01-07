@@ -18,7 +18,7 @@
   *a = 1;
 
   void* p;
-  // error: invalid conversion between types
+  // error: expression on left of '=' is not assignable
   *p = 1;
 
   return 0;
