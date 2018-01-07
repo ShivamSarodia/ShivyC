@@ -5,7 +5,10 @@ int main() {
   a && a;
 
   // error: '||' operator requires scalar operands
-  a || a;
+  1 || a;
+
+  // error: '||' operator requires scalar operands
+  a || 1;
 
   // error: '!' operator requires scalar operand
   !a;
