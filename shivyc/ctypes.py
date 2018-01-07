@@ -212,6 +212,43 @@ class FunctionCType(CType):
         return True
 
 
+class StructCType(CType):
+    """Represents a struct ctype.
+
+    tag - Name of the struct as a string, or None if it's anonymous
+    members - List of members of the struct. Each element of the list should be
+    a tuple (str, ctype) where `str` is the string of the identifier used to
+    access that member and ctype is the ctype of that member.
+    complete - Boolean indicating whether this struct is complete
+    """
+
+    def __init__(self, tag, members=None):
+        self.tag = tag
+        self.members = members
+        super().__init__(1)
+
+    def compatible(self, other):
+        """Return True iff other is a compatible type to self.
+
+        Within a single translation unit, two structs are compatible iff
+        they are the exact same declaration.
+        """
+        return self is other
+
+    def is_complete(self):
+        """Check whether this is a complete type."""
+        return self.members is not None
+
+    def is_object(self):
+        """Check whether this is an object type."""
+        return True
+
+    def set_members(self, members):
+        """Add the given members to this struct and set it to complete."""
+        self.members = members
+        self.size = sum(m[1].size for m in members)
+
+
 void = VoidCType()
 
 # In our implementation, we have 1 represent true and 0 represent false. We

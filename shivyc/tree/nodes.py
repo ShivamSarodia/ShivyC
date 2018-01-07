@@ -5,7 +5,7 @@ import shivyc.decl_tree as decl_tree
 import shivyc.il_cmds.control as control_cmds
 import shivyc.token_kinds as token_kinds
 
-from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType
+from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
 from shivyc.tree.utils import DirectLValue, report_err, set_type, check_cast
@@ -302,11 +302,11 @@ class DeclInfo:
     """
 
     # Storage class specifiers for declarations
-    AUTO = 0
-    STATIC = 1
-    EXTERN = 2
+    AUTO = 1
+    STATIC = 2
+    EXTERN = 3
 
-    def __init__(self, identifier, ctype, range, storage=0, init=None):
+    def __init__(self, identifier, ctype, range, storage=None, init=None):
         self.identifier = identifier
         self.ctype = ctype
         self.range = range
@@ -332,7 +332,8 @@ class Declaration(Node):
 
         decl_infos = self.get_decl_infos(self.node, symbol_table)
         for info in decl_infos:
-            self.process(info, il_code, symbol_table, c)
+            with report_err():
+                self.process(info, il_code, symbol_table, c)
 
     def get_decl_infos(self, node, symbol_table):
         """Given a node, returns a list of decl_info objects for that node."""
@@ -461,15 +462,14 @@ class Declaration(Node):
                       if spec.kind in all_type_specs]
         specs_str = " ".join(sorted(type_specs))
 
-        storage, storage_set = self.get_storage(
-            [spec.kind for spec in specs], spec_range)
+        storage = self.get_storage([spec.kind for spec in specs], spec_range)
 
         if specs_str == "struct":
             s = [s for s in specs if s.kind == token_kinds.struct_kw][0]
 
             # This is a redeclaration of a struct if there are no storage
             # specifiers and it declares no variables.
-            redec = not (any_dec or storage_set)
+            redec = not any_dec and storage is None
             base_type = self.parse_struct_spec(s, redec, symbol_table)
         else:
             base_type = self.get_base_ctype(specs_str, spec_range)
@@ -522,10 +522,7 @@ class Declaration(Node):
     def get_storage(self, spec_kinds, spec_range):
         """Determine the storage class from given specifier token kinds.
 
-        Returns tuple of two values. First value is the storage class. The
-        second value is a boolean indicating whether a storage class was
-        explicitly set. If the second value is False, the first value will
-        always be DeclInfo.AUTO.
+        If no storage class is listed, returns None.
         """
         storage_classes = {token_kinds.auto_kw: DeclInfo.AUTO,
                            token_kinds.static_kw: DeclInfo.STATIC,
@@ -539,12 +536,12 @@ class Declaration(Node):
                 descrip = "too many storage classes in declaration specifiers"
                 raise CompilerError(descrip, spec_range)
 
-        return (storage, True) if storage else (DeclInfo.AUTO, False)
+        return storage
 
-    def parse_struct_spec(self, spec, redec, symbol_table):
+    def parse_struct_spec(self, node, redec, symbol_table):
         """Parse a struct ctype from the given decl_tree.Struct node.
 
-        spec (decl_tree.Struct) - the Struct node to parse
+        node (decl_tree.Struct) - the Struct node to parse
         redec (bool) - Whether this declaration is alone like so:
 
            struct S;
@@ -558,46 +555,56 @@ class Declaration(Node):
         new `struct S` but if it's the second and a `struct S` already
         exists in higher scope, it's just using the higher scope struct.
         """
+        has_members = node.members is not None
+        if node.tag:
+            tag = str(node.tag)
+            ctype = symbol_table.lookup_struct(tag)
 
-        # symbol table functions
-        # lookup_struct()
-        #  - looks up and returns struct with given tag
-        #  - return peacefully if not found
-        # add_struct(tag, struct)
-        #  - if an struct with the same tag already exists at topmost
-        #    scope, does nothing
-        #  - otherwise, adds an incomplete struct with this tag to topmost
-        #    scope
-        # complete_struct()
-        #  - searches for struct with same tag at topmost scope
-        #  - if none exists, error (idk if this will ever happen)
-        #  - if one does exist, and it's complete, error
-        #  - if one does exist, and it's incomplete, then complete it
+            if not ctype or has_members or redec:
+                ctype = symbol_table.add_struct(tag, StructCType(tag))
 
-        # if spec.tag:
-        #   this_struct = lookup_struct()
-        #   if not this_struct or spec.members or redec:
-        #       this_struct = add_struct(tag, incomplete-struct)
-        # if not spec.tag:
-        #   this_struct = StructCType(tag is None)
+            if has_members and ctype.is_complete():
+                err = "redefinition of 'struct {}'".format(tag)
+                raise CompilerError(err, node.r)
 
-        # if spec.members:
-        #   for each member, make a ctype out of it, then figure out if it
-        #    includes something it shouldn't (array, incomp type, typedef,
-        #    extern)
-        #   this_struct.complete()
+        else:
+            ctype = StructCType(None)
 
-        # return this_struct
+        if not has_members:
+            return ctype
 
-        # ALSO rn creating a new struct type with no actual variables
-        # doesn't even create a new type, so fix that!
+        # Struct does have members
+        members = []
+        member_set = set()
+        for member in node.members:
+            decl_infos = []  # needed in case get_decl_infos below fails
+            with report_err():
+                decl_infos = self.get_decl_infos(member, symbol_table)
 
-        # ^^^ actually this is an even more fundamental issue. RN, I just
-        # copy the specs to each and every declarator in a single
-        # declaration. But that's not okay because if the specs are a
-        # struct, then each time you parse the specs, you generate a new
-        # struct object. Yikes. This is even an issue for struct members,
-        # because somewhere I do some sketchy merging of lists for getting
-        # a convenient list but this removes information on the distinct specs.
+            for decl_info in decl_infos:
+                with report_err():
+                    if decl_info.storage is not None:
+                        err = "cannot have storage specifier on struct member"
+                        raise CompilerError(err, decl_info.range)
 
-        raise NotImplementedError
+                    if decl_info.ctype.is_function():
+                        err = "cannot have function type as struct member"
+                        raise CompilerError(err, decl_info.range)
+
+                    # TODO: 6.7.2.1.18 (allow flexible array members)
+                    if not decl_info.ctype.is_complete():
+                        err = "cannot have incomplete type as struct member"
+                        raise CompilerError(err, decl_info.range)
+
+                    # TODO: 6.7.2.1.13 (anonymous structs)
+                    attr = decl_info.identifier.content
+
+                    if attr in member_set:
+                        err = "duplicate member '{}'".format(attr)
+                        raise CompilerError(err, decl_info.identifier.r)
+
+                    members.append((attr, decl_info.ctype))
+                    member_set.add(attr)
+
+        ctype.set_members(members)
+        return ctype

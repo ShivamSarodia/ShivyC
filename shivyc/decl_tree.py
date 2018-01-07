@@ -110,7 +110,7 @@ class Struct(Node):
     """Represents a struct.
 
     tag (Token) - Token containing the tag of this struct
-    members (List(Node)) - List of ctypes of struct members
+    members (List(Node)) - List of decl_tree nodes of struct members, or None
     r (Range) - range that the struct specifier covers
     """
 

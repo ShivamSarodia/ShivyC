@@ -1,5 +1,6 @@
 """Objects used for the AST -> IL phase of the compiler."""
 
+from collections import namedtuple
 from copy import copy
 from shivyc.errors import CompilerError
 
@@ -144,21 +145,27 @@ class SymbolTable:
     checking.
 
     """
+    Tables = namedtuple('Tables', ['vars', 'structs'])
 
     def __init__(self):
-        """Initialize symbol table."""
-        self.tables = [dict()]
+        """Initialize symbol table.
+
+        `tables` is a list of namedtuples of dictionaries. Each dictionary
+        in the namedtuple is the symbol table for a different namespace.
+        """
+        self.tables = []
+        self.new_scope()
 
     def new_scope(self):
         """Initialize a new scope for the symbol table."""
-        self.tables.append(dict())
+        self.tables.append(self.Tables(dict(), dict()))
 
     def end_scope(self):
         """End the most recently started scope."""
         self.tables.pop()
 
     def lookup(self, name):
-        """Look up the identifier with the given name.
+        """Look up the variable identifier with the given name.
 
         This function returns the ILValue object for the identifier, or None if
         not found.
@@ -166,7 +173,7 @@ class SymbolTable:
         name (str) - Identifier name to search for.
 
         """
-        for table in self.tables[::-1]:
+        for table, _ in self.tables[::-1]:
             if name in table: return table[name]
 
     def lookup_tok(self, identifier):
@@ -194,13 +201,34 @@ class SymbolTable:
         return (ILValue) - the ILValue added
         """
         name = identifier.content
-        if name not in self.tables[-1]:
+        if name not in self.tables[-1].vars:
             il_value = ILValue(ctype)
-            self.tables[-1][name] = il_value
+            self.tables[-1].vars[name] = il_value
             return il_value
         else:
             descrip = "redefinition of '{}'"
             raise CompilerError(descrip.format(name), identifier.r)
+
+    def lookup_struct(self, tag):
+        """Look up struct by tag name and return its ctype object.
+
+        If not found, returns None.
+        """
+        for _, structs in self.tables[::-1]:
+            if tag in structs: return structs[tag]
+
+    def add_struct(self, tag, ctype):
+        """Add struct to the symbol table and return it.
+
+        If struct already exists in the topmost scope, this function does
+        not modify the symbol table and just returns the existing struct
+        ctype. Otherwise, this function adds this struct to the topmost
+        scope and returns it.
+        """
+        if tag not in self.tables[-1].structs:
+            self.tables[-1].structs[tag] = ctype
+
+        return self.tables[-1].structs[tag]
 
 
 class Context:
