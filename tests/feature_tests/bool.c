@@ -23,4 +23,17 @@ int main() {
   if(!p != 0) return 16;
   if(!p) return 16;
   if(!0 != 1) return 17;
+
+  int n = 0;
+  0 && (n = 1);
+  if(n == 1) return 18;
+
+  (n = 1) && 0;
+  if(n != 1) return 19;
+
+  1 || (n = 3);
+  if(n == 3) return 20;
+
+  (n = 3) || 1;
+  if(n != 3) return 21;
 }
