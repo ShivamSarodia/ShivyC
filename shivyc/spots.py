@@ -47,6 +47,16 @@ class Spot:
         """
         return 0
 
+    def shift(self, chunk, count=None):
+        """Return a new spot shifted relative to this one.
+
+        For non-memory spots, this function returns itself and throws an
+        error if given chunk != 0 or count != None.
+        """
+        if chunk or count:
+            raise NotImplementedError("cannot shift this spot type")
+        return self
+
     def __repr__(self):  # pragma: no cover
         return self.detail
 
@@ -169,7 +179,19 @@ class MemSpot(Spot):
         be offset. If this value is provided, then `chunk` must be in {1, 2,
         4, 8}.
         """
-        return MemSpot(self.base, self.offset, chunk, count)
+        if count and self.count:
+            raise NotImplementedError("cannot shift by count")
+
+        if count:
+            new_offset = self.offset + self.chunk
+            new_chunk = chunk
+            new_count = count
+        else:  # no count given
+            new_offset = self.offset + chunk
+            new_chunk = self.chunk
+            new_count = self.count
+
+        return MemSpot(self.base, new_offset, new_chunk, new_count)
 
 
 class LiteralSpot(Spot):

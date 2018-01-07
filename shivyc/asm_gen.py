@@ -258,15 +258,39 @@ class ASMGen:
 
         # If any variable may have its address referenced, assign it a
         # permanent memory spot if it doesn't yet have one.
-        referenced = []
+        move_to_mem = []
         for command in self.il_code:
             refs = command.references().values()
             for line in refs:
                 for v in line:
                     if v not in refs:
-                        referenced.append(v)
+                        move_to_mem.append(v)
 
-        for v in referenced:
+        # In addition, move all IL values of strange size to memory because
+        # they won't fit in a register.
+        for v in free_values:
+            if v.ctype.size not in {1, 2, 4, 8} and v not in move_to_mem:
+                move_to_mem.append(v)
+
+        # TODO: All non-free IL values are automatically assigned distinct
+        # memory spots. However, this is very inoptimal for structs.
+        # Consider the following C code, where S is already declared:
+        #
+        #   struct S array[10];
+        #   s = array[1];
+        #
+        # This code compiles to the following IL:
+        #
+        #   READAT(array, 1) -> X
+        #   SET(X) -> s
+        #
+        # However, X is an unnecessary copy of `s` in memory. Ideally,
+        # the register allocator will recognize that X is just a temporary
+        # and assign X to the same memory location as s to avoid additional
+        # copy operations and memory usage. This also requires that the
+        # relevant IL commands check whether the two arguments are in the
+        # same spot before trying to do a copy.
+        for v in move_to_mem:
             if v in free_values:
                 self.offset += v.ctype.size
                 global_spotmap[v] = MemSpot(spots.RBP, -self.offset)
