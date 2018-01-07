@@ -265,7 +265,7 @@ class SetRel(_RelCommand):
 
     count - If provided, a 64-bit integral ILValue representing the
     number of chunks of offset. If this value is provided, then `chunk`
-    must be in {1, 2, 4, 8, 16}.
+    must be in {1, 2, 4, 8}.
 
     In summary, if `count` is provided, then the address of the object
     represented by this LValue is:

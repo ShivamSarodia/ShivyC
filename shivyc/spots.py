@@ -167,7 +167,7 @@ class MemSpot(Spot):
         chunk - A Python integer representing the size of each chunk of offset
         count - If provided, a register spot storing the number of chunks to
         be offset. If this value is provided, then `chunk` must be in {1, 2,
-        4, 8, 16}.
+        4, 8}.
         """
         return MemSpot(self.base, self.offset, chunk, count)
 

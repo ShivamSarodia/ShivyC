@@ -147,11 +147,11 @@ class RelativeLValue(LValue):
         self.fixed_chunk = None
 
     def _fix_chunk_count(self, il_code):
-        """Convert chunk and count so that chunk is in {1, 2, 4, 8, 16}.
+        """Convert chunk and count so that chunk is in {1, 2, 4, 8}.
 
-        The Rel commands requre that chunk be in {1, 2, 4, 8, 16}. If the
+        The Rel commands requre that chunk be in {1, 2, 4, 8}. If the
         given chunk value is not in this set, we multiply count and divide
-        chunk by an appropriate value so that chunk is in {1, 2, 4, 8, 16},
+        chunk by an appropriate value so that chunk is in {1, 2, 4, 8},
         and then return the new value of chunk and the new value of count.
 
         In addition, this command moves `count` to a 64-bit value.
@@ -169,7 +169,7 @@ class RelativeLValue(LValue):
         # `sizes`, we don't need to emit a SET command.
         resized_count = set_type(self.count, ctypes.longint, il_code)
 
-        sizes = [16, 8, 4, 2, 1]
+        sizes = [8, 4, 2, 1]
         if self.chunk in sizes:
             self.fixed_chunk, self.fixed_count = self.chunk, resized_count
             return
