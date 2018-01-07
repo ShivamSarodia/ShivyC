@@ -448,11 +448,11 @@ class _Equality(_ArithBinOp):
         elif right.ctype.is_pointer() and left.null_ptr_const:
             left = set_type(left, right.ctype, il_code)
 
-        # If both operands are not pointer types, warn!
+        # If both operands are not pointer types, quit now
         if not left.ctype.is_pointer() or not right.ctype.is_pointer():
             with report_err():
                 err = "comparison between incomparable types"
-                raise CompilerError(err, self.op.r, True)
+                raise CompilerError(err, self.op.r)
 
         # If one side is pointer to void, cast the other to same.
         elif left.ctype.arg.is_void():

@@ -14,7 +14,7 @@ int main() {
 
   if(0 == &a) return 6;
 
-  // warning: comparison between incomparable types
+  // error: comparison between incomparable types
   if(&a == 1) return 7;
 
   // warning: comparison between distinct pointer types
