@@ -14,3 +14,5 @@ tests/**/*.o
 shivyc.egg-info/*
 dist/*
 build/*
+gcc_output
+shivyc_output

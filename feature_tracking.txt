@@ -16,6 +16,13 @@ Current target: fully compile nmake.c from CS323 pset
 
 IMMEDIATE TIMELINE
 ------------------
+- const
+- typedef
+- initializers (global, array/struct, string)
+- #define
+- functions (definition, struct as argument/return value, argc/argv)
+- sizeof
+- hex sequences in strings
 
 --------------------------------------------------------------------------------
 
