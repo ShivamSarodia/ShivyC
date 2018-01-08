@@ -22,24 +22,6 @@ IMMEDIATE TIMELINE
 MAIN PROJECTS
 -------------
 
-- Implement structs.
-
-- Improved treatment of command line flags.
-  - Allow certain features to be enabled and disabled (e.g. allowing void* math)
-  - Create global flags module which all files can access
-
-- Update error mechanisms
-  - Subclass CompilerError for every error type
-  - Get rid of error collector. tree/*.py functions should return list of
-  warnings and errors generated, or add to Context object?
-  - These changes allow the parent node in the AST to capture errors and emit
-    more relevant errors.
-
-- Clarify distinction between ILCommand and TreeNode responsibilities
-  - Split up Set IL command
-  - Switch other commands to signed/unsigned agnostic
-  - I think ILCommand should be entirely type agnostic?
-
 --------------------------------------------------------------------------------
 
 FEATURES
@@ -62,7 +44,6 @@ TYPES
     - Proper ranking of integers, distinct from just size
   - Implement `double` and `float`
 * - Implement typedef
-* - Implement struct
 
 PREPROCESSOR
   - Fix small bugs in current implementation
@@ -105,5 +86,6 @@ GENERAL
     - Within parser
     - Between stages
       (i.e. if lexer/parser are confident in their guess, try IL generation too)
+  - Improved treatment of command line flags
 
 --------------------------------------------------------------------------------

@@ -201,3 +201,8 @@ class IntegrationTests(TestUtils):
         """Test the pi.c program."""
 
         self.io_test("general_tests/pi", "pi.c", None)
+
+    def test_trie(self):
+        """Test the trie.c program."""
+
+        self.io_test("general_tests/trie", "trie.c", None)
