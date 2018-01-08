@@ -71,4 +71,26 @@ int main() {
   struct D {
     int a;
   };
+
+  struct Struct {
+    int a;
+    long b;
+    int* c;
+  } s, *s_p;
+
+  // error: request for member in something not a structure or union
+  10.a;
+
+  // error: request for member in something not a structure or union
+  s_p.a;
+
+  int *int_ptr;
+  // error: request for member in something not a structure or union
+  int_ptr->a;
+
+  // error: first argument of '->' must have pointer type
+  s->a;
+
+  // error: structure or union has no member 'd'
+  s.d;
 }

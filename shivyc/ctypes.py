@@ -49,6 +49,10 @@ class CType:
         """Check whether this is an array type."""
         return False
 
+    def is_struct_union(self):
+        """Checke whether this has struct or union type."""
+        return False
+
     def is_scalar(self):
         """Check whether this has scalar type."""
         return self.is_arith() or self.is_pointer()
@@ -220,6 +224,7 @@ class StructCType(CType):
     """Represents a struct ctype.
 
     tag - Name of the struct as a string, or None if it's anonymous
+
     members - List of members of the struct. Each element of the list should be
     a tuple (str, ctype) where `str` is the string of the identifier used to
     access that member and ctype is the ctype of that member.
@@ -229,6 +234,7 @@ class StructCType(CType):
     def __init__(self, tag, members=None):
         self.tag = tag
         self.members = members
+        self.offsets = {}
         super().__init__(1)
 
     def compatible(self, other):
@@ -247,10 +253,31 @@ class StructCType(CType):
         """Check whether this is an object type."""
         return True
 
+    def is_struct_union(self):
+        """Check whether this has struct or union type."""
+        return True
+
+    def get_offset(self, member):
+        """Get the offset and type of a given member.
+
+        If the member does not exist, this function returns None tuple.
+        """
+        return self.offsets.get(member, (None, None))
+
     def set_members(self, members):
-        """Add the given members to this struct and set it to complete."""
+        """Add the given members to this struct.
+
+        The members list is given in the format as described in the class
+        description.
+        """
         self.members = members
-        self.size = sum(m[1].size for m in members)
+
+        cur_offset = 0
+        for member, ctype in members:
+            self.offsets[member] = cur_offset, ctype
+            cur_offset += ctype.size
+
+        self.size = cur_offset
 
 
 void = VoidCType()

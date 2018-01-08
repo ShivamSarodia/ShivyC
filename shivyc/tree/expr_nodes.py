@@ -920,6 +920,75 @@ class ArraySubsc(_LExprNode):
         return RelativeLValue(el, array, el.size, arith)
 
 
+class _ObjLookup(_LExprNode):
+    """Struct/union object lookup (. or ->)"""
+
+    def __init__(self, head, member, tok):
+        """Initialize node."""
+        super().__init__()
+        self.head = head
+        self.member = member
+        self.tok = tok
+
+    def get_offset_info(self, struct_ctype):
+        """Given a struct ctype, return the member offset and ctype.
+
+        If the given ctype is None, emits the error for requesting a member
+        in something not a structure or union.
+        """
+        if not struct_ctype or not struct_ctype.is_struct_union():
+            err = "request for member in something not a structure or union"
+            raise CompilerError(err, self.r)
+
+        offset, ctype = struct_ctype.get_offset(self.member.content)
+        if offset is None:
+            err = "structure or union has no member '{}'".format(
+                self.member.content)
+            raise CompilerError(err, self.r)
+
+        return offset, ctype
+
+
+class ObjMember(_ObjLookup):
+    """Struct/union object member (. operator)"""
+
+    def _lvalue(self, il_code, symbol_table, c):
+        head_lv = self.head.lvalue(il_code, symbol_table, c)
+        struct_ctype = head_lv.ctype() if head_lv else None
+        offset, ctype = self.get_offset_info(struct_ctype)
+
+        if isinstance(head_lv, DirectLValue):
+            head_val = self.head.make_il(il_code, symbol_table, c)
+            return RelativeLValue(ctype, head_val, offset)
+        else:
+            struct_addr = head_lv.addr(il_code)
+
+            shift = ILValue(ctypes.longint)
+            il_code.register_literal_var(shift, str(offset))
+
+            out = ILValue(PointerCType(ctype))
+            il_code.add(math_cmds.Add(out, struct_addr, shift))
+            return IndirectLValue(out)
+
+
+class ObjPtrMember(_ObjLookup):
+    """Struct/union pointer object member (-> operator)"""
+
+    def _lvalue(self, il_code, symbol_table, c):
+        struct_addr = self.head.make_il(il_code, symbol_table, c)
+        if not struct_addr.ctype.is_pointer():
+            err = "first argument of '->' must have pointer type"
+            raise CompilerError(err, self.r)
+
+        offset, ctype = self.get_offset_info(struct_addr.ctype.arg)
+        shift = ILValue(ctypes.longint)
+        il_code.register_literal_var(shift, str(offset))
+
+        out = ILValue(PointerCType(ctype))
+        il_code.add(math_cmds.Add(out, struct_addr, shift))
+        return IndirectLValue(out)
+
+
 class FuncCall(_RExprNode):
     """Function call.
 

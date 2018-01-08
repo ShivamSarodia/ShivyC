@@ -146,6 +146,19 @@ def parse_postfix(index):
             match_token(index, token_kinds.close_sq_brack, ParserError.GOT)
             index += 1
 
+        elif (token_is(index, token_kinds.dot) or
+              token_is(index, token_kinds.arrow)):
+            index += 1
+            match_token(index, token_kinds.identifier, ParserError.AFTER)
+            member = p.tokens[index]
+
+            if tok.kind == token_kinds.dot:
+                cur = expr_nodes.ObjMember(cur, member, tok)
+            else:
+                cur = expr_nodes.ObjPtrMember(cur, member, tok)
+
+            index += 1
+
         elif token_is(index, token_kinds.open_paren):
             args = []
             index += 1

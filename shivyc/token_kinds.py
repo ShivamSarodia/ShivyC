@@ -65,6 +65,8 @@ close_sq_brack = TokenKind("]", symbol_kinds)
 
 comma = TokenKind(",", symbol_kinds)
 semicolon = TokenKind(";", symbol_kinds)
+dot = TokenKind(".", symbol_kinds)
+arrow = TokenKind("->", symbol_kinds)
 
 identifier = TokenKind()
 number = TokenKind()
