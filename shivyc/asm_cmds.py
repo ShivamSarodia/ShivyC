@@ -105,6 +105,30 @@ class Je(_JumpCommand): name = "je"  # noqa: D101
 class Jne(_JumpCommand): name = "jne"  # noqa: D101
 
 
+class Jg(_JumpCommand): name = "jg"  # noqa: D101
+
+
+class Jge(_JumpCommand): name = "jge"  # noqa: D101
+
+
+class Jl(_JumpCommand): name = "jl"  # noqa: D101
+
+
+class Jle(_JumpCommand): name = "jle"  # noqa: D101
+
+
+class Ja(_JumpCommand): name = "ja"  # noqa: D101
+
+
+class Jae(_JumpCommand): name = "jae"  # noqa: D101
+
+
+class Jb(_JumpCommand): name = "jb"  # noqa: D101
+
+
+class Jbe(_JumpCommand): name = "jbe"  # noqa: D101
+
+
 class Jmp(_JumpCommand): name = "jmp"  # noqa: D101
 
 

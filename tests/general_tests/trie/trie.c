@@ -23,7 +23,7 @@ int main() {
 
   // create the root node
   struct node* root = malloc(sizeof_node);
-  for(int i = 0; i != 27; i++) root->next[i] = 0;
+  for(int i = 0; i < 27; i++) root->next[i] = 0;
   root->complete = true;
 
   ////////////////////////////
@@ -49,7 +49,7 @@ int main() {
       if(!(*n)) {
         *n = malloc(sizeof_node);
         (*n)->complete = false;
-        for(int i = 0; i != 27; i++) (*n)->next[i] = 0;
+        for(int i = 0; i < 27; i++) (*n)->next[i] = 0;
       }
     }
   }
@@ -79,11 +79,11 @@ int main() {
   words[8] = "notawordeither";
   words[9] = "notawordeithereither";
 
-  for(int word_num = 0; word_num != NUM_WORDS; word_num++) {
+  for(int word_num = 0; word_num < NUM_WORDS; word_num++) {
     char* word = words[word_num];
 
     struct node* n = root;
-    for(int i = 0, len = strlen(word); i != len; i++) {
+    for(int i = 0, len = strlen(word); i < len; i++) {
       if(word[i] == '\'') n = n->next[26];
       else n = n->next[tolower(word[i]) - 'a'];
 

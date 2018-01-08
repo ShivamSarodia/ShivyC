@@ -466,7 +466,7 @@ class _Equality(_ArithBinOp):
         elif not left.ctype.compatible(right.ctype):
             with report_err():
                 err = "comparison between distinct pointer types"
-                raise CompilerError(err, self.op.r, True)
+                raise CompilerError(err, self.op.r)
 
         # Now, we can do comparison
         out = ILValue(ctypes.integer)
@@ -484,6 +484,52 @@ class Inequality(_Equality):
     """Expression that checks inequality of two expressions."""
 
     eq_il_cmd = compare_cmds.NotEqualCmp
+
+
+class _Relational(_ArithBinOp):
+    """Base class for <, <=, >, and >= nodes."""
+
+    comp_cmd = None
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        super().__init__(left, right, op)
+
+    def _arith(self, left, right, il_code):
+        """Compare arithmetic expressions."""
+        out = ILValue(ctypes.integer)
+        il_code.add(self.comp_cmd(out, left, right))
+        return out
+
+    def _nonarith(self, left, right, il_code):
+        """Compare non-arithmetic expressions."""
+
+        if not left.ctype.is_pointer() or not right.ctype.is_pointer():
+            err = "comparison between incomparable types"
+            raise CompilerError(err, self.op.r)
+        elif not left.ctype.compatible(right.ctype):
+            err = "comparison between distinct pointer types"
+            raise CompilerError(err, self.op.r)
+
+        out = ILValue(ctypes.integer)
+        il_code.add(self.comp_cmd(out, left, right))
+        return out
+
+
+class LessThan(_Relational):
+    comp_cmd = compare_cmds.LessCmp
+
+
+class GreaterThan(_Relational):
+    comp_cmd = compare_cmds.GreaterCmp
+
+
+class LessThanOrEq(_Relational):
+    comp_cmd = compare_cmds.LessOrEqCmp
+
+
+class GreaterThanOrEq(_Relational):
+    comp_cmd = compare_cmds.GreaterOrEqCmp
 
 
 class _BoolAndOr(_RExprNode):

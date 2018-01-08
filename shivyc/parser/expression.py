@@ -77,9 +77,20 @@ def parse_equality(index):
     """Parse equality expression."""
     # TODO: Implement relational and shift expressions here.
     return parse_series(
-        index, parse_additive,
+        index, parse_relational,
         {token_kinds.twoequals: expr_nodes.Equality,
          token_kinds.notequal: expr_nodes.Inequality})
+
+
+@add_range
+def parse_relational(index):
+    """Parse relational expression."""
+    return parse_series(
+        index, parse_additive,
+        {token_kinds.lt: expr_nodes.LessThan,
+         token_kinds.gt: expr_nodes.GreaterThan,
+         token_kinds.ltoe: expr_nodes.LessThanOrEq,
+         token_kinds.gtoe: expr_nodes.GreaterThanOrEq})
 
 
 @add_range

@@ -63,7 +63,6 @@ FUNCTIONS
 * - Support argc and argv
 
 EXPRESSION
-* - Comparison (>, etc.)
   - Bitwise (&, |, etc.)
   - Ternary
 * - sizeof

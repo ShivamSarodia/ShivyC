@@ -269,7 +269,7 @@ class ASMGen:
         # In addition, move all IL values of strange size to memory because
         # they won't fit in a register.
         for v in free_values:
-            if v.ctype.size not in {1, 2, 4, 8} and v not in move_to_mem:
+            if v.ctype.size not in {1, 2, 4, 8}:
                 move_to_mem.append(v)
 
         # TODO: All non-free IL values are automatically assigned distinct

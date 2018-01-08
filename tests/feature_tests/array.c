@@ -1,14 +1,14 @@
 int main() {
-  int array[5];
+  int array[5]; void* p;
   if(&array != &array) return 1;
   if(array != array) return 2;
   if(&array[0] != &array[0]) return 13;
 
-  // warning: comparison between distinct pointer types
-  if(&array[0] != &array) return 13;
+  // The funky (p=____) allows comparisons between distinct pointer
+  // types. It's basically a ratchet version of a cast.
+  if(&array[0] != (p=array)) return 13;
   if(&array[3] != &array[0] + 3) return 14;
-  // warning: comparison between distinct pointer types
-  if(&array + 1 != &array[0] + 5) return 15;
+  if(&array + 1 != (p=&array[0] + 5)) return 15;
 
   int array2[5];
   if(&array2 != &array2) return 3;
@@ -18,14 +18,11 @@ int main() {
 
   int array3[6];
   if(array == array3) return 7;
-  // warning: comparison between distinct pointer types
-  if(&array == &array3) return 8;
+  if(&array == (p=&array3)) return 8;
 
   unsigned int array4[5];
-  // warning: comparison between distinct pointer types
-  if(&array == &array4) return 9;
-  // warning: comparison between distinct pointer types
-  if(array == array4) return 10;
+  if(&array == (p=&array4)) return 9;
+  if(array == (p=array4)) return 10;
 
   *array = 15;
   if(*array != 15) return 11;

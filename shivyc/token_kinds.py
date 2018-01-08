@@ -50,6 +50,8 @@ bool_or = TokenKind("||", symbol_kinds)
 bool_not = TokenKind("!", symbol_kinds)
 lt = TokenKind("<", symbol_kinds)
 gt = TokenKind(">", symbol_kinds)
+ltoe = TokenKind("<=", symbol_kinds)
+gtoe = TokenKind(">=", symbol_kinds)
 amp = TokenKind("&", symbol_kinds)
 pound = TokenKind("#", symbol_kinds)
 

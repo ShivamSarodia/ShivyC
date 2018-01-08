@@ -5,14 +5,16 @@ from shivyc.il_cmds.base import ILCommand
 from shivyc.spots import MemSpot, LiteralSpot
 
 
-class _GeneralEqualCmp(ILCommand):
-    """_GeneralEqualCmp - base class for EqualCmp and NotEqualCmp.
+class _GeneralCmp(ILCommand):
+    """_GeneralCmp - base class for the comparison commands.
 
     IL value output must have int type. arg1, arg2 must have types that can
     be compared for equality bit-by-bit. No type conversion or promotion is
     done here.
 
     """
+    signed_cmp_cmd = None
+    unsigned_cmp_cmd = None
 
     def __init__(self, output, arg1, arg2): # noqa D102
         self.output = output
@@ -70,12 +72,6 @@ class _GeneralEqualCmp(ILCommand):
         else:
             return arg1_spot, arg2_spot
 
-    # Value to output when the two operands are equal
-    equal_value = None
-
-    # Value to output when the two operands are not equal
-    not_equal_value = None
-
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         regs = []
 
@@ -84,7 +80,7 @@ class _GeneralEqualCmp(ILCommand):
         regs.append(result)
 
         out_size = self.output.ctype.size
-        eq_val_spot = LiteralSpot(self.equal_value)
+        eq_val_spot = LiteralSpot(1)
         asm_code.add(asm_cmds.Mov(result, eq_val_spot, out_size))
 
         arg1_spot, arg2_spot = self._fix_both_literal_or_mem(
@@ -93,37 +89,62 @@ class _GeneralEqualCmp(ILCommand):
             arg1_spot, arg2_spot, regs, get_reg, asm_code)
 
         arg_size = self.arg1.ctype.size
-        neq_val_spot = LiteralSpot(self.not_equal_value)
+        neq_val_spot = LiteralSpot(0)
         label = asm_code.get_label()
 
         asm_code.add(asm_cmds.Cmp(arg1_spot, arg2_spot, arg_size))
-        asm_code.add(asm_cmds.Je(label))
+        asm_code.add(self.cmp_command()(label))
         asm_code.add(asm_cmds.Mov(result, neq_val_spot, out_size))
         asm_code.add(asm_cmds.Label(label))
 
         if result != spotmap[self.output]:
             asm_code.add(asm_cmds.Mov(spotmap[self.output], result, out_size))
 
+    def cmp_command(self):
+        ctype = self.arg1.ctype
+        if ctype.is_pointer() or (ctype.is_integral() and not ctype.signed):
+            return self.unsigned_cmp_cmd
+        else:
+            return self.signed_cmp_cmd
 
-class NotEqualCmp(_GeneralEqualCmp):
+
+class NotEqualCmp(_GeneralCmp):
     """NotEqualCmp - checks whether arg1 and arg2 are not equal.
 
     IL value output must have int type. arg1, arg2 must all have the same
     type. No type conversion or promotion is done here.
 
     """
+    signed_cmp_cmd = asm_cmds.Jne
+    unsigned_cmp_cmd = asm_cmds.Jne
 
-    equal_value = 0
-    not_equal_value = 1
 
-
-class EqualCmp(_GeneralEqualCmp):
+class EqualCmp(_GeneralCmp):
     """EqualCmp - checks whether arg1 and arg2 are equal.
 
     IL value output must have int type. arg1, arg2 must all have the same
     type. No type conversion or promotion is done here.
 
     """
+    signed_cmp_cmd = asm_cmds.Je
+    unsigned_cmp_cmd = asm_cmds.Je
 
-    equal_value = 1
-    not_equal_value = 0
+
+class LessCmp(_GeneralCmp):
+    signed_cmp_cmd = asm_cmds.Jl
+    unsigned_cmp_cmd = asm_cmds.Jb
+
+
+class GreaterCmp(_GeneralCmp):
+    signed_cmp_cmd = asm_cmds.Jg
+    unsigned_cmp_cmd = asm_cmds.Ja
+
+
+class LessOrEqCmp(_GeneralCmp):
+    signed_cmp_cmd = asm_cmds.Jle
+    unsigned_cmp_cmd = asm_cmds.Jbe
+
+
+class GreaterOrEqCmp(_GeneralCmp):
+    signed_cmp_cmd = asm_cmds.Jge
+    unsigned_cmp_cmd = asm_cmds.Jae
