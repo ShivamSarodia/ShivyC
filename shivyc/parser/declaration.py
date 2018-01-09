@@ -1,9 +1,9 @@
 """Parser logic that parses declaration nodes."""
 
 import shivyc.ctypes as ctypes
-import shivyc.decl_tree as decl_tree
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
+import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
 from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
@@ -23,10 +23,10 @@ def parse_declaration(index):
 
 
 def parse_decls_inits(index, parse_inits=True):
-    """Parse declarations and initializers into a decl_tree.Root node.
+    """Parse declarations and initializers into a decl_nodes.Root node.
 
-    The decl_tree node is used by the caller to create a
-    tree.nodes.Declaration node, and the decl_tree node is traversed during
+    The decl_nodes node is used by the caller to create a
+    tree.nodes.Declaration node, and the decl_nodes node is traversed during
     the IL generation step to convert it into an appropriate ctype.
 
     If `parse_inits` is false, do not permit initializers. This is useful
@@ -36,7 +36,7 @@ def parse_decls_inits(index, parse_inits=True):
 
     # If declaration specifiers are followed directly by semicolon
     if token_is(index, token_kinds.semicolon):
-        return decl_tree.Root(specs, [], [], []), index + 1
+        return decl_nodes.Root(specs, [], [], []), index + 1
 
     decls = []
     ranges = []
@@ -64,7 +64,7 @@ def parse_decls_inits(index, parse_inits=True):
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
 
-    node = decl_tree.Root(specs, decls, inits, ranges)
+    node = decl_nodes.Root(specs, decls, inits, ranges)
     return node, index
 
 
@@ -192,13 +192,13 @@ def parse_declarator(start, end):
     generated tree has the identifier None.
 
     Expects the declarator to start at start and end at end-1 inclusive.
-    Returns a decl_tree.Node.
+    Returns a decl_nodes.Node.
     """
     if start == end:
-        return decl_tree.Identifier(None)
+        return decl_nodes.Identifier(None)
     elif (start + 1 == end and
            p.tokens[start].kind == token_kinds.identifier):
-        return decl_tree.Identifier(p.tokens[start])
+        return decl_nodes.Identifier(p.tokens[start])
 
     # First and last elements make a parenthesis pair
     elif (p.tokens[start].kind == token_kinds.open_paren and
@@ -206,14 +206,14 @@ def parse_declarator(start, end):
         return parse_declarator(start + 1, end - 1)
 
     elif p.tokens[start].kind == token_kinds.star:
-        return decl_tree.Pointer(parse_declarator(start + 1, end))
+        return decl_nodes.Pointer(parse_declarator(start + 1, end))
 
     # Last element indicates a function type
     elif p.tokens[end - 1].kind == token_kinds.close_paren:
         open_paren = find_pair_backward(end - 1)
         params, index = parse_parameter_list(open_paren + 1)
         if index == end - 1:
-            return decl_tree.Function(
+            return decl_nodes.Function(
                 params, parse_declarator(start, open_paren))
 
     # Last element indicates an array type
@@ -221,8 +221,8 @@ def parse_declarator(start, end):
         first = p.tokens[end - 3].kind == token_kinds.open_sq_brack
         number = p.tokens[end - 2].kind == token_kinds.number
         if first and number:
-            return decl_tree.Array(int(p.tokens[end - 2].content),
-                                   parse_declarator(start, end - 3))
+            return decl_nodes.Array(int(p.tokens[end - 2].content),
+                                    parse_declarator(start, end - 3))
 
     raise_error("faulty declaration syntax", start, ParserError.AT)
 
@@ -230,13 +230,13 @@ def parse_declarator(start, end):
 def parse_parameter_list(index):
     """Parse a function parameter list.
 
-    Returns a list of decl_tree arguments and the index right after the
+    Returns a list of decl_nodes arguments and the index right after the
     last argument token. This index should be the index of a closing
     parenthesis, but that check is left to the caller.
 
     index - index right past the opening parenthesis
     """
-    # List of decl_tree arguments
+    # List of decl_nodes arguments
     params = []
 
     # No arguments
@@ -250,7 +250,7 @@ def parse_parameter_list(index):
         end = find_decl_end(index)
         range = p.tokens[index].r + p.tokens[end - 1].r
         decl = parse_declarator(index, end)
-        params.append(decl_tree.Root(specs, [decl], None, [range]))
+        params.append(decl_nodes.Root(specs, [decl], None, [range]))
 
         index = end
 
@@ -264,7 +264,7 @@ def parse_parameter_list(index):
 
 
 def parse_struct_spec(index):
-    """Parse a struct specifier as a decl_tree.Struct node.
+    """Parse a struct specifier as a decl_nodes.Struct node.
 
     index - index right past the `struct` keyword
     """
@@ -284,7 +284,7 @@ def parse_struct_spec(index):
         raise_error(err, index, ParserError.AFTER)
 
     r = start_r + p.tokens[index - 1].r
-    return decl_tree.Struct(name, members, r), index
+    return decl_nodes.Struct(name, members, r), index
 
 
 def parse_struct_members(index):

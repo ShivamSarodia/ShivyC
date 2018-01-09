@@ -1,10 +1,9 @@
 """Nodes in the AST which represent statements or declarations."""
 
 import shivyc.ctypes as ctypes
-import shivyc.decl_tree as decl_tree
 import shivyc.il_cmds.control as control_cmds
 import shivyc.token_kinds as token_kinds
-
+import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
@@ -317,7 +316,7 @@ class DeclInfo:
 class Declaration(Node):
     """Line of a general variable declaration(s).
 
-    node (decl_tree.Root) - a declaration tree for this line
+    node (decl_nodes.Root) - a declaration tree for this line
     inits (List(Expression Node)) - list of initializer expressions, or None
     if a variable is not initialized
     """
@@ -414,17 +413,17 @@ class Declaration(Node):
 
         Return a `ctype, identifier token, storage class` triple.
 
-        decl - Node of decl_tree to parse. See decl_tree.py for explanation
-        about decl_trees.
+        decl - Node of decl_nodes to parse. See decl_nodes.py for explanation
+        about decl_nodess.
         prev_ctype - The ctype formed from all parts of the tree above the
         current one.
         storage - The storage class of this declaration.
         """
-        if isinstance(decl, decl_tree.Pointer):
+        if isinstance(decl, decl_nodes.Pointer):
             new_ctype = PointerCType(prev_ctype)
-        elif isinstance(decl, decl_tree.Array):
+        elif isinstance(decl, decl_nodes.Array):
             new_ctype = ArrayCType(prev_ctype, decl.n)
-        elif isinstance(decl, decl_tree.Function):
+        elif isinstance(decl, decl_nodes.Function):
             # Create a new scope because if we create a new struct type inside
             # the function parameters, it should be local to those parameters.
 
@@ -436,7 +435,7 @@ class Declaration(Node):
             ]
             symbol_table.end_scope()
             new_ctype = FunctionCType(args, prev_ctype)
-        elif isinstance(decl, decl_tree.Identifier):
+        elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier
 
         return self.make_ctype(decl.child, new_ctype, symbol_table)
@@ -539,9 +538,9 @@ class Declaration(Node):
         return storage
 
     def parse_struct_spec(self, node, redec, symbol_table):
-        """Parse a struct ctype from the given decl_tree.Struct node.
+        """Parse a struct ctype from the given decl_nodes.Struct node.
 
-        node (decl_tree.Struct) - the Struct node to parse
+        node (decl_nodes.Struct) - the Struct node to parse
         redec (bool) - Whether this declaration is alone like so:
 
            struct S;

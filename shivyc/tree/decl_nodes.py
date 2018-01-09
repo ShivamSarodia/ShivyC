@@ -1,5 +1,10 @@
 """Classes for the nodes that form the declaration and type name tree.
 
+This tree/node system is pretty distinct from the tree/node system used for
+the rest of the AST because parsing declarations is very different from
+parsing other parts of the language due to the "backwards"-ness of C
+declaration syntax, as described below:
+
 The declaration trees produces by the parser feel "backwards". For example,
 the following:
 
@@ -23,16 +28,17 @@ array of 3 integers. The DeclarationNode class in tree.py performs the task
 of reversing these trees when forming the ctype.
 
 """
+
 import shivyc.token_kinds as token_kinds
 
 
-class Node:
-    """Base class for all decl_tree nodes."""
+class DeclNode:
+    """Base class for all decl_nodes nodes."""
 
     pass
 
 
-class Root(Node):
+class Root(DeclNode):
     """Represents a list of declaration specifiers and declarators.
 
     specs (List(Tokens/Nodes)) - list of the declaration specifiers, as tokens
@@ -58,7 +64,7 @@ class Root(Node):
         super().__init__()
 
 
-class Pointer(Node):
+class Pointer(DeclNode):
     """Represents a pointer to a type."""
 
     def __init__(self, child):
@@ -67,7 +73,7 @@ class Pointer(Node):
         super().__init__()
 
 
-class Array(Node):
+class Array(DeclNode):
     """Represents an array of a type.
 
     n (int) - size of the array
@@ -81,7 +87,7 @@ class Array(Node):
         super().__init__()
 
 
-class Function(Node):
+class Function(DeclNode):
     """Represents an function with given arguments and returning given type.
 
     args (List(Node)) - arguments of the functions
@@ -94,7 +100,7 @@ class Function(Node):
         super().__init__()
 
 
-class Identifier(Node):
+class Identifier(DeclNode):
     """Represents an identifier.
 
     If this is a type name and has no identifier, `identifier` is None.
@@ -106,11 +112,11 @@ class Identifier(Node):
         super().__init__()
 
 
-class Struct(Node):
+class Struct(DeclNode):
     """Represents a struct.
 
     tag (Token) - Token containing the tag of this struct
-    members (List(Node)) - List of decl_tree nodes of struct members, or None
+    members (List(Node)) - List of decl_nodes nodes of struct members, or None
     r (Range) - range that the struct specifier covers
     """
 
