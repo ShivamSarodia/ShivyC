@@ -28,10 +28,10 @@ int main() {
   strcpy(str2, "hello");
   if(strcmp(str1, str2)) return 4;
 
-  // warning: conversion from incompatible pointer type
-  int* p = str1;
-  // warning: conversion from incompatible pointer type
-  if(strcmp(p, str2)) return 13;
+  // doing (vp=___) is basically a ratchet cast to avoid pointer
+  // errors
+  void *vp;
+  if(strcmp((vp=str1), str2)) return 13;
 
   str2[3] = 102;
   if(strcmp(str1, str2) != 6) return 5;
@@ -40,26 +40,8 @@ int main() {
   char* out = strncpy(str1, str2, 3);
   if(strcmp(str1, "heylo")) return 6;
 
-  // Fun with function pointers!
-  // warning: conversion from incompatible pointer type
-  void* f1 = isalpha;
-  // warning: conversion from incompatible pointer type
-  if(f1 != isalpha) return 11;
-
   int (*f2)(int) = isalpha;
   if(f2(5)) return 12;
-
-  // Test function pointer casting
-
-  // warning: conversion from incompatible pointer type
-  int* p1 = isalpha;
-  // warning: conversion from incompatible pointer type
-  int (*f3)(int, int) = isalpha;
-  // warning: conversion from incompatible pointer type
-  int (*f4)(int*) = isalpha;
-  // warning: conversion from incompatible pointer type
-  int* (*f5)(int) = isalpha;
-
 
   return 0;
 }

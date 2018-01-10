@@ -88,8 +88,6 @@ class Add(_AddMult):
         self.arg1 = arg1
         self.arg2 = arg2
 
-        self._assert_same_ctype([output, arg1, arg2])
-
     def inputs(self): # noqa D102
         return [self.arg1, self.arg2]
 
@@ -141,8 +139,6 @@ class Mult(_AddMult):
         self.output = output
         self.arg1 = arg1
         self.arg2 = arg2
-
-        self._assert_same_ctype([output, arg1, arg2])
 
     def inputs(self): # noqa D102
         return [self.arg1, self.arg2]

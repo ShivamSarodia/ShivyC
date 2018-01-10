@@ -67,9 +67,13 @@ class Root(DeclNode):
 class Pointer(DeclNode):
     """Represents a pointer to a type."""
 
-    def __init__(self, child):
-        """Generate pointer node."""
+    def __init__(self, child, const):
+        """Generate pointer node.
+
+        const - boolean indicating whether this pointer is const
+        """
         self.child = child
+        self.const = const
         super().__init__()
 
 

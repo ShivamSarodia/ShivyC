@@ -992,6 +992,9 @@ class _ObjLookup(_LExprNode):
                 self.member.content)
             raise CompilerError(err, self.r)
 
+        if struct_ctype.is_const():
+            ctype = ctype.make_const()
+
         return offset, ctype
 
 

@@ -83,7 +83,7 @@ def parse_decl_specifiers(index):
     decl_specifiers = (list(ctypes.simple_types.keys()) +
                        [token_kinds.signed_kw, token_kinds.unsigned_kw,
                         token_kinds.auto_kw, token_kinds.static_kw,
-                        token_kinds.extern_kw])
+                        token_kinds.extern_kw, token_kinds.const_kw])
 
     specs = []
     matching = True
@@ -168,7 +168,8 @@ def find_decl_end(index):
     greater than the last index in this declarator.
     """
     if (token_is(index, token_kinds.star) or
-            token_is(index, token_kinds.identifier)):
+         token_is(index, token_kinds.identifier) or
+         token_is(index, token_kinds.const_kw)):
         return find_decl_end(index + 1)
     elif token_is(index, token_kinds.open_paren):
         close = find_pair_forward(index)
@@ -176,7 +177,7 @@ def find_decl_end(index):
     elif token_is(index, token_kinds.open_sq_brack):
         mess = "mismatched square brackets in declaration"
         close = find_pair_forward(index, token_kinds.open_sq_brack,
-                                        token_kinds.close_sq_brack, mess)
+                                  token_kinds.close_sq_brack, mess)
         return find_decl_end(close + 1)
     else:
         # Unknown token. If this declaration is correctly formatted,
@@ -206,7 +207,8 @@ def parse_declarator(start, end):
         return parse_declarator(start + 1, end - 1)
 
     elif p.tokens[start].kind == token_kinds.star:
-        return decl_nodes.Pointer(parse_declarator(start + 1, end))
+        const, index = find_const(start + 1)
+        return decl_nodes.Pointer(parse_declarator(index, end), const)
 
     # Last element indicates a function type
     elif p.tokens[end - 1].kind == token_kinds.close_paren:
@@ -225,6 +227,20 @@ def parse_declarator(start, end):
                                     parse_declarator(start, end - 3))
 
     raise_error("faulty declaration syntax", start, ParserError.AT)
+
+
+def find_const(index):
+    """Check for a continuous sequence of `const`.
+
+    Returns a tuple containing a boolean for whether any such `const`
+    sequence exists and the first index that is not a `const`. If no
+    `const` is found, returns the index passed in for the second argument.
+    """
+    has_const = False
+    while token_is(index, token_kinds.const_kw):
+        index += 1
+        has_const = True
+    return has_const, index
 
 
 def parse_parameter_list(index):

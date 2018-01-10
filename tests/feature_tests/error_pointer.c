@@ -21,5 +21,9 @@
   // error: expression on left of '=' is not assignable
   *p = 1;
 
+  int *f; unsigned int *g;
+  // error: conversion from incompatible pointer type
+  f = g;
+
   return 0;
  }

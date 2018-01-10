@@ -34,7 +34,7 @@ int main() {
     int a;
   } *b;
 
-  // warning: conversion from incompatible pointer type
+  // error: conversion from incompatible pointer type
   a = b;
 
   struct C *p;

@@ -33,10 +33,6 @@ int main() {
   v = 0;
   e = 0;
 
-  int *f; unsigned int *g;
-  // warning: conversion from incompatible pointer type
-  f = g;
-
   // Value of below is checked at very end of this main() function
   _Bool h = &a;
 

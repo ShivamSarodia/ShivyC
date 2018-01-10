@@ -1,5 +1,7 @@
 """This module defines all of the C types recognized by the compiler."""
 
+import copy
+
 import shivyc.token_kinds as token_kinds
 
 
@@ -9,12 +11,24 @@ class CType:
     size (int) - The result of sizeof on this type.
     """
 
-    def __init__(self, size):
+    def __init__(self, size, const=False):
         """Initialize type."""
         self.size = size
+        self.const = const
 
-    def compatible(self, other):
-        """Check whether given `other` C type is compatible with self."""
+        # Required because casting to bool is special in C11.
+        self._bool = False
+
+        # Required for super hacky struct trick, see the weak_compat
+        # function for the struct.
+        self._orig = self
+
+    def weak_compat(self, other):
+        """Check for weak compatibility with `other` ctype.
+
+        Two types are "weakly compatible" if their unqualified version are
+        compatible.
+        """
         raise NotImplementedError
 
     def is_complete(self):
@@ -45,6 +59,10 @@ class CType:
         """Check whether this is a void type."""
         return False
 
+    def is_bool(self):
+        """Check whether this is a boolean type."""
+        return self._bool
+
     def is_array(self):
         """Check whether this is an array type."""
         return False
@@ -53,9 +71,27 @@ class CType:
         """Checke whether this has struct or union type."""
         return False
 
+    def make_unsigned(self):
+        """Return an unsigned version of this type."""
+        raise NotImplementedError
+
+    def compatible(self, other):
+        """Check whether given `other` C type is compatible with self."""
+        return self.weak_compat(other) and self.const == other.const
+
     def is_scalar(self):
         """Check whether this has scalar type."""
         return self.is_arith() or self.is_pointer()
+
+    def is_const(self):
+        """Check whether this is a const type."""
+        return self.const
+
+    def make_const(self):
+        """Return a const version of this type."""
+        const_self = copy.copy(self)
+        const_self.const = True
+        return const_self
 
 
 class IntegerCType(CType):
@@ -73,9 +109,13 @@ class IntegerCType(CType):
         self.signed = signed
         super().__init__(size)
 
-    def compatible(self, other):
+    def weak_compat(self, other):
         """Check whether two types are compatible."""
-        return other == self
+
+        # TODO: _orig stuff is hacky...
+        # Find a more reliable way to talk about types being equal.
+        return (other._orig == self._orig and self.signed == other.signed and
+                self.is_bool() == other.is_bool())
 
     def is_complete(self):
         """Check if this is a complete type."""
@@ -93,6 +133,12 @@ class IntegerCType(CType):
         """Check whether this is an integral type."""
         return True
 
+    def make_unsigned(self):
+        """Return an unsigned version of this type."""
+        unsig_self = copy.copy(self)
+        unsig_self.signed = False
+        return unsig_self
+
 
 class VoidCType(CType):
     """Represents a void C type.
@@ -105,9 +151,9 @@ class VoidCType(CType):
         """Initialize type."""
         super().__init__(1)
 
-    def compatible(self, other):
+    def weak_compat(self, other):
         """Return True iff other is a compatible type to self."""
-        return other == self
+        return other.is_void()
 
     def is_complete(self):
         """Check if this is a complete type."""
@@ -125,12 +171,12 @@ class PointerCType(CType):
 
     """
 
-    def __init__(self, arg):
+    def __init__(self, arg, const=False):
         """Initialize type."""
         self.arg = arg
-        super().__init__(8)
+        super().__init__(8, const)
 
-    def compatible(self, other):
+    def weak_compat(self, other):
         """Return True iff other is a compatible type to self."""
         return other.is_pointer() and self.arg.compatible(other.arg)
 
@@ -194,7 +240,7 @@ class FunctionCType(CType):
         self.ret = ret
         super().__init__(1)
 
-    def compatible(self, other):
+    def weak_compat(self, other):
         """Return True iff other is a compatible type to self."""
 
         # TODO: This is not implemented correctly. Function pointer
@@ -237,13 +283,13 @@ class StructCType(CType):
         self.offsets = {}
         super().__init__(1)
 
-    def compatible(self, other):
+    def weak_compat(self, other):
         """Return True iff other is a compatible type to self.
 
         Within a single translation unit, two structs are compatible iff
         they are the exact same declaration.
         """
-        return self is other
+        return self._orig is other._orig
 
     def is_complete(self):
         """Check whether this is a complete type."""
@@ -279,12 +325,18 @@ class StructCType(CType):
 
         self.size = cur_offset
 
+# These definitions are here to permit convenient creation of new integer,
+# char, etc. types. However, DO NOT test whether a ctype is one of these by
+# checking equality. That is, do not use `ctype == ctypes.integer` to check
+# whether `ctype` is an integer. This is because functions like
+# "make_unsigned" or "make_const" return a copy of the type, so equality
+# checking will not work.
+
 
 void = VoidCType()
 
-# In our implementation, we have 1 represent true and 0 represent false. We
-# maintain this convention so that true boolean values always compare equal.
 bool_t = IntegerCType(1, False)
+bool_t._bool = True
 
 char = IntegerCType(1, True)
 unsig_char = IntegerCType(1, False)
@@ -309,13 +361,3 @@ simple_types = {token_kinds.void_kw: void,
                 token_kinds.short_kw: short,
                 token_kinds.int_kw: integer,
                 token_kinds.long_kw: longint}
-
-
-# When adding new types, update this function!
-def to_unsigned(ctype):
-    """Convert the given ctype from above to the unsigned version."""
-    unsig_map = {char: unsig_char,
-                 short: unsig_short,
-                 integer: unsig_int,
-                 longint: unsig_longint}
-    return unsig_map[ctype]

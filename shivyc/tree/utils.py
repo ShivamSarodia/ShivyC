@@ -46,7 +46,18 @@ class LValue:
 
         # TODO: add "is not const qualified" and "if struct/union, has no
         # const qualified member"
-        return not self.ctype().is_array() and self.ctype().is_complete()
+        ctype = self.ctype()
+        if ctype.is_array():
+            return False
+        if not ctype.is_complete():
+            return False
+        if ctype.is_const():
+            return False
+        if (ctype.is_struct_union() and
+             any(m[1].is_const() for m in ctype.members)):
+            return False
+
+        return True
 
 
 class DirectLValue(LValue):
@@ -234,31 +245,42 @@ def check_cast(il_value, ctype, range):
     range - Range for error reporting
 
     """
-    # Cast between same types is always okay
-    if il_value.ctype == ctype:
+    # Cast between compatible types is always okay
+    if il_value.ctype.weak_compat(ctype):
         return
 
     # Cast between arithmetic types is always okay
     if ctype.is_arith() and il_value.ctype.is_arith():
         return
 
+    # Cast between weak compatible structs is okay
+    if (ctype.is_struct_union() and il_value.ctype.is_struct_union() and
+         il_value.ctype.weak_compat(ctype)):
+        return
+
     elif ctype.is_pointer() and il_value.ctype.is_pointer():
 
-        # Cast between compatible pointer types okay
-        if ctype.compatible(il_value.ctype):
+        # both operands are pointers to qualified or unqualified versions
+        # of compatible types, and the type pointed to by the left has all
+        # the qualifiers of the type pointed to by the right
+        if (ctype.arg.weak_compat(il_value.ctype.arg) and
+             (not il_value.ctype.arg.const or ctype.arg.const)):
             return
 
         # Cast between void pointer and pointer to object type okay
-        elif ctype.arg.is_void() and il_value.ctype.arg.is_object():
-            return
-        elif ctype.arg.is_object() and il_value.ctype.arg.is_void():
+        elif (ctype.arg.is_void() and il_value.ctype.arg.is_object() and
+              (not il_value.ctype.arg.const or ctype.arg.const)):
             return
 
-        # Warn on any other kind of pointer cast
+        elif (ctype.arg.is_object() and il_value.ctype.arg.is_void() and
+              (not il_value.ctype.arg.const or ctype.arg.const)):
+            return
+
+        # error on any other kind of pointer cast - TODO: better errors
         else:
             with report_err():
                 err = "conversion from incompatible pointer type"
-                raise CompilerError(err, range, True)
+                raise CompilerError(err, range)
             return
 
     # Cast from null pointer constant to pointer okay
@@ -266,7 +288,7 @@ def check_cast(il_value, ctype, range):
         return
 
     # Cast from pointer to boolean okay
-    elif ctype == ctypes.bool_t and il_value.ctype.is_pointer():
+    elif ctype.is_bool() and il_value.ctype.is_pointer():
         return
 
     else:
@@ -281,8 +303,9 @@ def set_type(il_value, ctype, il_code, output=None):
     error.
 
     """
-    # (no output value, and same types) OR (output is same as input)
-    if (not output and il_value.ctype == ctype) or output == il_value:
+    if not output and il_value.ctype.compatible(ctype):
+        return il_value
+    elif output == il_value:
         return il_value
     else:
         if not output:
@@ -296,6 +319,9 @@ def arith_conversion_type(type1, type2):
 
     Accepts two arithmetic ctypes and returns the type these should be
     promoted to for computation.
+
+    This functions disregards the qualifiers of the input, so it may or may
+    not return a type with the same qualifier(s) as the input types.
     """
     # If an int can represent all values of the original type, the value is
     # converted to an int; otherwise, it is converted to an unsigned
@@ -305,9 +331,9 @@ def arith_conversion_type(type1, type2):
     type1_promo = ctypes.integer if type1.size < 4 else type1
     type2_promo = ctypes.integer if type2.size < 4 else type2
 
-    # If both operands have the same type, then no further conversion is
+    # If both operands have compatible types, then no further conversion is
     # needed.
-    if type1_promo == type2_promo:
+    if type1_promo.weak_compat(type2_promo):
         return type1_promo
 
     # Otherwise, if both operands have signed integer types or both have
@@ -338,9 +364,9 @@ def arith_conversion_type(type1, type2):
     # Otherwise, both operands are converted to the unsigned integer type
     # corresponding to the type of the operand with signed integer type.
     elif type1_promo.signed:
-        return ctypes.to_unsigned(type1_promo)
+        return type1_promo.make_unsigned()
     elif type2_promo.signed:
-        return ctypes.to_unsigned(type2_promo)
+        return type2_promo.make_unsigned()
 
 
 def arith_convert(left, right, il_code):

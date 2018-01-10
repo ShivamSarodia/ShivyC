@@ -402,7 +402,8 @@ class Declaration(Node):
         if decl_info.init:
             init_val = decl_info.init.make_il(il_code, symbol_table, c)
             lval = DirectLValue(var)
-            if lval.modable():
+
+            if lval.ctype().is_arith() or lval.ctype().is_pointer():
                 lval.set_to(init_val, il_code, decl_info.identifier.r)
             else:
                 err = "declared variable is not of assignable type"
@@ -420,7 +421,7 @@ class Declaration(Node):
         storage - The storage class of this declaration.
         """
         if isinstance(decl, decl_nodes.Pointer):
-            new_ctype = PointerCType(prev_ctype)
+            new_ctype = PointerCType(prev_ctype, decl.const)
         elif isinstance(decl, decl_nodes.Array):
             new_ctype = ArrayCType(prev_ctype, decl.n)
         elif isinstance(decl, decl_nodes.Function):
@@ -463,6 +464,8 @@ class Declaration(Node):
 
         storage = self.get_storage([spec.kind for spec in specs], spec_range)
 
+        const = token_kinds.const_kw in {spec.kind for spec in specs}
+
         if specs_str == "struct":
             s = [s for s in specs if s.kind == token_kinds.struct_kw][0]
 
@@ -470,12 +473,13 @@ class Declaration(Node):
             # specifiers and it declares no variables.
             redec = not any_dec and storage is None
             base_type = self.parse_struct_spec(s, redec, symbol_table)
+            if const: base_type = base_type.make_const()
         else:
-            base_type = self.get_base_ctype(specs_str, spec_range)
+            base_type = self.get_base_ctype(specs_str, spec_range, const)
 
         return base_type, storage
 
-    def get_base_ctype(self, specs_str, spec_range):
+    def get_base_ctype(self, specs_str, spec_range, const):
         """Return a ctype given a sorted space-separated specifier string."""
 
         # replace "long long" with "long" for convenience
@@ -512,7 +516,8 @@ class Declaration(Node):
         }
 
         if specs_str in specs:
-            return specs[specs_str]
+            ctype = specs[specs_str]
+            return ctype.make_const() if const else ctype
 
         # TODO: provide more helpful feedback on what is wrong
         descrip = "unrecognized set of type specifiers"

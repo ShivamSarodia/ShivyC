@@ -135,13 +135,6 @@ class ILCommand:
         """
         raise NotImplementedError
 
-    def _assert_same_ctype(self, il_values):
-        """Raise ValueError if all IL values do not have the same type."""
-        ctype = None
-        for il_value in il_values:
-            if ctype and ctype != il_value.ctype:
-                raise ValueError("different ctypes")  # pragma: no cover
-
     def _is_imm(self, spot):
         """Return True iff given spot is an immediate operand."""
         return isinstance(spot, LiteralSpot)
