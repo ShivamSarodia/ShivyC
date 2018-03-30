@@ -6,7 +6,7 @@
 
 ---
 
-ShivyC is a hobby C compiler created in Python that supports a subset of the C11 standard and generates reasonably efficient binaries, including some optimizations. ShivyC also generates helpful compile-time error messages. x86-64 Linux is natively supported and a Dockerfile is provided for running on other platforms.
+ShivyC is a hobby C compiler written in Python that supports a subset of the C11 standard and generates reasonably efficient binaries, including some optimizations. ShivyC also generates helpful compile-time error messages.
 
 This [implementation of a trie](tests/general_tests/trie/trie.c) is an example of what ShivyC can compile today. For a more comprehensive list of features, see the [feature test directory](tests/feature_tests).
 
