@@ -35,6 +35,7 @@ class ErrorCollector:
         """Clear all warnings and errors. Intended only for testing use."""
         self.issues = []
 
+
 error_collector = ErrorCollector()
 
 
@@ -70,7 +71,7 @@ class Range:
     def __init__(self, start, end=None):
         """Initialize Range objects."""
         self.start = start
-        self.end = end if end else start
+        self.end = end or start
 
     def __add__(self, other):
         """Add Range objects by concatenating their ranges."""
@@ -134,25 +135,12 @@ class CompilerError(Exception):
                                     self.range.start.col + 1)
 
             indicator += reset_color
-
-            insert = [bold_color,
-                      self.range.start.file,
-                      self.range.start.line,
-                      self.range.start.col,
-                      color_code,
-                      issue_type,
-                      reset_color,
-                      self.descrip,
-                      self.range.start.full_line,
-                      indicator]
-
-            return "{}{}:{}:{}: {}{}:{} {}\n  {}\n  {}".format(*insert)
-
+            return (f"{bold_color}{self.range.start.file}:"
+                    f"{self.range.start.line}:{self.range.start.col}: "
+                    f"{color_code}{issue_type}:{reset_color} {self.descrip}\n"
+                    f"  {self.range.start.full_line}\n"
+                    f"  {indicator}")
         # A position range is not provided and this is output to terminal.
         else:
-            insert = [bold_color,
-                      color_code,
-                      issue_type,
-                      reset_color,
-                      self.descrip]
-            return "{}shivyc: {}{}:{} {}".format(*insert)
+            return (f"{bold_color}shivyc: {color_code}{issue_type}:"
+                    f"{reset_color} {self.descrip}")

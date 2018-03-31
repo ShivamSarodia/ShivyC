@@ -17,40 +17,13 @@ def parse_statement(index):
     parse failures. On the last try, raise the exception on to the caller.
 
     """
-    try:
-        return parse_compound_statement(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_return(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_break(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_continue(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_if_statement(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_while_statement(index)
-    except ParserError as e:
-        log_error(e)
-
-    try:
-        return parse_for_statement(index)
-    except ParserError as e:
-        log_error(e)
+    for func in (parse_compound_statement, parse_return, parse_break,
+                 parse_continue, parse_if_statement, parse_while_statement,
+                 parse_for_statement):
+        try:
+            return func(index)
+        except ParserError as e:
+            log_error(e)
 
     return parse_expr_statement(index)
 
@@ -187,7 +160,7 @@ def _get_for_clauses(index):
 
     if token_is(index, token_kinds.close_paren):
         third = None
-        index = index + 1
+        index += 1
     else:
         third, index = parse_expression(index)
         index = match_token(index, token_kinds.close_paren, ParserError.AFTER)

@@ -149,21 +149,19 @@ class MemSpot(Spot):
         if total_offset == 0:
             simple = base_str
         elif total_offset > 0:
-            simple = "{}+{}".format(base_str, total_offset)
+            simple = f"{base_str}+{total_offset}"
         else:  # total_offset < 0
-            simple = "{}-{}".format(base_str, -total_offset)
+            simple = f"{base_str}-{-total_offset}"
 
         if self.count and self.chunk > 0:
-            final = "{}+{}*{}".format(
-                simple, self.chunk, self.count.asm_str(8))
+            final = f"{simple}+{self.chunk}*{self.count.asm_str(8)}"
         elif self.count and self.chunk < 0:
-            final = "{}-{}*{}".format(
-                simple, -self.chunk, self.count.asm_str(8))
+            final = f"{simple}-{-self.chunk}*{self.count.asm_str(8)}"
         else:
             final = simple
 
         size_desc = self.size_map.get(size, "")
-        return "{}[{}]".format(size_desc, final)
+        return f"{size_desc}[{final}]"
 
     def rbp_offset(self):  # noqa D102
         if self.base == RBP:

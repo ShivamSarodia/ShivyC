@@ -393,7 +393,7 @@ def add_chunk(chunk, tokens):
                 token_kinds.identifier, identifier_name, r=range))
             return
 
-        descrip = "unrecognized token at '{}'".format(chunk_to_str(chunk))
+        descrip = f"unrecognized token at '{chunk_to_str(chunk)}'"
         raise CompilerError(descrip, range)
 
 

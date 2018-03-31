@@ -127,7 +127,7 @@ class _BreakContinue(Node):
             il_code.add(control_cmds.Jump(label))
         else:
             with report_err():
-                err = "{} statement not in loop".format(self.descrip)
+                err = f"{self.descrip} statement not in loop"
                 raise CompilerError(err, self.r)
 
 
@@ -568,7 +568,7 @@ class Declaration(Node):
                 ctype = symbol_table.add_struct(tag, StructCType(tag))
 
             if has_members and ctype.is_complete():
-                err = "redefinition of 'struct {}'".format(tag)
+                err = f"redefinition of 'struct {tag}'"
                 raise CompilerError(err, node.r)
 
         else:
@@ -609,7 +609,7 @@ class Declaration(Node):
                     attr = decl_info.identifier.content
 
                     if attr in member_set:
-                        err = "duplicate member '{}'".format(attr)
+                        err = f"duplicate member '{attr}'"
                         raise CompilerError(err, decl_info.identifier.r)
 
                     members.append((attr, decl_info.ctype))
