@@ -1,18 +1,17 @@
 """ShivyC installation script."""
 
-import sys
-
-import shivyc
-from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-VERSION = str(shivyc.__version__)
-DOWNLOAD_URL = ("https://github.com/ShivamSarodia/ShivyC/archive/{}.tar.gz"
-                .format(VERSION))
+from setuptools import find_packages, setup
 
-if sys.version_info[0] < 3:
-    sys.exit("ShivyC only supports Python 3.")
+import shivyc
+
+f"ShivyC only supports Python 3.6 or later"  # f-str is Syntax Err before Py3.6
+
+VERSION = str(shivyc.__version__)
+DOWNLOAD_URL = ('https://github.com/ShivamSarodia/ShivyC/archive/'
+                f'{VERSION}.tar.gz')
 
 here = path.abspath(path.dirname(__file__))
 

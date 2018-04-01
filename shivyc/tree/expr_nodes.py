@@ -566,7 +566,7 @@ class _BoolAndOr(_RExprNode):
         # Label which skips the line which sets out to 0 or 1.
         end = il_code.get_label()
 
-        err = "'{}' operator requires scalar operands".format(str(self.op))
+        err = f"'{str(self.op)}' operator requires scalar operands"
         left = self.left.make_il(il_code, symbol_table, c)
         if not left.ctype.is_scalar():
             raise CompilerError(err, self.left.r)
@@ -643,8 +643,8 @@ class _CompoundPlusMinus(_RExprNode):
         right = self.right.make_il(il_code, symbol_table, c)
         lvalue = self.left.lvalue(il_code, symbol_table, c)
         if not lvalue or not lvalue.modable():
-            err = "expression on left of '{}' is not assignable"
-            raise CompilerError(err.format(str(self.op)), self.left.r)
+            err = f"expression on left of '{str(self.op)}' is not assignable"
+            raise CompilerError(err, self.left.r)
 
         if (lvalue.ctype().is_pointer()
             and right.ctype.is_integral()
@@ -678,7 +678,7 @@ class _CompoundPlusMinus(_RExprNode):
             return out
 
         else:
-            err = "invalid types for '{}' operator".format(str(self.op))
+            err = f"invalid types for '{str(self.op)}' operator"
             raise CompilerError(err, self.op.r)
 
 
@@ -734,8 +734,8 @@ class _IncrDecr(_RExprNode):
         lval = self.expr.lvalue(il_code, symbol_table, c)
 
         if not lval or not lval.modable():
-            err = "operand of {} operator not a modifiable lvalue"
-            raise CompilerError(err.format(self.descrip), self.expr.r)
+            err = f"operand of {self.descrip} operator not a modifiable lvalue"
+            raise CompilerError(err, self.expr.r)
 
         val = self.expr.make_il(il_code, symbol_table, c)
         one = ILValue(val.ctype)
@@ -747,8 +747,8 @@ class _IncrDecr(_RExprNode):
             err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
         else:
-            err = "invalid type for {} operator"
-            raise CompilerError(err.format(self.descrip), self.expr.r)
+            err = f"invalid type for {self.descrip} operator"
+            raise CompilerError(err, self.expr.r)
 
         new_val = ILValue(val.ctype)
 
@@ -988,8 +988,7 @@ class _ObjLookup(_LExprNode):
 
         offset, ctype = struct_ctype.get_offset(self.member.content)
         if offset is None:
-            err = "structure or union has no member '{}'".format(
-                self.member.content)
+            err = f"structure or union has no member '{self.member.content}'"
             raise CompilerError(err, self.r)
 
         if struct_ctype.is_const():
@@ -1106,9 +1105,8 @@ class FuncCall(_RExprNode):
         else:
             arg_types = func_ctype.args
         if len(arg_types) != len(self.args):
-            err = ("incorrect number of arguments for function call" +
-                   " (expected {}, have {})").format(len(arg_types),
-                                                     len(self.args))
+            err = ("incorrect number of arguments for function call"
+                   f" (expected {len(arg_types)}, have {len(self.args)})")
 
             if self.args:
                 raise CompilerError(err, self.args[-1].r)

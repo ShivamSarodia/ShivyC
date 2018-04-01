@@ -6,14 +6,14 @@
 
 ---
 
-ShivyC is a hobby C compiler written in Python that supports a subset of the C11 standard and generates reasonably efficient binaries, including some optimizations. ShivyC also generates helpful compile-time error messages.
+ShivyC is a hobby C compiler written in Python 3 that supports a subset of the C11 standard and generates reasonably efficient binaries, including some optimizations. ShivyC also generates helpful compile-time error messages.
 
 This [implementation of a trie](tests/general_tests/trie/trie.c) is an example of what ShivyC can compile today. For a more comprehensive list of features, see the [feature test directory](tests/feature_tests).
 
 ## Quickstart
 
 ### x86-64 Linux
-ShivyC requires only Python 3 to compile C code. Assembling and linking are done using the GNU binutils and glibc, which you almost certainly already have installed.
+ShivyC requires only Python 3.6 or later to compile C code. Assembling and linking are done using the GNU binutils and glibc, which you almost certainly already have installed.
 
 To install ShivyC:
 ```

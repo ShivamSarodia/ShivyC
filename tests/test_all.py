@@ -174,22 +174,22 @@ class IntegrationTests(TestUtils):
         self.assertEqual(error_collector.issues, [])
 
         # Compile with gcc
-        gcc_compile = "gcc -std=c11 {0}/{1} -o gcc_out".format(dir, cfile)
+        gcc_compile = f"gcc -std=c11 {dir}/{cfile} -o gcc_out"
         subprocess.run(gcc_compile, shell=True, check=True)
 
         # Run ShivyC executable on sample input
         if stdin:
-            shivyc_run = "./out < {0}/input.c > {0}/shivyc_output".format(dir)
-            gcc_run = "./gcc_out < {0}/input.c > {0}/gcc_output".format(dir)
+            shivyc_run = f"./out < {dir}/input.c > {dir}/shivyc_output"
+            gcc_run = f"./gcc_out < {dir}/input.c > {dir}/gcc_output"
         else:
-            shivyc_run = "./out > {0}/shivyc_output".format(dir)
-            gcc_run = "./gcc_out > {0}/gcc_output".format(dir)
+            shivyc_run = f"./out > {dir}/shivyc_output"
+            gcc_run = f"./gcc_out > {dir}/gcc_output"
 
         subprocess.run(shivyc_run, shell=True, check=True)
         subprocess.run(gcc_run, shell=True, check=True)
 
         # Diff the two output files
-        diff = "diff {0}/gcc_output {0}/shivyc_output".format(dir)
+        diff = f"diff {dir}/gcc_output {dir}/shivyc_output"
         subprocess.run(diff, shell=True, check=True)
 
     def test_count(self):

@@ -47,8 +47,8 @@ def process_file(file, args):
     elif file[-2:] == ".o":
         return file
     else:
-        err = "unknown file type: '{}'"
-        error_collector.add(CompilerError(err.format(file)))
+        err = f"unknown file type: '{file}'"
+        error_collector.add(CompilerError(err))
         return None
 
 
@@ -129,8 +129,8 @@ def read_file(file):
         with open(file) as c_file:
             return c_file.read()
     except IOError as e:
-        descrip = "could not read file: '{}'"
-        error_collector.add(CompilerError(descrip.format(file)))
+        descrip = f"could not read file: '{file}'"
+        error_collector.add(CompilerError(descrip))
 
 
 def write_asm(asm_source, asm_filename):
@@ -144,8 +144,8 @@ def write_asm(asm_source, asm_filename):
         with open(asm_filename, "w") as s_file:
             s_file.write(asm_source)
     except IOError:
-        descrip = "could not write output file '{}'"
-        error_collector.add(CompilerError(descrip.format(asm_filename)))
+        descrip = f"could not write output file '{asm_filename}'"
+        error_collector.add(CompilerError(descrip))
 
 
 def assemble(asm_name, obj_name):
@@ -208,7 +208,7 @@ def find_library_or_err(file):
     """
     path = find_library(file)
     if not path:
-        err = "could not find {}".format(file)
+        err = f"could not find {file}"
         error_collector.add(CompilerError(err))
         return None
     else:

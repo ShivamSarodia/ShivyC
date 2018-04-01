@@ -36,7 +36,7 @@ class ASMCode:
     def get_label():
         """Return a unique label string."""
         ASMCode.label_num += 1
-        return "__shivyc_label" + str(ASMCode.label_num)
+        return f"__shivyc_label{ASMCode.label_num}"
 
     def add_extern(self, name):
         """Add an external name to the code.
@@ -45,15 +45,13 @@ class ASMCode:
 
         """
         # GAS does not require this.
-        self.externs.append("\t.extern " + name)
+        self.externs.append(f"\t.extern {name}")
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
-        self.string_literals.append(name + ":")
-        data = ".byte "
-        for char in chars:
-            data += str(char) + ","
-        self.string_literals.append("\t" + data[:-1])
+        self.string_literals.append(f"{name}:")
+        data = ",".join(str(char) for char in chars)
+        self.string_literals.append(f"\t.byte {data}")
 
     def full_code(self):  # noqa: D202
         """Produce the full assembly code.
@@ -89,7 +87,7 @@ class NodeGraph:
 
     def __init__(self, nodes=None):
         """Initialize NodeGraph."""
-        self._real_nodes = nodes if nodes else []
+        self._real_nodes = nodes or []
         self._all_nodes = self._real_nodes[:]
         self._conf = {n: [] for n in self._all_nodes}
         self._pref = {n: [] for n in self._all_nodes}
@@ -414,7 +412,7 @@ class ASMGen:
                 self.asm_code.add_extern(self.il_code.externs[value])
             elif value in self.il_code.string_literals:
                 # Add the string literal representation to the output ASM.
-                name = "__strlit" + str(string_literal_number)
+                name = f"__strlit{string_literal_number}"
                 string_literal_number += 1
 
                 self.asm_code.add_string_literal(
@@ -444,10 +442,8 @@ class ASMGen:
 
         # Preprocess all commands to get a mapping from labels to command
         # number.
-        labels = {}
-        for i, c in enumerate(commands):
-            if c.label_name():
-                labels[c.label_name()] = i
+        labels = {c.label_name(): i for i, c in enumerate(commands)
+                  if c.label_name()}
 
         # Last iteration of live variables
         prev_live_vars = None
@@ -567,10 +563,7 @@ class ASMGen:
         """
 
         # Get nodes without preference edges
-        no_pref = []
-        for v in g.nodes():
-            if not g.prefs(v):
-                no_pref.append(v)
+        no_pref = [v for v in g.nodes() if not g.prefs(v)]
 
         # Repeat simplification until no more nodes can be removed
         did_something = False
@@ -715,10 +708,7 @@ class ASMGen:
         """Generate assembly code."""
 
         # This is kinda hacky...
-        max_offset = 0
-        for spot in spotmap.values():
-            max_offset = max(max_offset, spot.rbp_offset())
-
+        max_offset = max(spot.rbp_offset() for spot in spotmap.values())
         if max_offset % 16 != 0:
             max_offset += 16 - max_offset % 16
 

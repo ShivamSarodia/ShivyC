@@ -47,7 +47,7 @@ class ParserError(CompilerError):
         self.amount_parsed = index
 
         if len(tokens) == 0:
-            super().__init__("{} at beginning of source".format(message))
+            super().__init__(f"{message} at beginning of source")
             return
 
         # If the index is too big, we're always using the AFTER form
@@ -61,10 +61,10 @@ class ParserError(CompilerError):
                 message_type = self.GOT
 
         if message_type == self.AT:
-            super().__init__("{} at '{}'".format(message, tokens[index]),
+            super().__init__(f"{message} at '{tokens[index]}'",
                              tokens[index].r)
         elif message_type == self.GOT:
-            super().__init__("{}, got '{}'".format(message, tokens[index]),
+            super().__init__(f"{message}, got '{tokens[index]}'",
                              tokens[index].r)
         elif message_type == self.AFTER:
             if tokens[index - 1].r:
@@ -73,7 +73,7 @@ class ParserError(CompilerError):
                 new_range = None
 
             super().__init__(
-                "{} after '{}'".format(message, tokens[index - 1]), new_range)
+                f"{message} after '{tokens[index - 1]}'", new_range)
 
 
 def raise_error(err, index, error_type):
@@ -117,7 +117,7 @@ def match_token(index, kind, message_type, message=None):
     """
     global tokens
     if not message:
-        message = "expected '{}'".format(kind.text_repr)
+        message = f"expected '{kind.text_repr}'"
 
     if token_is(index, kind):
         return index + 1

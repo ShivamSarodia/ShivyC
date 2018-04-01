@@ -132,7 +132,7 @@ class ILValue:
         self.null_ptr_const = null_ptr_const
 
     def __str__(self):  # pragma: no cover
-        return str(id(self) % 1000).zfill(3)
+        return f'{id(self) % 1000:03}'
 
     def __repr__(self):  # pragma: no cover
         return str(self)
@@ -174,7 +174,8 @@ class SymbolTable:
 
         """
         for table, _ in self.tables[::-1]:
-            if name in table: return table[name]
+            if name in table:
+                return table[name]
 
     def lookup_tok(self, identifier):
         """Look up the given identifier.
@@ -189,9 +190,8 @@ class SymbolTable:
         if ret:
             return ret
         else:
-            descrip = "use of undeclared identifier '{}'"
-            raise CompilerError(
-                descrip.format(identifier.content), identifier.r)
+            descrip = f"use of undeclared identifier '{identifier.content}'"
+            raise CompilerError(descrip, identifier.r)
 
     def add(self, identifier, ctype):
         """Add an identifier with the given name and type to the symbol table.
@@ -206,8 +206,7 @@ class SymbolTable:
             self.tables[-1].vars[name] = il_value
             return il_value
         else:
-            descrip = "redefinition of '{}'"
-            raise CompilerError(descrip.format(name), identifier.r)
+            raise CompilerError(f"redefinition of '{name}'", identifier.r)
 
     def lookup_struct(self, tag):
         """Look up struct by tag name and return its ctype object.
