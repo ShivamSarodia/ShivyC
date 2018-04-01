@@ -72,7 +72,7 @@ ShivyC traverses the parse tree to generate a flat custom IL (intermediate langu
 ShivyC sequentially reads the IL commands, converting each into Intel-format x86-64 assembly code. ShivyC performs register allocation using George and Appel’s iterated register coalescing algorithm (see References below). The general ASM generation functionality is in [`asm_gen.py`](shivyc/asm_gen.py) , but much of the ASM generating code is in the `make_asm` function of each IL command in [`il_cmds/*.py`](shivyc/il_cmds/).
 
 ## Contributing
-ShivyC has so far been an entirely individual project, but pull requests are very welcome! Please add test(s) for all new functionality.
+Pull requests to ShivyC are very welcome. A good place to start is the [Issues page](https://github.com/ShivamSarodia/ShivyC/issues). All [issues labeled "feature"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Afeature) are TODO tasks. [Issues labeled "bug"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Abug) are individual miscompilations in ShivyC. If you have any questions, please feel free to ask in the comments of the relevant issue or create a new issue labeled "question". Of course, please add test(s) for all new functionality.
 
 ## References
 - [ShivC](https://github.com/ShivamSarodia/ShivC) - ShivyC is a rewrite from scratch of my old C compiler, ShivC, with much more emphasis on feature completeness and code quality. See the ShivC README for more details.
