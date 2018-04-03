@@ -459,10 +459,14 @@ class Declaration(Node):
 
             # Function declarators cannot have a function or array return type.
             # TODO: Relevant only when typedef is implemented.
-            # if prev_ctype.is_function() or prev_ctype.is_array():
-            #    pass
 
-            new_ctype = FunctionCType(args, prev_ctype)
+            if has_void:
+                new_ctype = FunctionCType([], prev_ctype, False)
+            elif not args:
+                new_ctype = FunctionCType([], prev_ctype, True)
+            else:
+                new_ctype = FunctionCType(args, prev_ctype)
+
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier
 
