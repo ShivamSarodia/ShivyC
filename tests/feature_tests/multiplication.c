@@ -20,5 +20,13 @@ int main() {
   // Test order of operations
   if(3 + 2 * 3 != 9) return 4;
 
+  // Test unsigned int multiplication.
+  unsigned int j = 4294967295;
+  if(j * j != 1) return 5;
+  if((j - 1) * (j - 1) != 4) return 6;
+
+  long k = 2147483648;
+  if(k * j != 9223372034707292160) return 7;
+
   return 0;
 }
