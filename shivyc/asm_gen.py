@@ -616,17 +616,32 @@ class ASMGen:
         """
         for v1 in g.nodes():
             for v2 in g.prefs(v1):
-                total_confs = len(set(g.confs(v1)) | set(g.confs(v2)))
-                if (v1 not in g.confs(v2) and
-                     total_confs < len(self.alloc_registers)):
+                # If the two nodes conflict, automatically continue.
+                if v1 in g.confs(v2):
+                    continue
 
-                    # If one is a spot, keep that in the merge
-                    if isinstance(v2, Spot):
+                total_confs = len(set(g.confs(v1)) | set(g.confs(v2)))
+
+                # If one is a spot, use a special heuristic.
+                # (described on section 6, page 311 of George & Appel)
+                if isinstance(v1, Spot):
+                    v1, v2 = v2, v1
+                if isinstance(v2, Spot):
+                    for T in g.confs(v1):
+                        if v2 in g.confs(T):
+                            continue
+                        if len(g.confs(T)) < len(self.alloc_registers):
+                            continue
+                        break
+                    else:
+                        # We can merge v1 into v2.
                         g.merge(v2, v1)
                         return v2, v1
-                    else:
-                        g.merge(v1, v2)
-                        return v1, v2
+
+                # Otherwise, apply regular merging rules.
+                elif total_confs < len(self.alloc_registers):
+                    g.merge(v1, v2)
+                    return v1, v2
 
     def _freeze(self, g):
         """Remove one preference edge.
