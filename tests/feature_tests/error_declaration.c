@@ -1,3 +1,9 @@
+// error: storage class specified for function parameter
+int func(auto int a);
+
+// error: 'void' must be the only parameter
+int func1(void, void);
+
 int main() {
   // error: variable of void type declared
   void a;

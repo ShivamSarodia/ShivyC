@@ -425,16 +425,43 @@ class Declaration(Node):
         elif isinstance(decl, decl_nodes.Array):
             new_ctype = ArrayCType(prev_ctype, decl.n)
         elif isinstance(decl, decl_nodes.Function):
+            # Prohibit storage class specifiers in parameters.
+            for param in decl.args:
+                decl_info = self.get_decl_infos(param, symbol_table)[0]
+                if decl_info.storage:
+                    err = "storage class specified for function parameter"
+                    raise CompilerError(err, decl_info.range)
+
             # Create a new scope because if we create a new struct type inside
             # the function parameters, it should be local to those parameters.
-
-            # TODO: Prohibit storage class specifiers, etc. in fctn params
             symbol_table.new_scope()
             args = [
                 self.get_decl_infos(decl, symbol_table)[0].ctype
                 for decl in decl.args
             ]
             symbol_table.end_scope()
+
+            # adjust array and function parameters
+            has_void = False
+            for i in range(len(args)):
+                ctype = args[i]
+                if ctype.is_array():
+                    args[i] = PointerCType(ctype.el)
+                elif ctype.is_function():
+                    args[i] = PointerCType(ctype)
+                elif ctype.is_void():
+                    has_void = True
+
+            if has_void and len(args) > 1:
+                decl_info = self.get_decl_infos(decl.args[0], symbol_table)[0]
+                err = "'void' must be the only parameter"
+                raise CompilerError(err, decl_info.range)
+
+            # Function declarators cannot have a function or array return type.
+            # TODO: Relevant only when typedef is implemented.
+            # if prev_ctype.is_function() or prev_ctype.is_array():
+            #    pass
+
             new_ctype = FunctionCType(args, prev_ctype)
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier

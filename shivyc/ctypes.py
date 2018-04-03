@@ -231,30 +231,35 @@ class FunctionCType(CType):
     args (List(CType)) - List of the argument ctypes, from left to right, or
     None if unspecified.
     ret (CType) - Return value of the function.
-
+    no_info (bool) - True if the function does not have any parameter info.
+    This occurs when the function is declared as `int f();` with nothing in
+    between the parentheses.
     """
 
-    def __init__(self, args, ret):
+    def __init__(self, args, ret, no_info=False):
         """Initialize type."""
         self.args = args
         self.ret = ret
+        self.no_info = no_info
         super().__init__(1)
 
     def weak_compat(self, other):
         """Return True iff other is a compatible type to self."""
 
-        # TODO: This is not implemented correctly. Function pointer
-        # compatibility rules are confusing.
-
         if not other.is_function():
-            return False
-        elif len(self.args) != len(other.args):
-            return False
-        elif any(not a1.compatible(a2) for a1, a2 in
-                 zip(self.args, other.args)):
             return False
         elif not self.ret.compatible(other.ret):
             return False
+        elif not self.no_info and not other.no_info:
+            if len(self.args) != len(other.args):
+                return False
+            elif any(not a1.compatible(a2) for a1, a2 in
+                     zip(self.args, other.args)):
+                return False
+
+        # TODO: There are special rules for compatibility between a function
+        # with parameter list and a function without parameter list. See
+        # 6.7.6.3.15.
 
         return True
 
