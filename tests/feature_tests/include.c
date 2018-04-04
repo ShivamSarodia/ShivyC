@@ -1,4 +1,5 @@
 #include "include_helper.h"
+#include "include_helper_empty.h"
 
 int main() {
   char* a = "test string";

@@ -27,13 +27,16 @@ def process(tokens, this_file):
 
             # Replace tokens[i] -> tokens[i+2] with preprocessed contents of
             # the included file.
-            file, filename = read_file(tokens[i + 2].content, this_file)
-            if not file:
-                error_collector.add(CompilerError(
-                    "unable to read included file", tokens[i + 2].r))
-            else:
+            try:
+                file, filename = read_file(tokens[i + 2].content, this_file)
                 new_tokens = process(lexer.tokenize(file, filename), filename)
                 processed += new_tokens
+
+            except IOError:
+                error_collector.add(CompilerError(
+                    "unable to read included file",
+                    tokens[i + 2].r
+                ))
 
             i += 3
 
@@ -59,8 +62,5 @@ def read_file(include_file, this_file):
         path = pathlib.Path(__file__).parent\
             .joinpath("include").joinpath(include_file[1:-1])
 
-    try:
-        with open(str(path)) as file:
-            return file.read(), str(path)
-    except IOError as e:
-        return None, None
+    with open(str(path)) as file:
+        return file.read(), str(path)
