@@ -74,6 +74,10 @@ ShivyC sequentially reads the IL commands, converting each into Intel-format x86
 ## Contributing
 Pull requests to ShivyC are very welcome. A good place to start is the [Issues page](https://github.com/ShivamSarodia/ShivyC/issues). All [issues labeled "feature"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Afeature) are TODO tasks. [Issues labeled "bug"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Abug) are individual miscompilations in ShivyC. If you have any questions, please feel free to ask in the comments of the relevant issue or create a new issue labeled "question". Of course, please add test(s) for all new functionality.
 
+Many thanks to our current and past contributers:
+* [ShivamSarodia](https://github.com/ShivamSarodia)
+* [cclauss](https://github.com/cclauss)
+
 ## References
 - [ShivC](https://github.com/ShivamSarodia/ShivC) - ShivyC is a rewrite from scratch of my old C compiler, ShivC, with much more emphasis on feature completeness and code quality. See the ShivC README for more details.
 - C11 Specification - http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
