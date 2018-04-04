@@ -323,32 +323,31 @@ def read_string(line, start, delim, null):
         elif line[i].c == delim:
             if null: chars.append(0)
             return chars, i
-        elif (i + 1 < len(line) 
+        elif (i + 1 < len(line)
               and line[i].c == "\\"
               and line[i + 1].c in escapes):
             chars.append(escapes[line[i + 1].c])
             i += 2
-        elif (i + 1 < len(line) 
+        elif (i + 1 < len(line)
               and line[i].c == "\\"
               and line[i + 1].c in octdigits):
             octal = line[i + 1].c
             i += 2
-            while (i < len(line) 
+            while (i < len(line)
                    and len(octal) < 3
                    and line[i].c in octdigits):
                 octal += line[i].c
                 i += 1
             chars.append(int(octal, 8))
-        elif (i + 2 < len(line) 
+        elif (i + 2 < len(line)
               and line[i].c == "\\"
               and line[i + 1].c == "x"
               and line[i + 2].c in hexdigits):
             hexa = line[i + 2].c
             i += 3
-            if (i < len(line) 
-                and line[i].c in hexdigits):
-                hexa += line[i].c       
-                i += 1 
+            if i < len(line) and line[i].c in hexdigits:
+                hexa += line[i].c
+                i += 1
             chars.append(int(hexa, 16))
         else:
             chars.append(ord(line[i].c))
