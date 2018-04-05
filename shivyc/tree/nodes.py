@@ -317,11 +317,11 @@ class Declaration(Node):
     """Line of a general variable declaration(s).
 
     node (decl_nodes.Root) - a declaration tree for this line
-    inits (List(Expression Node)) - list of initializer expressions, or None
-    if a variable is not initialized
+    body (Compound(Node)) - if this is a function definition, the body of
+    the function
     """
 
-    def __init__(self, node):
+    def __init__(self, node, body=None):
         """Initialize node."""
         super().__init__()
         self.node = node
