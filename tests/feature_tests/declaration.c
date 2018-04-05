@@ -15,6 +15,9 @@ int main() {
   int *f(int, unsigned int* b, long *[5], long (*)[5]);
   int g();
   int h(void);
+  int *i();
+  int *j(int);
+  int *k(int(int));
 }
 
 extern int z;
