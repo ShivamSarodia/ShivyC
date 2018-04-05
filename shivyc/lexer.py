@@ -345,7 +345,7 @@ def read_string(line, start, delim, null):
               and line[i + 2].c in hexdigits):
             hexa = line[i + 2].c
             i += 3
-            if i < len(line) and line[i].c in hexdigits:
+            while i < len(line) and line[i].c in hexdigits:
                 hexa += line[i].c
                 i += 1
             chars.append(int(hexa, 16))
