@@ -82,5 +82,5 @@ Many thanks to our current and past contributers:
 ## References
 - [ShivC](https://github.com/ShivamSarodia/ShivC) - ShivyC is a rewrite from scratch of my old C compiler, ShivC, with much more emphasis on feature completeness and code quality. See the ShivC README for more details.
 - C11 Specification - http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-- x86_64 ABI - http://web.archive.org/web/20160801075139/http://www.x86-64.org/documentation/abi.pdf
+- x86_64 ABI - https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf
 - Iterated Register Coalescing (George and Appel) - https://www.cs.purdue.edu/homes/hosking/502/george.pdf
