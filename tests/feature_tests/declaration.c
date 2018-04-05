@@ -1,6 +1,12 @@
 // Verify we can declare variables before and after main
 extern int a;
 
+int f0(int[5], int());
+
+int f1(void);
+
+int f2();
+
 int main() {
   int;
 
@@ -18,6 +24,10 @@ int main() {
   int *i();
   int *j(int);
   int *k(int(int));
+
+  int (*f3)(int, int, int), f4(int, int, int);
+  // verify f1 and f2 are compatible
+  f3 = f4;
 }
 
 extern int z;
