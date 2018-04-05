@@ -7,7 +7,7 @@ import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
 from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
-                                 raise_error)
+                                 raise_error, log_error)
 
 
 @add_range
@@ -197,26 +197,24 @@ def parse_declarator(start, end):
     """
     if start == end:
         return decl_nodes.Identifier(None)
+
     elif (start + 1 == end and
            p.tokens[start].kind == token_kinds.identifier):
         return decl_nodes.Identifier(p.tokens[start])
-
-    # First and last elements make a parenthesis pair
-    elif (p.tokens[start].kind == token_kinds.open_paren and
-           find_pair_forward(start) == end - 1):
-        return parse_declarator(start + 1, end - 1)
 
     elif p.tokens[start].kind == token_kinds.star:
         const, index = find_const(start + 1)
         return decl_nodes.Pointer(parse_declarator(index, end), const)
 
     # Last element indicates a function type
-    elif p.tokens[end - 1].kind == token_kinds.close_paren:
-        open_paren = find_pair_backward(end - 1)
-        params, index = parse_parameter_list(open_paren + 1)
-        if index == end - 1:
-            return decl_nodes.Function(
-                params, parse_declarator(start, open_paren))
+    elif (p.tokens[end - 1].kind == token_kinds.close_paren
+          and try_parse_func_decl(start, end)):
+        return try_parse_func_decl(start, end)
+
+    # First and last elements make a parenthesis pair
+    elif (p.tokens[start].kind == token_kinds.open_paren and
+           find_pair_forward(start) == end - 1):
+        return parse_declarator(start + 1, end - 1)
 
     # Last element indicates an array type
     elif p.tokens[end - 1].kind == token_kinds.close_sq_brack:
@@ -227,6 +225,25 @@ def parse_declarator(start, end):
                                     parse_declarator(start, end - 3))
 
     raise_error("faulty declaration syntax", start, ParserError.AT)
+
+
+def try_parse_func_decl(start, end):
+    """Parse a function declarator between start and end.
+
+    Expects that tokens[end-1] is a close parenthesis. If a function
+    declarator is successfully parsed, returns the decl_node.Function
+    object. Otherwise, returns None.
+    """
+    open_paren = find_pair_backward(end - 1)
+    try:
+        params, index = parse_parameter_list(open_paren + 1)
+    except ParserError as e:
+        log_error(e)
+        return None
+
+    if index == end - 1:
+        return decl_nodes.Function(
+            params, parse_declarator(start, open_paren))
 
 
 def find_const(index):
