@@ -5,6 +5,8 @@ int strcmp(char*, char*);
 char* strcpy(char*, char*);
 char* strncpy(char*, char*, long);
 
+int signal(int, int a(int));
+
 int main() {
   // Try out a few function calls from standard library.
 
@@ -42,6 +44,9 @@ int main() {
 
   int (*f2)(int) = isalpha;
   if(f2(5)) return 12;
+
+  // test passing a function to a function
+  signal(0, isalpha);
 
   return 0;
 }
