@@ -93,6 +93,12 @@ class CType:
         const_self.const = True
         return const_self
 
+    def make_unqual(self):
+        """Return an unqualified version of this type."""
+        unqual_self = copy.copy(self)
+        unqual_self.const = False
+        return unqual_self
+
 
 class IntegerCType(CType):
     """Represents an integer C type, like 'unsigned long' or 'bool'.

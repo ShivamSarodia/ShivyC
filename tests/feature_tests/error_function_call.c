@@ -4,6 +4,8 @@ int isalpha(int);
 // verify that a void parameter works.
 int isdigit(void);
 
+struct S incomplete_return();
+
 int main() {
   int a;
 
@@ -23,6 +25,9 @@ int main() {
 
   // error: incorrect number of arguments for function call (expected 0, have 2)
   isdigit(1, 2);
+
+  // error: function returns non-void incomplete type
+  incomplete_return();
 
   return 0;
 }

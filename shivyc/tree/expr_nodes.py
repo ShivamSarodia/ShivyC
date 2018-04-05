@@ -1061,6 +1061,13 @@ class FuncCall(_RExprNode):
         if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
             descrip = "called object is not a function pointer"
             raise CompilerError(descrip, self.func.r)
+        elif (not func.ctype.arg.ret.is_complete()
+              and not func.ctype.arg.ret.is_void()):
+            # TODO: C11 spec says a function cannot return an array type,
+            # but I can't determine how a function would ever be able to return
+            # an array type.
+            descrip = "function returns non-void incomplete type"
+            raise CompilerError(descrip, self.func.r)
 
         if func.ctype.arg.no_info:
             final_args = self._get_args_without_prototype(
@@ -1098,7 +1105,6 @@ class FuncCall(_RExprNode):
         has a prototype. This function converts all passed arguments to
         expected types.
         """
-        # if only parameter is of type void, expect no arguments
         arg_types = func_ctype.args
 
         if len(arg_types) != len(self.args):
@@ -1114,5 +1120,6 @@ class FuncCall(_RExprNode):
         for arg_given, arg_type in zip(self.args, arg_types):
             arg = arg_given.make_il(il_code, symbol_table, c)
             check_cast(arg, arg_type, arg_given.r)
-            final_args.append(set_type(arg, arg_type, il_code))
+            final_args.append(
+                set_type(arg, arg_type.make_unqual(), il_code))
         return final_args
