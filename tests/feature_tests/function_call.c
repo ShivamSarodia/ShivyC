@@ -5,7 +5,7 @@ int strcmp(char*, char*);
 char* strcpy(char*, char*);
 char* strncpy(char*, char*, long);
 
-int signal(int, int a(int));
+int signal(int, int(int));
 
 int main() {
   // Try out a few function calls from standard library.
