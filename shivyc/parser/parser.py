@@ -69,20 +69,3 @@ def parse_root(index):
         return nodes.Root(items), index
     else:
         raise_error("unexpected token", index, ParserError.AT)
-
-
-# @add_range
-# def parse_main(index):
-#     """Parse a main function containing block items.
-#
-#     Ex: int main() { return 4; }
-#
-#     """
-#     err = "expected main function starting"
-#     index = match_token(index, token_kinds.int_kw, ParserError.AT, err)
-#     index = match_token(index, token_kinds.main, ParserError.AT, err)
-#     index = match_token(index, token_kinds.open_paren, ParserError.AT, err)
-#     index = match_token(index, token_kinds.close_paren, ParserError.AT, err)
-#
-#     node, index = parse_compound_statement(index)
-#     return nodes.Main(node), index

@@ -6,7 +6,6 @@ import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
 from shivyc.errors import CompilerError
-from shivyc.il_gen import ILValue
 from shivyc.tree.utils import DirectLValue, report_err, set_type, check_cast
 
 
@@ -49,25 +48,25 @@ class Root(Node):
                 node.make_il(il_code, symbol_table, c)
 
 
-class Main(Node):
-    """Node for the main function."""
-
-    def __init__(self, body):
-        """Initialize node."""
-        super().__init__()
-        self.body = body
-
-    def make_il(self, il_code, symbol_table, c):
-        """Make code for this node."""
-
-        # This node will have c.is_global set True, so we must change it to
-        # for the children context.
-        c = c.set_global(False)
-        self.body.make_il(il_code, symbol_table, c)
-
-        zero = ILValue(ctypes.integer)
-        il_code.register_literal_var(zero, 0)
-        il_code.add(control_cmds.Return(zero))
+# class Main(Node):
+#     """Node for the main function."""
+#
+#     def __init__(self, body):
+#         """Initialize node."""
+#         super().__init__()
+#         self.body = body
+#
+#     def make_il(self, il_code, symbol_table, c):
+#         """Make code for this node."""
+#
+#         # This node will have c.is_global set True, so we must change it to
+#         # for the children context.
+#         c = c.set_global(False)
+#         self.body.make_il(il_code, symbol_table, c)
+#
+#         zero = ILValue(ctypes.integer)
+#         il_code.register_literal_var(zero, 0)
+#         il_code.add(control_cmds.Return(zero))
 
 
 class Compound(Node):
@@ -325,6 +324,7 @@ class Declaration(Node):
         """Initialize node."""
         super().__init__()
         self.node = node
+        self.body = body
 
     def make_il(self, il_code, symbol_table, c):
         """Make code for this declaration."""
