@@ -17,7 +17,7 @@ int main() {
   // error: unrecognized set of type specifiers
   unsigned signed int a;
 
-  // error: extern variable has initializer
+  // error: variable with linkage has initializer
   extern int a = 10;
 
   // error: too many storage classes in declaration specifiers

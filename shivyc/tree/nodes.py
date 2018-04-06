@@ -376,6 +376,8 @@ class Declaration(Node):
         # determine whether this is a declaration or definition
         if decl_info.storage == decl_info.EXTERN and not decl_info.init:
             defined = False
+        elif decl_info.ctype.is_function():
+            defined = False
         else:
             defined = True
 

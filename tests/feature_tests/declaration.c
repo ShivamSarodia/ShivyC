@@ -25,9 +25,12 @@ int main() {
   int *j(int);
   int *k(int(int));
 
+  // verify f3 and f4 are compatible
   int (*f3)(int, int, int), f4(int, int, int);
-  // verify f1 and f2 are compatible
-  f3 = f4;
+  // TODO: uncomment this when function definition is supported.
+  // Today, this line produces a linker error becuase f4 is not
+  // defined anywhere.
+  // f3 = f4;
 }
 
 extern int z;

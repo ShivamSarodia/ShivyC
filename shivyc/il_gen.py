@@ -175,15 +175,14 @@ class SymbolTable:
         `tables` is a list of namedtuples of dictionaries. Each dictionary
         in the namedtuple is the symbol table for a different namespace.
 
-        `linkage` has two dictionaries, each mapping an identifier (string)
-        to an ILValue. linkage[INTERNAL] is a dictionary storing all
-        variables with internal linkage, and linkage[EXTERNAL] is a
-        dictionary storing all variables with external linkage. Every
-        variable with internal or external linkage will be added to these
-        dictionaries, so that they can all be properly linked.
+        `internal` and `external` are dictionaries mapping an identifier (
+        string) to IL values. `internal` is used for all IL values with
+        internal linkage, and `external` is used for all IL values with
+        external linkage.
         """
         self.tables = []
-        self.linkages = {self.INTERNAL: {}, self.EXTERNAL: {}}
+        self.internal = {}
+        self.external = {}
         self.new_scope()
 
     def new_scope(self):
@@ -246,8 +245,11 @@ class SymbolTable:
                 raise CompilerError(err, identifier.r)
             il_value = var.il_value
 
-        elif name in self.linkages[linkage]:
-            il_value = self.linkages[linkage][name]
+        elif linkage == self.INTERNAL and name in self.internal:
+            il_value = self.internal[name]
+
+        elif linkage == self.EXTERNAL and name in self.external:
+            il_value = self.external[name]
 
         else:
             il_value = ILValue(ctype)
