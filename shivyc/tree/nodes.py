@@ -394,6 +394,10 @@ class Declaration(Node):
         else:
             storage = il_code.AUTOMATIC
 
+        if storage == il_code.STATIC and decl_info.init:
+            raise NotImplementedError(
+                "initializer on static storage unsupported")
+
         name = decl_info.identifier.content
         il_code.register_storage(var, storage, name)
         if linkage == symbol_table.EXTERNAL:
