@@ -30,6 +30,7 @@ static_kw = TokenKind("static", keyword_kinds)
 extern_kw = TokenKind("extern", keyword_kinds)
 struct_kw = TokenKind("struct", keyword_kinds)
 const_kw = TokenKind("const", keyword_kinds)
+sizeof_kw = TokenKind("sizeof", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
 minus = TokenKind("-", symbol_kinds)

@@ -852,6 +852,25 @@ class AddrOf(_RExprNode):
             raise CompilerError(err, self.expr.r)
 
 
+class Sizeof(_RExprNode):
+    """Sizeof expression."""
+
+    def __init__(self, expr):
+        """Initialize node."""
+        super().__init__()
+        self.expr = expr
+    
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        expr_il_value = self.expr.expr.make_il(il_code, symbol_table, c)
+        expr_ctype = expr_il_value.ctype
+        v = int(str(expr_ctype.size))
+        il_value = ILValue(ctypes.integer)
+        
+        il_code.register_literal_var(il_value, v)
+        return il_value
+
+
 class Deref(_LExprNode):
     """Dereference expression."""
 

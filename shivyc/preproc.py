@@ -23,7 +23,7 @@ def process(tokens, this_file):
         if (tokens[i].kind == token_kinds.pound and
             tokens[i + 1].kind == token_kinds.identifier and
             tokens[i + 1].content == "include" and
-             tokens[i + 2].kind == token_kinds.include_file):
+            tokens[i + 2].kind == token_kinds.include_file):
 
             # Replace tokens[i] -> tokens[i+2] with preprocessed contents of
             # the included file.
