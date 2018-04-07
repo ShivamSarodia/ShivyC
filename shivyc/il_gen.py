@@ -255,10 +255,14 @@ class SymbolTable:
             il_value = ILValue(ctype)
             self.tables[-1].vars[name] = self.Variable(
                 il_value, linkage, defined)
+            if linkage == self.INTERNAL:
+                self.internal[name] = il_value
+            elif linkage == self.EXTERNAL:
+                self.external[name] = il_value
 
         # Verify the type is compatible with the previous type
         if not il_value.ctype.compatible(ctype):
-            err = f"redeclaration of '{name}' with incompatible type",
+            err = f"redeclared '{name}' with incompatible type",
             raise CompilerError(err, identifier.r)
 
         return il_value

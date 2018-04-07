@@ -67,11 +67,15 @@ class ASMCode:
         if self.string_literals:
             header += ["\t.section .data"] + self.string_literals + [""]
 
-        header += (["\t.section .text"] + self.globals +
-                   ["\t.global main", "", "main:"])
+        header += ["\t.section .text"] + self.globals
 
-        return "\n".join(header + [str(line) for line in self.lines] +
-                         ["\t.att_syntax noprefix", ""])
+        # temporary hack for if there is no main function defined in the input
+        # program
+        if len(self.lines) > 3:
+            header += ["\t.global main", "", "main:"]
+            header += [str(line) for line in self.lines]
+
+        return "\n".join(header + ["\t.att_syntax noprefix", ""])
 
 
 class NodeGraph:
@@ -385,6 +389,12 @@ class ASMGen:
             for value in command.inputs() + command.outputs():
                 if value not in all_values:
                     all_values.append(value)
+
+        # Add extern values as well, so we can be sure they are allocated a
+        # space even if they are never used.
+        for value in self.il_code.external:
+            if value not in all_values:
+                all_values.append(value)
 
         return all_values
 
