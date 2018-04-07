@@ -236,6 +236,7 @@ class SymbolTable:
         """
         name = identifier.content
 
+        # if it's already declared in this scope
         if name in self.tables[-1].vars:
             var = self.tables[-1].vars[name]
             if defined and var.defined:
@@ -243,29 +244,25 @@ class SymbolTable:
             if linkage != var.linkage:
                 err = f"redeclared '{name}' with different linkage"
                 raise CompilerError(err, identifier.r)
-            il_value = var.il_value
-
         elif linkage == self.INTERNAL and name in self.internal:
-            il_value = self.internal[name]
-
+            var = self.Variable(self.internal[name], linkage, defined)
         elif linkage == self.EXTERNAL and name in self.external:
-            il_value = self.external[name]
-
+            var = self.Variable(self.external[name], linkage, defined)
         else:
-            il_value = ILValue(ctype)
-            self.tables[-1].vars[name] = self.Variable(
-                il_value, linkage, defined)
-            if linkage == self.INTERNAL:
-                self.internal[name] = il_value
-            elif linkage == self.EXTERNAL:
-                self.external[name] = il_value
+            var = self.Variable(ILValue(ctype), linkage, defined)
+
+        self.tables[-1].vars[name] = var
+        if linkage == self.INTERNAL:
+            self.internal[name] = var.il_value
+        elif linkage == self.EXTERNAL:
+            self.external[name] = var.il_value
 
         # Verify the type is compatible with the previous type
-        if not il_value.ctype.compatible(ctype):
-            err = f"redeclared '{name}' with incompatible type",
+        if not var.il_value.ctype.compatible(ctype):
+            err = f"redeclared '{name}' with incompatible type"
             raise CompilerError(err, identifier.r)
 
-        return il_value
+        return var.il_value
 
     def lookup_struct(self, tag):
         """Look up struct by tag name and return its ctype object.
