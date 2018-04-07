@@ -25,5 +25,9 @@
   // error: conversion from incompatible pointer type
   f = g;
 
+  int (*h)();
+  // error: conversion from incompatible pointer type
+  h = f;
+
   return 0;
  }
