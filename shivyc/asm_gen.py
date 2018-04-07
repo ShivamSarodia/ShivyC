@@ -256,14 +256,17 @@ class ASMGen:
         self.offset = 0
 
     def make_asm(self):
-        for func in self.il_code.commands:
-            self._make_asm_for_commands(self.il_code.commands[func])
-
-    def _make_asm_for_commands(self, commands):
         """Generate ASM code."""
+        global_spotmap = self._get_global_spotmap()
+        for func in self.il_code.commands:
+            self.asm_code.add(asm_cmds.Label(func))
+            self._make_asm(self.il_code.commands[func], global_spotmap)
 
-        # Get global spotmap and free values
-        global_spotmap, free_values = self._get_global_spotmap(commands)
+    def _make_asm(self, commands, global_spotmap):
+        """Generate ASM code for given command list."""
+
+        # Get free values
+        free_values = self._get_free_values(commands, global_spotmap)
 
         # If any variable may have its address referenced, assign it a
         # permanent memory spot if it doesn't yet have one.
@@ -306,10 +309,10 @@ class ASMGen:
                 free_values.remove(v)
 
         # Perform liveliness analysis
-        live_vars = self._get_live_vars(free_values)
+        live_vars = self._get_live_vars(commands, free_values)
 
         # Generate conflict and preference graph
-        g_bak = self._generate_graph(free_values, live_vars)
+        g_bak = self._generate_graph(commands, free_values, live_vars)
 
         spilled_nodes = []
 
@@ -384,78 +387,64 @@ class ASMGen:
             print("register ILValues", len(g_bak.nodes()) - len(spilled_nodes))
 
         # Generate assembly code
-        self._generate_asm(live_vars, spotmap)
-
-    def _all_il_values(self):
-        """Return a list of all IL values that appear in the IL code."""
-        all_values = []
-        for command in self.il_code:
-            for value in command.inputs() + command.outputs():
-                if value not in all_values:
-                    all_values.append(value)
-
-        # Add extern values as well, so we can be sure they are allocated a
-        # space even if they are never used.
-        for value in self.il_code.external:
-            if value not in all_values:
-                all_values.append(value)
-
-        return all_values
+        self._generate_asm(commands, live_vars, spotmap)
 
     def _get_global_spotmap(self):
-        """Generate global spotmap and free values.
+        """Generate global spotmap and add global values to ASM.
 
-        Returns a tuple. First element is a dictionary mapping ILValue to
-        spot for spots which do not need register allocation, like static
-        variables or literals. The second element is a list of the free
-        values, the variables which were not mapped in the global spotmap.
+        This function generates a spotmap for variables which are not
+        specific to a single function. This includes literals and variables
+        with static storage duration.
         """
-
         global_spotmap = {}
-        free_values = []
-        all_values = self._all_il_values()
 
         string_literal_number = 0
         local_static_number = 0
-        for value in all_values:
-            if value in self.il_code.literals:
-                s = LiteralSpot(self.il_code.literals[value])
-                global_spotmap[value] = s
 
-            elif value in self.il_code.static_storage:
-                name = self.il_code.static_storage[value]
-                if value in self.il_code.external:
-                    self.asm_code.add_global(self.il_code.external[value])
-                else:
-                    name = f"{name}.{local_static_number}"
-                    local_static_number += 1
+        for value in self.il_code.literals:
+            s = LiteralSpot(self.il_code.literals[value])
+            global_spotmap[value] = s
 
-                s = MemSpot(name)
-                global_spotmap[value] = s
-                self.asm_code.add_data(name, value.ctype.size)
-
-            elif value in self.il_code.string_literals:
-                # Add the string literal representation to the output ASM.
-                name = f"__strlit{string_literal_number}"
-                string_literal_number += 1
-
-                self.asm_code.add_string_literal(
-                    name, self.il_code.string_literals[value])
-                global_spotmap[value] = MemSpot(name)
-
-            elif value in self.il_code.no_storage:
-                # why on earth is this here? shouldn't this be pass?
-                # s = MemSpot(self.il_code.no_storage[value])
-                # global_spotmap[value] = s
-                pass
-
+        for value in self.il_code.static_storage:
+            name = self.il_code.static_storage[value]
+            if value in self.il_code.external:
+                self.asm_code.add_global(self.il_code.external[value])
             else:
-                # Value is free and needs an assignment
-                free_values.append(value)
+                name = f"{name}.{local_static_number}"
+                local_static_number += 1
 
-        return global_spotmap, free_values
+            s = MemSpot(name)
+            global_spotmap[value] = s
+            self.asm_code.add_data(name, value.ctype.size)
 
-    def _get_live_vars(self, free_values):
+        for value in self.il_code.string_literals:
+            name = f"__strlit{string_literal_number}"
+            string_literal_number += 1
+
+            self.asm_code.add_string_literal(
+                name, self.il_code.string_literals[value])
+            global_spotmap[value] = MemSpot(name)
+
+        return global_spotmap
+
+    def _get_free_values(self, commands, global_spotmap):
+        """Generate list of free values.
+
+        Returns a list of the free values, the variables which need
+        allocation on the stack.
+        """
+        free_values = []
+        for command in commands:
+            for value in command.inputs() + command.outputs():
+                if (value not in free_values
+                      and value not in global_spotmap
+                      and value not in self.il_code.no_storage):
+
+                    free_values.append(value)
+
+        return free_values
+
+    def _get_live_vars(self, commands, free_values):
         """Given a set of free ILValues, find when those ILValues are live.
 
         free_values - list of ILValues for which to perform liveliness analysis
@@ -463,8 +452,6 @@ class ASMGen:
         element is a list of variables live coming into the command and the
         second is a list of the variables live exiting the command
         """
-        commands = list(self.il_code)
-
         # Preprocess all commands to get a mapping from labels to command
         # number.
         labels = {c.label_name(): i for i, c in enumerate(commands)
@@ -521,7 +508,7 @@ class ASMGen:
 
         return live_vars
 
-    def _generate_graph(self, free_values, live_vars):
+    def _generate_graph(self, commands, free_values, live_vars):
         """Generate the conflict/preference graph.
 
         free_values - List of ILValues to include in the graph
@@ -529,7 +516,7 @@ class ASMGen:
 
         """
         g = NodeGraph(free_values)
-        for i, command in enumerate(self.il_code):
+        for i, command in enumerate(commands):
             # Variables active during input
             for n1, n2 in itertools.combinations(live_vars[i][0], 2):
                 g.add_conflict(n1, n2)
@@ -744,7 +731,7 @@ class ASMGen:
 
         return spotmap
 
-    def _generate_asm(self, live_vars, spotmap):
+    def _generate_asm(self, commands, live_vars, spotmap):
         """Generate assembly code."""
 
         # This is kinda hacky...
@@ -760,7 +747,7 @@ class ASMGen:
         self.asm_code.add(asm_cmds.Sub(spots.RSP, offset_spot, 8))
 
         # Generate code for each command
-        for i, command in enumerate(self.il_code):
+        for i, command in enumerate(commands):
             self.asm_code.add(asm_cmds.Comment(type(command).__name__.upper()))
 
             def get_reg(pref=None, conf=None):
