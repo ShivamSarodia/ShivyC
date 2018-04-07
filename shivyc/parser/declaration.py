@@ -19,15 +19,11 @@ def parse_func_definition(index):
     decl = parse_declarator(index, end)
     range = p.tokens[index].r + p.tokens[end - 1].r
 
-    # this parse is only valid if the declarator is a function
-    if not isinstance(decl, decl_nodes.Function):
-        raise_error("declarator is not a function", index, ParserError.AT)
-
     from shivyc.parser.statement import parse_compound_statement
     body, index = parse_compound_statement(end)
 
     root = decl_nodes.Root(specs, [decl], [None], [range])
-    return nodes.Declaration(root, body), index
+    return nodes.FuncDefinition(root, body), index
 
 
 @add_range

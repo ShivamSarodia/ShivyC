@@ -115,11 +115,6 @@ def get_arguments():
                         help="display register allocator performance info",
                         dest="show_reg_alloc_perf", action="store_true")
 
-    # Boolean flag for whether to allocate any variables in registers
-    parser.add_argument("-z-vars-on-stack",
-                        help="allocate all variables on the stack",
-                        dest="variables_on_stack", action="store_true")
-
     return parser.parse_args()
 
 

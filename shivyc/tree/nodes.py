@@ -304,12 +304,133 @@ class DeclInfo:
     STATIC = 2
     EXTERN = 3
 
-    def __init__(self, identifier, ctype, range, storage=None, init=None):
+    def __init__(self, identifier, ctype, range,
+                 storage=None, init=None, body=None, param_names=None):
         self.identifier = identifier
         self.ctype = ctype
         self.range = range
         self.storage = storage
         self.init = init
+        self.body = body
+        self.param_names = param_names
+
+    def process(self, il_code, symbol_table, c):
+        """Process given DeclInfo object.
+
+        This includes error checking, adding the variable to the symbol
+        table, and registering it with the IL.
+        """
+        if not self.identifier:
+            err = "missing identifier name in declaration"
+            raise CompilerError(err, self.range)
+
+        if not self.ctype.is_complete():
+            err = "variable of incomplete type declared"
+            raise CompilerError(err, self.range)
+
+        if self.body and not isinstance(self.ctype, decl_nodes.Function):
+            err = "function definition provided for non-function type"
+            raise CompilerError(err, self.range)
+
+        linkage = self.get_linkage(symbol_table, c)
+
+        if not c.is_global and self.init and linkage:
+            err = "variable with linkage has initializer"
+            raise CompilerError(err, self.range)
+
+        defined = self.get_defined()
+
+        var = symbol_table.add(
+            self.identifier,
+            self.ctype,
+            defined,
+            linkage)
+
+        storage = self.get_storage(defined, linkage, il_code)
+
+        if storage == il_code.STATIC and self.init:
+            raise NotImplementedError(
+                "initializer on static storage unsupported")
+
+        name = self.identifier.content
+        il_code.register_storage(var, storage, name)
+        if linkage == symbol_table.EXTERNAL:
+            il_code.register_extern_linkage(var, name)
+
+        if self.init:
+            self.do_init(var, il_code, symbol_table, c)
+        if self.body:
+            self.do_body(var, il_code, symbol_table, c)
+
+    def do_init(self, var, il_code, symbol_table, c):
+        """Create code for initializing given variable.
+
+        Caller must check that this object has an initializer.
+        """
+        init_val = self.init.make_il(il_code, symbol_table, c)
+        lval = DirectLValue(var)
+
+        if lval.ctype().is_arith() or lval.ctype().is_pointer():
+            lval.set_to(init_val, il_code, self.identifier.r)
+        else:
+            err = "declared variable is not of assignable type"
+            raise CompilerError(err, self.range)
+
+    def do_body(self, il_code, symbol_table, c):
+        """Create code for function body.
+
+        Caller must check that this function has a body.
+        """
+        for param in self.param_names:
+            if not param:
+                err = "function definition missing parameter name"
+                raise CompilerError(err, self.range)
+
+        il_code.start_func(self.identifier.content)
+        # TODO: output some kind of "load" commands to load parameters
+        self.body.make_il(il_code, symbol_table, c)
+
+    def get_linkage(self, symbol_table, c):
+        """Get linkage type for given decl_info object.
+
+        See 6.2.2 in the C11 spec for details.
+        """
+        if c.is_global and self.storage == DeclInfo.STATIC:
+            linkage = symbol_table.INTERNAL
+        elif self.storage == DeclInfo.EXTERN:
+            var = symbol_table.lookup_raw(self.identifier.content)
+            if var and var.linkage:
+                linkage = var.linkage
+            else:
+                linkage = symbol_table.EXTERNAL
+        elif self.ctype.is_function() and not self.storage:
+            linkage = symbol_table.EXTERNAL
+        elif c.is_global and not self.storage:
+            linkage = symbol_table.EXTERNAL
+        else:
+            linkage = None
+
+        return linkage
+
+    def get_defined(self):
+        """Determine whether this is a definition."""
+        if self.storage == self.EXTERN and not (self.init or self.body):
+            return False
+        elif self.ctype.is_function() and not self.body:
+            return False
+        else:
+            return True
+
+    def get_storage(self, defined, linkage, il_code):
+        """Determine the storage duration."""
+        if not defined or not self.ctype.is_object():
+            storage = None
+        elif linkage or self.storage == self.STATIC:
+            storage = il_code.STATIC
+        else:
+            storage = il_code.AUTOMATIC
+
+        return storage
 
 
 class Declaration(Node):
@@ -332,7 +453,7 @@ class Declaration(Node):
         decl_infos = self.get_decl_infos(self.node, symbol_table)
         for info in decl_infos:
             with report_err():
-                self.process(info, il_code, symbol_table, c)
+                info.process(il_code, symbol_table, c)
 
     def get_decl_infos(self, node, symbol_table):
         """Given a node, returns a list of decl_info objects for that node."""
@@ -348,93 +469,17 @@ class Declaration(Node):
                 ctype, identifier = self.make_ctype(
                     decl, base_type, symbol_table)
 
-                out.append(DeclInfo(identifier, ctype, range, storage, init))
+                param_names = [
+                    self.get_decl_infos(param, symbol_table)[0].identifier
+                    for param in decl.args
+                    if isinstance(decl, decl_nodes.Function)
+                ]
+
+                out.append(DeclInfo(
+                    identifier, ctype, range, storage, init,
+                    self.body, param_names))
 
         return out
-
-    def process(self, decl_info, il_code, symbol_table, c):
-        """Process given DeclInfo object.
-
-        This includes error checking, adding the variable to the symbol
-        table, and registering it with the IL.
-        """
-        if not decl_info.identifier:
-            err = "missing identifier name in declaration"
-            raise CompilerError(err, decl_info.range)
-
-        # TODO: prohibit all declarations of incomplete types?
-        if decl_info.ctype == ctypes.void:
-            err = "variable of void type declared"
-            raise CompilerError(err, decl_info.range)
-
-        linkage = self.get_linkage(decl_info, symbol_table, c)
-
-        if not c.is_global and decl_info.init and linkage:
-            err = "variable with linkage has initializer"
-            raise CompilerError(err, decl_info.range)
-
-        # determine whether this is a declaration or definition
-        if decl_info.storage == decl_info.EXTERN and not decl_info.init:
-            defined = False
-        elif decl_info.ctype.is_function():
-            defined = False
-        else:
-            defined = True
-
-        var = symbol_table.add(
-            decl_info.identifier,
-            decl_info.ctype,
-            defined,
-            linkage)
-
-        if not defined:
-            storage = None
-        elif linkage or decl_info.storage == decl_info.STATIC:
-            storage = il_code.STATIC
-        else:
-            storage = il_code.AUTOMATIC
-
-        if storage == il_code.STATIC and decl_info.init:
-            raise NotImplementedError(
-                "initializer on static storage unsupported")
-
-        name = decl_info.identifier.content
-        il_code.register_storage(var, storage, name)
-        if linkage == symbol_table.EXTERNAL:
-            il_code.register_extern_linkage(var, name)
-
-        # Initialize variable if needed
-        if decl_info.init:
-            init_val = decl_info.init.make_il(il_code, symbol_table, c)
-            lval = DirectLValue(var)
-
-            if lval.ctype().is_arith() or lval.ctype().is_pointer():
-                lval.set_to(init_val, il_code, decl_info.identifier.r)
-            else:
-                err = "declared variable is not of assignable type"
-                raise CompilerError(err, decl_info.range)
-
-    def get_linkage(self, decl_info, symbol_table, c):
-        """Get linkage type for given decl_info object.
-
-        See 6.2.2 in the C11 spec for details.
-        """
-        if c.is_global and decl_info.storage == DeclInfo.STATIC:
-            linkage = symbol_table.INTERNAL
-        elif decl_info.storage == DeclInfo.EXTERN:
-            var = symbol_table.lookup_raw(decl_info.identifier.content)
-            if var and var.linkage:
-                linkage = var.linkage
-            else:
-                linkage = symbol_table.EXTERNAL
-        elif decl_info.ctype.is_function() and not decl_info.storage:
-            linkage = symbol_table.EXTERNAL
-        elif c.is_global and not decl_info.storage:
-            linkage = symbol_table.EXTERNAL
-        else:
-            linkage = None
-
-        return linkage
 
     def make_ctype(self, decl, prev_ctype, symbol_table):
         """Generate a ctype from the given declaration.
@@ -442,7 +487,7 @@ class Declaration(Node):
         Return a `ctype, identifier token` tuple.
 
         decl - Node of decl_nodes to parse. See decl_nodes.py for explanation
-        about decl_nodess.
+        about decl_nodes.
         prev_ctype - The ctype formed from all parts of the tree above the
         current one.
         """

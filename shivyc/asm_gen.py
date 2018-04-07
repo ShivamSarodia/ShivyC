@@ -256,15 +256,19 @@ class ASMGen:
         self.offset = 0
 
     def make_asm(self):
+        for func in self.il_code.commands:
+            self._make_asm_for_commands(self.il_code.commands[func])
+
+    def _make_asm_for_commands(self, commands):
         """Generate ASM code."""
 
         # Get global spotmap and free values
-        global_spotmap, free_values = self._get_global_spotmap()
+        global_spotmap, free_values = self._get_global_spotmap(commands)
 
         # If any variable may have its address referenced, assign it a
         # permanent memory spot if it doesn't yet have one.
         move_to_mem = []
-        for command in self.il_code:
+        for command in commands:
             refs = command.references().values()
             for line in refs:
                 for v in line:
@@ -439,16 +443,11 @@ class ASMGen:
                     name, self.il_code.string_literals[value])
                 global_spotmap[value] = MemSpot(name)
 
-            elif (self.arguments.variables_on_stack and
-                  value in self.il_code.automatic_storage):  # pragma: no cover
-                # If all variables are allocated on the stack
-                self.offset += value.ctype.size
-                s = MemSpot(spots.RBP, -self.offset)
-                global_spotmap[value] = s
-
             elif value in self.il_code.no_storage:
-                s = MemSpot(self.il_code.no_storage[value])
-                global_spotmap[value] = s
+                # why on earth is this here? shouldn't this be pass?
+                # s = MemSpot(self.il_code.no_storage[value])
+                # global_spotmap[value] = s
+                pass
 
             else:
                 # Value is free and needs an assignment

@@ -8,7 +8,8 @@ from shivyc.errors import CompilerError
 class ILCode:
     """Stores the IL code generated from the AST.
 
-    commands (List) - The commands recorded.
+    commands - Dictionary mapping function name to list of IL commands for
+    that function.
     label_num (int) - Unique identifier returned by get_label
     automatic_storage - Dictionary mapping IL value to name for the
     variables that have storage type automatic.
@@ -24,7 +25,9 @@ class ILCode:
 
     def __init__(self):
         """Initialize IL code."""
-        self.commands = []
+        self.commands = {}
+        self.cur_func = None
+
         self.label_num = 0
 
         self.automatic_storage = {}
@@ -36,13 +39,20 @@ class ILCode:
         self.literals = {}
         self.string_literals = {}
 
+    def start_func(self, func):
+        """Start a new function in the IL code.
+
+        Call start_func before generating code for a new function.
+        """
+        self.cur_func = func
+
     def add(self, command):
         """Add a new command to the IL code.
 
         command (ILCommand) - command to be added
 
         """
-        self.commands.append(command)
+        self.commands[self.cur_func].append(command)
 
     def register_storage(self, il_value, storage, name):
         """Register the storage duration of this IL value.
@@ -104,31 +114,6 @@ class ILCode:
         # Import is here to prevent circular import.
         from shivyc.asm_gen import ASMCode
         return ASMCode.get_label()
-
-    def __str__(self):  # pragma: no cover
-        return "\n".join(str(command) for command in self.commands)
-
-    def __iter__(self):
-        """Return the lines of code in order when iterating through ILCode.
-
-        The returned lines will have command, arg1, arg2, and output as
-        attributes, some of which may be NONE if not applicable for that
-        command.
-
-        """
-        return iter(self.commands)
-
-    def __eq__(self, other):  # pragma: no cover
-        """Check for equality between this IL code object and another.
-
-        Equality is only checked by verifying the IL commands are correct! The
-        arguments are currently not examined. This is a very weak form of
-        equality checking, and could perhaps be improved.
-
-        """
-        if len(self.commands) != len(other.commands):
-            return False
-        return all(c1 == c2 for c1, c2 in zip(self.commands, other.commands))
 
 
 class ILValue:
