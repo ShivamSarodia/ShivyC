@@ -19,7 +19,8 @@ class ASMCode:
     def __init__(self):
         """Initialize ASMCode."""
         self.lines = []
-        self.externs = []
+        self.globals = []
+        self.data = []
         self.string_literals = []
 
     def add(self, cmd):
@@ -38,14 +39,16 @@ class ASMCode:
         ASMCode.label_num += 1
         return f"__shivyc_label{ASMCode.label_num}"
 
-    def add_extern(self, name):
-        """Add an external name to the code.
+    def add_global(self, name):
+        """Add a name to the code as global.
 
         name (str) - The name to add.
 
         """
-        # GAS does not require this.
-        self.externs.append(f"\t.extern {name}")
+        self.globals.append(f"\t.global {name}")
+
+    def add_data(self, name, size):
+        self.data.append(f"\t.comm {name}, {size}")
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
@@ -60,15 +63,19 @@ class ASMCode:
         assembling.
 
         """
-        header = ["\t.intel_syntax noprefix"]
+        header = ["\t.intel_syntax noprefix"] + self.data
         if self.string_literals:
             header += ["\t.section .data"] + self.string_literals + [""]
 
-        header += (["\t.section .text"] + self.externs +
-                   ["\t.global main", "", "main:"])
+        header += ["\t.section .text"] + self.globals
 
-        return "\n".join(header + [str(line) for line in self.lines] +
-                         ["\t.att_syntax noprefix", ""])
+        # temporary hack for if there is no main function defined in the input
+        # program
+        if len(self.lines) > 3:
+            header += ["\t.global main", "", "main:"]
+            header += [str(line) for line in self.lines]
+
+        return "\n".join(header + ["\t.att_syntax noprefix", ""])
 
 
 class NodeGraph:
@@ -383,6 +390,12 @@ class ASMGen:
                 if value not in all_values:
                     all_values.append(value)
 
+        # Add extern values as well, so we can be sure they are allocated a
+        # space even if they are never used.
+        for value in self.il_code.external:
+            if value not in all_values:
+                all_values.append(value)
+
         return all_values
 
     def _get_global_spotmap(self):
@@ -391,7 +404,7 @@ class ASMGen:
         Returns a tuple. First element is a dictionary mapping ILValue to
         spot for spots which do not need register allocation, like static
         variables or literals. The second element is a list of the free
-        values; the variables which were not mapped in the global spotmap.
+        values, the variables which were not mapped in the global spotmap.
         """
 
         global_spotmap = {}
@@ -399,17 +412,24 @@ class ASMGen:
         all_values = self._all_il_values()
 
         string_literal_number = 0
+        local_static_number = 0
         for value in all_values:
             if value in self.il_code.literals:
-                # If literal, assign it a preassigned literal spot
                 s = LiteralSpot(self.il_code.literals[value])
                 global_spotmap[value] = s
-            elif value in self.il_code.externs:
-                # If extern, assign assign spot and add the extern to asm code
-                s = MemSpot(self.il_code.externs[value])
-                global_spotmap[value] = s
 
-                self.asm_code.add_extern(self.il_code.externs[value])
+            elif value in self.il_code.static_storage:
+                name = self.il_code.static_storage[value]
+                if value in self.il_code.external:
+                    self.asm_code.add_global(self.il_code.external[value])
+                else:
+                    name = f"{name}.{local_static_number}"
+                    local_static_number += 1
+
+                s = MemSpot(name)
+                global_spotmap[value] = s
+                self.asm_code.add_data(name, value.ctype.size)
+
             elif value in self.il_code.string_literals:
                 # Add the string literal representation to the output ASM.
                 name = f"__strlit{string_literal_number}"
@@ -418,12 +438,18 @@ class ASMGen:
                 self.asm_code.add_string_literal(
                     name, self.il_code.string_literals[value])
                 global_spotmap[value] = MemSpot(name)
+
             elif (self.arguments.variables_on_stack and
-                  value in self.il_code.variables):  # pragma: no cover
+                  value in self.il_code.automatic_storage):  # pragma: no cover
                 # If all variables are allocated on the stack
                 self.offset += value.ctype.size
                 s = MemSpot(spots.RBP, -self.offset)
                 global_spotmap[value] = s
+
+            elif value in self.il_code.no_storage:
+                s = MemSpot(self.il_code.no_storage[value])
+                global_spotmap[value] = s
+
             else:
                 # Value is free and needs an assignment
                 free_values.append(value)
