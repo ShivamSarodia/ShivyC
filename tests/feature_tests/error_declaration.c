@@ -4,6 +4,12 @@ int func(auto int a);
 // error: 'void' must be the only parameter
 int func1(void, void);
 
+extern int var;
+// error: redeclared 'var' with different linkage
+static int var;
+// error: redeclared 'var' with incompatible type
+extern long var;
+
 int main() {
   // error: variable of void type declared
   void a;
@@ -17,7 +23,7 @@ int main() {
   // error: unrecognized set of type specifiers
   unsigned signed int a;
 
-  // error: extern variable has initializer
+  // error: variable with linkage has initializer
   extern int a = 10;
 
   // error: too many storage classes in declaration specifiers
@@ -40,4 +46,8 @@ int main() {
   void (*f4)(long);
   // error: conversion from incompatible pointer type
   f3 = f4;
+
+  int redefined;
+  // error: redefinition of 'redefined'
+  int redefined;
 }

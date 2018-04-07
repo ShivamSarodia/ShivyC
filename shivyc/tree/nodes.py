@@ -367,36 +367,41 @@ class Declaration(Node):
             err = "variable of void type declared"
             raise CompilerError(err, decl_info.range)
 
-        var = symbol_table.add(decl_info.identifier, decl_info.ctype)
+        linkage = self.get_linkage(decl_info, symbol_table, c)
 
-        # Variables declared to be EXTERN
-        if decl_info.storage == DeclInfo.EXTERN:
-            il_code.register_extern_var(var, decl_info.identifier.content)
+        if not c.is_global and decl_info.init and linkage:
+            err = "variable with linkage has initializer"
+            raise CompilerError(err, decl_info.range)
 
-            # Extern variable should not have initializer
-            if decl_info.init:
-                err = "extern variable has initializer"
-                raise CompilerError(err, decl_info.range)
-
-        # Variables declared to be static
-        elif decl_info.storage == DeclInfo.STATIC:
-            # These should be in .data section, but not global
-            raise NotImplementedError("static variables unsupported")
-
-        # Global variables
-        elif c.is_global:
-            # Global functions are extern by default
-            if decl_info.ctype.is_function():
-                il_code.register_extern_var(var, decl_info.identifier.content)
-            else:
-                # These should be common if uninitialized, or data if
-                # initialized
-                raise NotImplementedError(
-                    "non-extern global variables unsupported")
-
-        # Local variables
+        # determine whether this is a declaration or definition
+        if decl_info.storage == decl_info.EXTERN and not decl_info.init:
+            defined = False
+        elif decl_info.ctype.is_function():
+            defined = False
         else:
-            il_code.register_local_var(var)
+            defined = True
+
+        var = symbol_table.add(
+            decl_info.identifier,
+            decl_info.ctype,
+            defined,
+            linkage)
+
+        if not defined:
+            storage = None
+        elif linkage or decl_info.storage == decl_info.STATIC:
+            storage = il_code.STATIC
+        else:
+            storage = il_code.AUTOMATIC
+
+        if storage == il_code.STATIC and decl_info.init:
+            raise NotImplementedError(
+                "initializer on static storage unsupported")
+
+        name = decl_info.identifier.content
+        il_code.register_storage(var, storage, name)
+        if linkage == symbol_table.EXTERNAL:
+            il_code.register_extern_linkage(var, name)
 
         # Initialize variable if needed
         if decl_info.init:
@@ -409,16 +414,37 @@ class Declaration(Node):
                 err = "declared variable is not of assignable type"
                 raise CompilerError(err, decl_info.range)
 
+    def get_linkage(self, decl_info, symbol_table, c):
+        """Get linkage type for given decl_info object.
+
+        See 6.2.2 in the C11 spec for details.
+        """
+        if c.is_global and decl_info.storage == DeclInfo.STATIC:
+            linkage = symbol_table.INTERNAL
+        elif decl_info.storage == DeclInfo.EXTERN:
+            var = symbol_table.lookup_raw(decl_info.identifier.content)
+            if var and var.linkage:
+                linkage = var.linkage
+            else:
+                linkage = symbol_table.EXTERNAL
+        elif decl_info.ctype.is_function() and not decl_info.storage:
+            linkage = symbol_table.EXTERNAL
+        elif c.is_global and not decl_info.storage:
+            linkage = symbol_table.EXTERNAL
+        else:
+            linkage = None
+
+        return linkage
+
     def make_ctype(self, decl, prev_ctype, symbol_table):
         """Generate a ctype from the given declaration.
 
-        Return a `ctype, identifier token, storage class` triple.
+        Return a `ctype, identifier token` tuple.
 
         decl - Node of decl_nodes to parse. See decl_nodes.py for explanation
         about decl_nodess.
         prev_ctype - The ctype formed from all parts of the tree above the
         current one.
-        storage - The storage class of this declaration.
         """
         if isinstance(decl, decl_nodes.Pointer):
             new_ctype = PointerCType(prev_ctype, decl.const)
