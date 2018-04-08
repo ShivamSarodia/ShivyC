@@ -427,7 +427,8 @@ class ASMGen:
             global_spotmap[value] = MemSpot(name)
 
         for value in self.il_code.external:
-            self.asm_code.add_global(self.il_code.external[value])
+            if value in self.il_code.defined:
+                self.asm_code.add_global(self.il_code.external[value])
 
         return global_spotmap
 

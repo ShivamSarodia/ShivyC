@@ -17,6 +17,7 @@ class ILCode:
     static_storage - Like automatic_storage, but for storage type static.
     no_storage - Like automatic_storage, but for values that do not need
     storage.
+    defined - Values that are defined in this translation unit
     external - Dictionary mapping IL value to name for variables that have
     external linkage.
 
@@ -34,6 +35,8 @@ class ILCode:
         self.automatic_storage = {}
         self.static_storage = {}
         self.no_storage = {}
+
+        self.defined = {}
 
         self.external = {}
 
@@ -87,6 +90,10 @@ class ILCode:
             self.automatic_storage[il_value] = name
         elif storage == ILCode.STATIC:
             self.static_storage[il_value] = name
+
+    def register_defined(self, il_value, name):
+        """Register this IL value as being defined in this translation unit."""
+        self.defined[il_value] = name
 
     def register_extern_linkage(self, il_value, name):
         """Register this IL value as having external linkage.

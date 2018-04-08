@@ -357,6 +357,8 @@ class DeclInfo:
         il_code.register_storage(var, storage, name)
         if linkage == symbol_table.EXTERNAL:
             il_code.register_extern_linkage(var, name)
+        if defined:
+            il_code.register_defined(var, name)
 
         if self.init:
             self.do_init(var, il_code, symbol_table, c)
