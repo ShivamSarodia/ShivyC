@@ -413,10 +413,9 @@ class DeclInfo:
 
         symbol_table.new_scope()
 
-        for ctype, param, i in zip(self.ctype.args,
-                                   self.param_names,
-                                   range(len(self.ctype.args))):
-
+        num_params = len(self.ctype.args)
+        iter = zip(self.ctype.args, self.param_names, range(num_params))
+        for ctype, param, i in iter:
             arg = symbol_table.add(param, ctype, True, None)
             il_code.add(value_cmds.LoadArg(arg, i))
 
@@ -572,12 +571,12 @@ class Declaration(Node):
             # Function declarators cannot have a function or array return type.
             # TODO: Relevant only when typedef is implemented.
 
-            if has_void:
-                new_ctype = FunctionCType([], prev_ctype, False)
-            elif not args:
+            if not args and not self.body:
                 new_ctype = FunctionCType([], prev_ctype, True)
+            elif has_void:
+                new_ctype = FunctionCType([], prev_ctype, False)
             else:
-                new_ctype = FunctionCType(args, prev_ctype)
+                new_ctype = FunctionCType(args, prev_ctype, False)
 
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier

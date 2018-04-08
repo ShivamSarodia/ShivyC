@@ -255,7 +255,7 @@ class FunctionCType(CType):
     between the parentheses.
     """
 
-    def __init__(self, args, ret, no_info=False):
+    def __init__(self, args, ret, no_info):
         """Initialize type."""
         self.args = args
         self.ret = ret
