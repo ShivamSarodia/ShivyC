@@ -301,6 +301,7 @@ class Context:
         """Initialize Context."""
         self.break_label = None
         self.continue_label = None
+        self.return_type = None
         self.is_global = False
 
     def set_global(self, val):
@@ -319,4 +320,10 @@ class Context:
         """Return copy of self with break_label set to given value."""
         c = copy(self)
         c.continue_label = lab
+        return c
+
+    def set_return(self, ctype):
+        """Return copy of self with return_type set to given value."""
+        c = copy(self)
+        c.return_type = ctype
         return c

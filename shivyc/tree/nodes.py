@@ -2,6 +2,7 @@
 
 import shivyc.ctypes as ctypes
 import shivyc.il_cmds.control as control_cmds
+import shivyc.il_cmds.value as value_cmds
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
@@ -78,14 +79,23 @@ class Compound(Node):
         super().__init__()
         self.items = items
 
-    def make_il(self, il_code, symbol_table, c):
-        """Make IL code for every block item, in order."""
-        symbol_table.new_scope()
+    def make_il(self, il_code, symbol_table, c, no_scope=False):
+        """Make IL code for every block item, in order.
+
+        If no_scope is True, then do not create a new symbol table scope.
+        Used by function definition so that parameters can live in the scope
+        of the function body.
+        """
+        if not no_scope:
+            symbol_table.new_scope()
+
         c = c.set_global(False)
         for item in self.items:
             with report_err():
                 item.make_il(il_code, symbol_table, c)
-        symbol_table.end_scope()
+
+        if not no_scope:
+            symbol_table.end_scope()
 
 
 class Return(Node):
@@ -98,12 +108,21 @@ class Return(Node):
 
     def make_il(self, il_code, symbol_table, c):
         """Make IL code for returning this value."""
-        il_value = self.return_value.make_il(il_code, symbol_table, c)
 
-        check_cast(il_value, ctypes.integer, self.return_value.r)
-
-        ret = set_type(il_value, ctypes.integer, il_code)
-        il_code.add(control_cmds.Return(ret))
+        if self.return_value and not c.return_type.is_void():
+            il_value = self.return_value.make_il(il_code, symbol_table, c)
+            check_cast(il_value, c.return_type, self.return_value.r)
+            ret = set_type(il_value, c.return_type, il_code)
+            il_code.add(control_cmds.Return(ret))
+        elif self.return_value and c.return_type.is_void():
+            err = "return with expression in function with void return type"
+            raise CompilerError(err, self.r)
+        elif not self.return_value and not c.return_type.is_void():
+            err = ("return without expression in function with non-void "
+                   "return type")
+            raise CompilerError(err, self.r)
+        else:
+            il_code.add(control_cmds.Return())
 
 
 class _BreakContinue(Node):
@@ -389,15 +408,27 @@ class DeclInfo:
                 err = "function definition missing parameter name"
                 raise CompilerError(err, self.range)
 
+        c = c.set_return(self.ctype.ret)
         il_code.start_func(self.identifier.content)
-        # TODO: output some kind of "load" commands to load parameters
-        self.body.make_il(il_code, symbol_table, c)
-        if not il_code.always_returns() and self.identifier.content != "main":
-            il_code.add(control_cmds.Return(None))
-        elif not il_code.always_returns():
+
+        symbol_table.new_scope()
+
+        for ctype, param, i in zip(self.ctype.args,
+                                   self.param_names,
+                                   range(len(self.ctype.args))):
+
+            arg = symbol_table.add(param, ctype, True, None)
+            il_code.add(value_cmds.LoadArg(arg, i))
+
+        self.body.make_il(il_code, symbol_table, c, no_scope=True)
+        if not il_code.always_returns() and self.identifier.content == "main":
             zero = ILValue(ctypes.integer)
             il_code.register_literal_var(zero, 0)
             il_code.add(control_cmds.Return(zero))
+        elif not il_code.always_returns():
+            il_code.add(control_cmds.Return(None))
+
+        symbol_table.end_scope()
 
     def get_linkage(self, symbol_table, c):
         """Get linkage type for given decl_info object.
