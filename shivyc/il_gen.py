@@ -45,6 +45,7 @@ class ILCode:
         Call start_func before generating code for a new function.
         """
         self.cur_func = func
+        self.commands[func] = []
 
     def add(self, command):
         """Add a new command to the IL code.

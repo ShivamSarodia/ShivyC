@@ -68,12 +68,7 @@ class ASMCode:
             header += ["\t.section .data"] + self.string_literals + [""]
 
         header += ["\t.section .text"] + self.globals
-
-        # temporary hack for if there is no main function defined in the input
-        # program
-        if len(self.lines) > 3:
-            header += ["\t.global main", "", "main:"]
-            header += [str(line) for line in self.lines]
+        header += [str(line) for line in self.lines]
 
         return "\n".join(header + ["\t.att_syntax noprefix", ""])
 
@@ -405,11 +400,17 @@ class ASMGen:
             s = LiteralSpot(self.il_code.literals[value])
             global_spotmap[value] = s
 
+        for value in self.il_code.no_storage:
+            # These values can be referenced by their name in the ASM
+            s = MemSpot(self.il_code.no_storage[value])
+            global_spotmap[value] = s
+
         for value in self.il_code.static_storage:
             name = self.il_code.static_storage[value]
-            if value in self.il_code.external:
-                self.asm_code.add_global(self.il_code.external[value])
-            else:
+
+            # internal static values should get name mangled, in case
+            # multiple functions declare static variables with the same name
+            if value not in self.il_code.external:
                 name = f"{name}.{local_static_number}"
                 local_static_number += 1
 
@@ -425,6 +426,9 @@ class ASMGen:
                 name, self.il_code.string_literals[value])
             global_spotmap[value] = MemSpot(name)
 
+        for value in self.il_code.external:
+            self.asm_code.add_global(self.il_code.external[value])
+
         return global_spotmap
 
     def _get_free_values(self, commands, global_spotmap):
@@ -436,10 +440,7 @@ class ASMGen:
         free_values = []
         for command in commands:
             for value in command.inputs() + command.outputs():
-                if (value not in free_values
-                      and value not in global_spotmap
-                      and value not in self.il_code.no_storage):
-
+                if value not in free_values and value not in global_spotmap:
                     free_values.append(value)
 
         return free_values

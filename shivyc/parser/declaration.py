@@ -23,7 +23,7 @@ def parse_func_definition(index):
     body, index = parse_compound_statement(end)
 
     root = decl_nodes.Root(specs, [decl], [None], [range])
-    return nodes.FuncDefinition(root, body), index
+    return nodes.Declaration(root, body), index
 
 
 @add_range

@@ -315,7 +315,7 @@ class Plus(_ArithBinOp):
             err = "invalid operand types for addition"
             raise CompilerError(err, self.op.r)
 
-        if not pointer.ctype.arg.is_complete():
+        if pointer.ctype.arg.is_incomplete():
             err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
 
@@ -347,8 +347,8 @@ class Minus(_ArithBinOp):
         if (left.ctype.is_pointer() and right.ctype.is_pointer()
              and left.ctype.compatible(right.ctype)):
 
-            if not (left.ctype.arg.is_complete()
-                    and right.ctype.arg.is_complete()):
+            if (left.ctype.arg.is_incomplete() or
+                  right.ctype.arg.is_incomplete()):
                 err = "invalid arithmetic on pointers to incomplete types"
                 raise CompilerError(err, self.op.r)
 
@@ -367,7 +367,7 @@ class Minus(_ArithBinOp):
         # Left operand is pointer to complete object type, and right operand
         # is integer.
         elif left.ctype.is_pointer() and right.ctype.is_integral():
-            if not left.ctype.arg.is_complete():
+            if left.ctype.arg.is_incomplete():
                 err = "invalid arithmetic on pointer to incomplete type"
                 raise CompilerError(err, self.op.r)
 
@@ -650,7 +650,7 @@ class _CompoundPlusMinus(_RExprNode):
             and right.ctype.is_integral()
              and self.accept_pointer):
 
-            if not lvalue.ctype().arg.is_complete():
+            if lvalue.ctype().arg.is_incomplete():
                 err = "invalid arithmetic on pointer to incomplete type"
                 raise CompilerError(err, self.op.r)
 
@@ -743,7 +743,7 @@ class _IncrDecr(_RExprNode):
             il_code.register_literal_var(one, 1)
         elif val.ctype.is_pointer() and val.ctype.arg.is_complete():
             il_code.register_literal_var(one, val.ctype.arg.size)
-        elif val.ctype.is_pointer() and not val.ctype.arg.is_complete():
+        elif val.ctype.is_pointer() and val.ctype.arg.is_incomplete():
             err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
         else:
@@ -947,7 +947,7 @@ class ArraySubsc(_LExprNode):
         This function is called in the case where one operand is a pointer
         and the other operand is an integer.
         """
-        if not point.ctype.arg.is_complete():
+        if point.ctype.arg.is_incomplete():
             err = "cannot subscript pointer to incomplete type"
             raise CompilerError(err, self.op.r)
 
@@ -1061,7 +1061,7 @@ class FuncCall(_RExprNode):
         if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
             descrip = "called object is not a function pointer"
             raise CompilerError(descrip, self.func.r)
-        elif (not func.ctype.arg.ret.is_complete()
+        elif (func.ctype.arg.ret.is_incomplete()
               and not func.ctype.arg.ret.is_void()):
             # TODO: C11 spec says a function cannot return an array type,
             # but I can't determine how a function would ever be able to return

@@ -35,6 +35,13 @@ class CType:
         """Check whether this is a complete type."""
         return False
 
+    def is_incomplete(self):
+        """Check whether this is an incomplete type.
+
+        An object type must be either complete or incomplete.
+        """
+        return False
+
     def is_object(self):
         """Check whether this is an object type."""
         return False
@@ -161,12 +168,15 @@ class VoidCType(CType):
         """Return True iff other is a compatible type to self."""
         return other.is_void()
 
-    def is_complete(self):
+    def is_incomplete(self):
         """Check if this is a complete type."""
-        return False
+        return True
 
     def is_void(self):
         """Check whether this is a void type."""
+        return True
+
+    def is_object(self):
         return True
 
 
@@ -222,6 +232,9 @@ class ArrayCType(CType):
         """Check if this is a complete type."""
         return self.n is not None
 
+    def is_incomplete(self):
+        return not self.is_complete()
+
     def is_object(self):
         """Check if this is an object type."""
         return True
@@ -269,9 +282,6 @@ class FunctionCType(CType):
 
         return True
 
-    def is_complete(self):
-        return False
-
     def is_function(self):
         """Check if this is a function type."""
         return True
@@ -305,6 +315,9 @@ class StructCType(CType):
     def is_complete(self):
         """Check whether this is a complete type."""
         return self.members is not None
+
+    def is_incomplete(self):
+        return not self.is_complete()
 
     def is_object(self):
         """Check whether this is an object type."""

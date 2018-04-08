@@ -324,11 +324,11 @@ class DeclInfo:
             err = "missing identifier name in declaration"
             raise CompilerError(err, self.range)
 
-        if not self.ctype.is_complete():
+        if self.ctype.is_incomplete():
             err = "variable of incomplete type declared"
             raise CompilerError(err, self.range)
 
-        if self.body and not isinstance(self.ctype, decl_nodes.Function):
+        if self.body and not self.ctype.is_function():
             err = "function definition provided for non-function type"
             raise CompilerError(err, self.range)
 
@@ -360,7 +360,7 @@ class DeclInfo:
         if self.init:
             self.do_init(var, il_code, symbol_table, c)
         if self.body:
-            self.do_body(var, il_code, symbol_table, c)
+            self.do_body(il_code, symbol_table, c)
 
     def do_init(self, var, il_code, symbol_table, c):
         """Create code for initializing given variable.
@@ -469,11 +469,12 @@ class Declaration(Node):
                 ctype, identifier = self.make_ctype(
                     decl, base_type, symbol_table)
 
-                param_names = [
-                    self.get_decl_infos(param, symbol_table)[0].identifier
-                    for param in decl.args
-                    if isinstance(decl, decl_nodes.Function)
-                ]
+                if isinstance(decl, decl_nodes.Function):
+                    param_names = [
+                        self.get_decl_infos(param, symbol_table)[0].identifier
+                        for param in decl.args]
+                else:
+                    param_names = []
 
                 out.append(DeclInfo(
                     identifier, ctype, range, storage, init,
@@ -703,7 +704,7 @@ class Declaration(Node):
                         raise CompilerError(err, decl_info.range)
 
                     # TODO: 6.7.2.1.18 (allow flexible array members)
-                    if not decl_info.ctype.is_complete():
+                    if decl_info.ctype.is_incomplete():
                         err = "cannot have incomplete type as struct member"
                         raise CompilerError(err, decl_info.range)
 
