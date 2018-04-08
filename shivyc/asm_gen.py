@@ -440,7 +440,8 @@ class ASMGen:
         free_values = []
         for command in commands:
             for value in command.inputs() + command.outputs():
-                if value not in free_values and value not in global_spotmap:
+                if (value and value not in free_values
+                      and value not in global_spotmap):
                     free_values.append(value)
 
         return free_values

@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 from copy import copy
+import shivyc.il_cmds.control as control_cmds
 from shivyc.errors import CompilerError
 
 
@@ -54,6 +55,12 @@ class ILCode:
 
         """
         self.commands[self.cur_func].append(command)
+
+    def always_returns(self):
+        """Return true if this function ends in a return command."""
+        return (self.commands[self.cur_func] and
+                isinstance(self.commands[self.cur_func][-1],
+                           control_cmds.Return))
 
     def register_storage(self, il_value, storage, name):
         """Register the storage duration of this IL value.

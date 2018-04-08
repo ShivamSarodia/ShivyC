@@ -6,6 +6,7 @@ import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
 from shivyc.errors import CompilerError
+from shivyc.il_gen import ILValue
 from shivyc.tree.utils import DirectLValue, report_err, set_type, check_cast
 
 
@@ -389,6 +390,12 @@ class DeclInfo:
         il_code.start_func(self.identifier.content)
         # TODO: output some kind of "load" commands to load parameters
         self.body.make_il(il_code, symbol_table, c)
+        if not il_code.always_returns() and self.identifier.content != "main":
+            il_code.add(control_cmds.Return(None))
+        elif not il_code.always_returns():
+            zero = ILValue(ctypes.integer)
+            il_code.register_literal_var(zero, 0)
+            il_code.add(control_cmds.Return(zero))
 
     def get_linkage(self, symbol_table, c):
         """Get linkage type for given decl_info object.
