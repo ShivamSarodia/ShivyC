@@ -264,21 +264,22 @@ class SymbolTable:
 
         return var.il_value
 
-    def lookup_struct(self, tag):
-        """Look up struct by tag name and return its ctype object.
+    def lookup_struct_union(self, tag):
+        """Looks up for struct or union by tag name and returns
+        its ctype object.
 
         If not found, returns None.
         """
         for _, structs in self.tables[::-1]:
             if tag in structs: return structs[tag]
 
-    def add_struct(self, tag, ctype):
-        """Add struct to the symbol table and return it.
+    def add_struct_union(self, tag, ctype):
+        """Add struct or union to the symbol table and return it.
 
-        If struct already exists in the topmost scope, this function does
-        not modify the symbol table and just returns the existing struct
-        ctype. Otherwise, this function adds this struct to the topmost
-        scope and returns it.
+        If struct or union already exists in the topmost scope, this function
+        does not modify the symbol table and just returns the existing ctype.
+        Otherwise, this function adds this type to the topmost scope and
+        returns it.
         """
         if tag not in self.tables[-1].structs:
             self.tables[-1].structs[tag] = ctype

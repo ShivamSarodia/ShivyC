@@ -12,6 +12,18 @@ int main() {
     int;
   } a;
 
+  // Check with union members
+  struct C {
+    int c_int;
+    union D {
+      int d_int;
+      long d_long;
+    } nested_union_d;
+    union E {
+      int e_int;
+    } nested_union_e;
+  };
+
   q = &a;
   void* p1 = q + 1;
   char* p2 = p1;

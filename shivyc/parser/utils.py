@@ -102,7 +102,7 @@ def log_error(error):
 
 
 def token_is(index, kind):
-    """Return true iff the next token is of the given kind."""
+    """Return true if the next token is of the given kind."""
     global tokens
     return len(tokens) > index and tokens[index].kind == kind
 
