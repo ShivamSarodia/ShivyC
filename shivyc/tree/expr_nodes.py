@@ -797,8 +797,8 @@ class PostDecr(_IncrDecr):
     descrip = "decrement"
     cmd = math_cmds.Subtr
     return_new = False
-    
-    
+
+
 class _ArithUnOp(_RExprNode):
     """Base class for unary plus and minus."""
 
