@@ -78,6 +78,9 @@ int main() {
     int* c;
   } s, *s_p;
 
+  // error: variable of incomplete type declared
+  struct E e;
+
   // error: request for member in something not a structure or union
   10.a;
 

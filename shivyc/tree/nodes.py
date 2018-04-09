@@ -2,6 +2,7 @@
 
 import shivyc.ctypes as ctypes
 import shivyc.il_cmds.control as control_cmds
+import shivyc.il_cmds.value as value_cmds
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
@@ -49,27 +50,6 @@ class Root(Node):
                 node.make_il(il_code, symbol_table, c)
 
 
-class Main(Node):
-    """Node for the main function."""
-
-    def __init__(self, body):
-        """Initialize node."""
-        super().__init__()
-        self.body = body
-
-    def make_il(self, il_code, symbol_table, c):
-        """Make code for this node."""
-
-        # This node will have c.is_global set True, so we must change it to
-        # for the children context.
-        c = c.set_global(False)
-        self.body.make_il(il_code, symbol_table, c)
-
-        zero = ILValue(ctypes.integer)
-        il_code.register_literal_var(zero, 0)
-        il_code.add(control_cmds.Return(zero))
-
-
 class Compound(Node):
     """Node for a compound statement."""
 
@@ -78,14 +58,23 @@ class Compound(Node):
         super().__init__()
         self.items = items
 
-    def make_il(self, il_code, symbol_table, c):
-        """Make IL code for every block item, in order."""
-        symbol_table.new_scope()
+    def make_il(self, il_code, symbol_table, c, no_scope=False):
+        """Make IL code for every block item, in order.
+
+        If no_scope is True, then do not create a new symbol table scope.
+        Used by function definition so that parameters can live in the scope
+        of the function body.
+        """
+        if not no_scope:
+            symbol_table.new_scope()
+
         c = c.set_global(False)
         for item in self.items:
             with report_err():
                 item.make_il(il_code, symbol_table, c)
-        symbol_table.end_scope()
+
+        if not no_scope:
+            symbol_table.end_scope()
 
 
 class Return(Node):
@@ -98,12 +87,20 @@ class Return(Node):
 
     def make_il(self, il_code, symbol_table, c):
         """Make IL code for returning this value."""
-        il_value = self.return_value.make_il(il_code, symbol_table, c)
 
-        check_cast(il_value, ctypes.integer, self.return_value.r)
-
-        ret = set_type(il_value, ctypes.integer, il_code)
-        il_code.add(control_cmds.Return(ret))
+        if self.return_value and not c.return_type.is_void():
+            il_value = self.return_value.make_il(il_code, symbol_table, c)
+            check_cast(il_value, c.return_type, self.return_value.r)
+            ret = set_type(il_value, c.return_type, il_code)
+            il_code.add(control_cmds.Return(ret))
+        elif self.return_value and c.return_type.is_void():
+            err = "function with void return type cannot return value"
+            raise CompilerError(err, self.r)
+        elif not self.return_value and not c.return_type.is_void():
+            err = "function with non-void return type must return value"
+            raise CompilerError(err, self.r)
+        else:
+            il_code.add(control_cmds.Return())
 
 
 class _BreakContinue(Node):
@@ -305,26 +302,167 @@ class DeclInfo:
     STATIC = 2
     EXTERN = 3
 
-    def __init__(self, identifier, ctype, range, storage=None, init=None):
+    def __init__(self, identifier, ctype, range,
+                 storage=None, init=None, body=None, param_names=None):
         self.identifier = identifier
         self.ctype = ctype
         self.range = range
         self.storage = storage
         self.init = init
+        self.body = body
+        self.param_names = param_names
+
+    def process(self, il_code, symbol_table, c):
+        """Process given DeclInfo object.
+
+        This includes error checking, adding the variable to the symbol
+        table, and registering it with the IL.
+        """
+        if not self.identifier:
+            err = "missing identifier name in declaration"
+            raise CompilerError(err, self.range)
+
+        if self.ctype.is_incomplete():
+            err = "variable of incomplete type declared"
+            raise CompilerError(err, self.range)
+
+        if self.body and not self.ctype.is_function():
+            err = "function definition provided for non-function type"
+            raise CompilerError(err, self.range)
+
+        linkage = self.get_linkage(symbol_table, c)
+
+        if not c.is_global and self.init and linkage:
+            err = "variable with linkage has initializer"
+            raise CompilerError(err, self.range)
+
+        defined = self.get_defined()
+
+        var = symbol_table.add(
+            self.identifier,
+            self.ctype,
+            defined,
+            linkage)
+
+        storage = self.get_storage(defined, linkage, il_code)
+
+        if storage == il_code.STATIC and self.init:
+            raise NotImplementedError(
+                "initializer on static storage unsupported")
+
+        name = self.identifier.content
+        il_code.register_storage(var, storage, name)
+        if linkage == symbol_table.EXTERNAL:
+            il_code.register_extern_linkage(var, name)
+        if defined:
+            il_code.register_defined(var, name)
+
+        if self.init:
+            self.do_init(var, il_code, symbol_table, c)
+        if self.body:
+            self.do_body(il_code, symbol_table, c)
+
+    def do_init(self, var, il_code, symbol_table, c):
+        """Create code for initializing given variable.
+
+        Caller must check that this object has an initializer.
+        """
+        init_val = self.init.make_il(il_code, symbol_table, c)
+        lval = DirectLValue(var)
+
+        if lval.ctype().is_arith() or lval.ctype().is_pointer():
+            lval.set_to(init_val, il_code, self.identifier.r)
+        else:
+            err = "declared variable is not of assignable type"
+            raise CompilerError(err, self.range)
+
+    def do_body(self, il_code, symbol_table, c):
+        """Create code for function body.
+
+        Caller must check that this function has a body.
+        """
+        for param in self.param_names:
+            if not param:
+                err = "function definition missing parameter name"
+                raise CompilerError(err, self.range)
+
+        c = c.set_return(self.ctype.ret)
+        il_code.start_func(self.identifier.content)
+
+        symbol_table.new_scope()
+
+        num_params = len(self.ctype.args)
+        iter = zip(self.ctype.args, self.param_names, range(num_params))
+        for ctype, param, i in iter:
+            arg = symbol_table.add(param, ctype, True, None)
+            il_code.add(value_cmds.LoadArg(arg, i))
+
+        self.body.make_il(il_code, symbol_table, c, no_scope=True)
+        if not il_code.always_returns() and self.identifier.content == "main":
+            zero = ILValue(ctypes.integer)
+            il_code.register_literal_var(zero, 0)
+            il_code.add(control_cmds.Return(zero))
+        elif not il_code.always_returns():
+            il_code.add(control_cmds.Return(None))
+
+        symbol_table.end_scope()
+
+    def get_linkage(self, symbol_table, c):
+        """Get linkage type for given decl_info object.
+
+        See 6.2.2 in the C11 spec for details.
+        """
+        if c.is_global and self.storage == DeclInfo.STATIC:
+            linkage = symbol_table.INTERNAL
+        elif self.storage == DeclInfo.EXTERN:
+            var = symbol_table.lookup_raw(self.identifier.content)
+            if var and var.linkage:
+                linkage = var.linkage
+            else:
+                linkage = symbol_table.EXTERNAL
+        elif self.ctype.is_function() and not self.storage:
+            linkage = symbol_table.EXTERNAL
+        elif c.is_global and not self.storage:
+            linkage = symbol_table.EXTERNAL
+        else:
+            linkage = None
+
+        return linkage
+
+    def get_defined(self):
+        """Determine whether this is a definition."""
+        if self.storage == self.EXTERN and not (self.init or self.body):
+            return False
+        elif self.ctype.is_function() and not self.body:
+            return False
+        else:
+            return True
+
+    def get_storage(self, defined, linkage, il_code):
+        """Determine the storage duration."""
+        if not defined or not self.ctype.is_object():
+            storage = None
+        elif linkage or self.storage == self.STATIC:
+            storage = il_code.STATIC
+        else:
+            storage = il_code.AUTOMATIC
+
+        return storage
 
 
 class Declaration(Node):
     """Line of a general variable declaration(s).
 
     node (decl_nodes.Root) - a declaration tree for this line
-    inits (List(Expression Node)) - list of initializer expressions, or None
-    if a variable is not initialized
+    body (Compound(Node)) - if this is a function definition, the body of
+    the function
     """
 
-    def __init__(self, node):
+    def __init__(self, node, body=None):
         """Initialize node."""
         super().__init__()
         self.node = node
+        self.body = body
 
     def make_il(self, il_code, symbol_table, c):
         """Make code for this declaration."""
@@ -332,7 +470,7 @@ class Declaration(Node):
         decl_infos = self.get_decl_infos(self.node, symbol_table)
         for info in decl_infos:
             with report_err():
-                self.process(info, il_code, symbol_table, c)
+                info.process(il_code, symbol_table, c)
 
     def get_decl_infos(self, node, symbol_table):
         """Given a node, returns a list of decl_info objects for that node."""
@@ -348,93 +486,18 @@ class Declaration(Node):
                 ctype, identifier = self.make_ctype(
                     decl, base_type, symbol_table)
 
-                out.append(DeclInfo(identifier, ctype, range, storage, init))
+                if isinstance(decl, decl_nodes.Function):
+                    param_names = [
+                        self.get_decl_infos(param, symbol_table)[0].identifier
+                        for param in decl.args]
+                else:
+                    param_names = []
+
+                out.append(DeclInfo(
+                    identifier, ctype, range, storage, init,
+                    self.body, param_names))
 
         return out
-
-    def process(self, decl_info, il_code, symbol_table, c):
-        """Process given DeclInfo object.
-
-        This includes error checking, adding the variable to the symbol
-        table, and registering it with the IL.
-        """
-        if not decl_info.identifier:
-            err = "missing identifier name in declaration"
-            raise CompilerError(err, decl_info.range)
-
-        # TODO: prohibit all declarations of incomplete types?
-        if decl_info.ctype == ctypes.void:
-            err = "variable of void type declared"
-            raise CompilerError(err, decl_info.range)
-
-        linkage = self.get_linkage(decl_info, symbol_table, c)
-
-        if not c.is_global and decl_info.init and linkage:
-            err = "variable with linkage has initializer"
-            raise CompilerError(err, decl_info.range)
-
-        # determine whether this is a declaration or definition
-        if decl_info.storage == decl_info.EXTERN and not decl_info.init:
-            defined = False
-        elif decl_info.ctype.is_function():
-            defined = False
-        else:
-            defined = True
-
-        var = symbol_table.add(
-            decl_info.identifier,
-            decl_info.ctype,
-            defined,
-            linkage)
-
-        if not defined:
-            storage = None
-        elif linkage or decl_info.storage == decl_info.STATIC:
-            storage = il_code.STATIC
-        else:
-            storage = il_code.AUTOMATIC
-
-        if storage == il_code.STATIC and decl_info.init:
-            raise NotImplementedError(
-                "initializer on static storage unsupported")
-
-        name = decl_info.identifier.content
-        il_code.register_storage(var, storage, name)
-        if linkage == symbol_table.EXTERNAL:
-            il_code.register_extern_linkage(var, name)
-
-        # Initialize variable if needed
-        if decl_info.init:
-            init_val = decl_info.init.make_il(il_code, symbol_table, c)
-            lval = DirectLValue(var)
-
-            if lval.ctype().is_arith() or lval.ctype().is_pointer():
-                lval.set_to(init_val, il_code, decl_info.identifier.r)
-            else:
-                err = "declared variable is not of assignable type"
-                raise CompilerError(err, decl_info.range)
-
-    def get_linkage(self, decl_info, symbol_table, c):
-        """Get linkage type for given decl_info object.
-
-        See 6.2.2 in the C11 spec for details.
-        """
-        if c.is_global and decl_info.storage == DeclInfo.STATIC:
-            linkage = symbol_table.INTERNAL
-        elif decl_info.storage == DeclInfo.EXTERN:
-            var = symbol_table.lookup_raw(decl_info.identifier.content)
-            if var and var.linkage:
-                linkage = var.linkage
-            else:
-                linkage = symbol_table.EXTERNAL
-        elif decl_info.ctype.is_function() and not decl_info.storage:
-            linkage = symbol_table.EXTERNAL
-        elif c.is_global and not decl_info.storage:
-            linkage = symbol_table.EXTERNAL
-        else:
-            linkage = None
-
-        return linkage
 
     def make_ctype(self, decl, prev_ctype, symbol_table):
         """Generate a ctype from the given declaration.
@@ -442,7 +505,7 @@ class Declaration(Node):
         Return a `ctype, identifier token` tuple.
 
         decl - Node of decl_nodes to parse. See decl_nodes.py for explanation
-        about decl_nodess.
+        about decl_nodes.
         prev_ctype - The ctype formed from all parts of the tree above the
         current one.
         """
@@ -486,12 +549,12 @@ class Declaration(Node):
             # Function declarators cannot have a function or array return type.
             # TODO: Relevant only when typedef is implemented.
 
-            if has_void:
-                new_ctype = FunctionCType([], prev_ctype, False)
-            elif not args:
+            if not args and not self.body:
                 new_ctype = FunctionCType([], prev_ctype, True)
+            elif has_void:
+                new_ctype = FunctionCType([], prev_ctype, False)
             else:
-                new_ctype = FunctionCType(args, prev_ctype)
+                new_ctype = FunctionCType(args, prev_ctype, False)
 
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier
@@ -658,7 +721,7 @@ class Declaration(Node):
                         raise CompilerError(err, decl_info.range)
 
                     # TODO: 6.7.2.1.18 (allow flexible array members)
-                    if not decl_info.ctype.is_complete():
+                    if decl_info.ctype.is_incomplete():
                         err = "cannot have incomplete type as struct member"
                         raise CompilerError(err, decl_info.range)
 

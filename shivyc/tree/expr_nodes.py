@@ -347,8 +347,8 @@ class Minus(_ArithBinOp):
         if (left.ctype.is_pointer() and right.ctype.is_pointer()
              and left.ctype.compatible(right.ctype)):
 
-            if not (left.ctype.arg.is_complete()
-                    and right.ctype.arg.is_complete()):
+            if (not left.ctype.arg.is_complete() or
+                  not right.ctype.arg.is_complete()):
                 err = "invalid arithmetic on pointers to incomplete types"
                 raise CompilerError(err, self.op.r)
 
@@ -743,9 +743,11 @@ class _IncrDecr(_RExprNode):
             il_code.register_literal_var(one, 1)
         elif val.ctype.is_pointer() and val.ctype.arg.is_complete():
             il_code.register_literal_var(one, val.ctype.arg.size)
-        elif val.ctype.is_pointer() and not val.ctype.arg.is_complete():
+        elif val.ctype.is_pointer():
+            # technically, this message is not quite right because for
+            # non-object types, a type can be neither complete nor incomplete
             err = "invalid arithmetic on pointer to incomplete type"
-            raise CompilerError(err, self.op.r)
+            raise CompilerError(err, self.expr.r)
         else:
             err = f"invalid type for {self.descrip} operator"
             raise CompilerError(err, self.expr.r)
@@ -1061,7 +1063,7 @@ class FuncCall(_RExprNode):
         if not func.ctype.is_pointer() or not func.ctype.arg.is_function():
             descrip = "called object is not a function pointer"
             raise CompilerError(descrip, self.func.r)
-        elif (not func.ctype.arg.ret.is_complete()
+        elif (func.ctype.arg.ret.is_incomplete()
               and not func.ctype.arg.ret.is_void()):
             # TODO: C11 spec says a function cannot return an array type,
             # but I can't determine how a function would ever be able to return

@@ -11,6 +11,22 @@ from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
 
 
 @add_range
+def parse_func_definition(index):
+    """Parse a function definition."""
+
+    specs, index = parse_decl_specifiers(index)
+    end = find_decl_end(index)
+    decl = parse_declarator(index, end)
+    range = p.tokens[index].r + p.tokens[end - 1].r
+
+    from shivyc.parser.statement import parse_compound_statement
+    body, index = parse_compound_statement(end)
+
+    root = decl_nodes.Root(specs, [decl], [None], [range])
+    return nodes.Declaration(root, body), index
+
+
+@add_range
 def parse_declaration(index):
     """Parse a declaration into a tree.nodes.Declaration node.
 

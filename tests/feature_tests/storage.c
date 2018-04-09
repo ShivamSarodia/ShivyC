@@ -42,4 +42,6 @@ int main() {
     // has internal linkage also
     if(intern_var != 7) return 7;
   }
+
+  if(extern_var_2 != 0) return 8;
 }

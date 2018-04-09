@@ -49,7 +49,7 @@ class LValue:
         ctype = self.ctype()
         if ctype.is_array():
             return False
-        if not ctype.is_complete():
+        if ctype.is_incomplete():
             return False
         if ctype.is_const():
             return False

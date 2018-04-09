@@ -11,7 +11,7 @@ static int var;
 extern long var;
 
 int main() {
-  // error: variable of void type declared
+  // error: variable of incomplete type declared
   void a;
 
   // error: missing identifier name in declaration

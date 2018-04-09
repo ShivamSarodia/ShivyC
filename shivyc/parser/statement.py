@@ -70,6 +70,9 @@ def parse_return(index):
 
     """
     index = match_token(index, token_kinds.return_kw, ParserError.GOT)
+    if token_is(index, token_kinds.semicolon):
+        return nodes.Return(None), index
+
     node, index = parse_expression(index)
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)

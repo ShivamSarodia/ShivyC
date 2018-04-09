@@ -2,6 +2,7 @@
 
 import shivyc.asm_cmds as asm_cmds
 import shivyc.ctypes as ctypes
+import shivyc.spots as spots
 from shivyc.il_cmds.base import ILCommand
 from shivyc.spots import RegSpot, MemSpot, LiteralSpot
 
@@ -51,6 +52,49 @@ class _ValueCmd(ILCommand):
         for reg_size in reg_sizes:
             if size >= reg_size:
                 return reg_size
+
+
+class LoadArg(ILCommand):
+    """Loads a function argument value into an IL value.
+
+    output is the IL value to load the function argument value into,
+    and arg_num is the index of the argument to load. For example,
+    at the start of the body of the following function:
+
+       int func(int a, int b);
+
+    the following two LoadArg commands would be appropriate
+
+       LoadArg(a, 0)
+       LoadArg(b, 1)
+
+    in order to load the first function argument into the variable a and
+    the second function argument into the variable b.
+    """
+    arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX, spots.R8, spots.R9]
+
+    def __init__(self, output, arg_num):
+        self.output = output
+        self.arg_reg = self.arg_regs[arg_num]
+
+    def inputs(self):
+        return []
+
+    def outputs(self):
+        return [self.output]
+
+    def clobber(self):
+        return [self.arg_reg]
+
+    def abs_spot_pref(self):
+        return {self.output: [self.arg_reg]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):
+        if spotmap[self.output] == self.arg_reg:
+            return
+        else:
+            asm_code.add(asm_cmds.Mov(
+                spotmap[self.output], self.arg_reg, self.output.ctype.size))
 
 
 class Set(_ValueCmd):

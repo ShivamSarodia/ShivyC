@@ -7,6 +7,8 @@ int f1(void);
 
 int f2();
 
+int f4(int a, int b, int c) { return 0; }
+
 int main() {
   int;
 
@@ -25,12 +27,9 @@ int main() {
   int *j(int);
   int *k(int(int));
 
-  // verify f3 and f4 are compatible
-  int (*f3)(int, int, int), f4(int, int, int);
-  // TODO: uncomment this when function definition is supported.
-  // Today, this line produces a linker error becuase f4 is not
-  // defined anywhere.
-  // f3 = f4;
+  // verify pointer to function and decayed function are compatible
+  int (*f3)(int, int, int);
+  f3 = f4;
 }
 
 extern int z;
