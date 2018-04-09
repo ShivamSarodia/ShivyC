@@ -718,13 +718,11 @@ class Declaration(Node):
         """
         has_members = node.members is not None
 
-        ctype_req = None  # requested CType
         if node.kind == token_kinds.struct_kw:
             ctype_req = StructCType
         else:
             ctype_req = UnionCType
 
-        ctype = None  # actual CType
         if node.tag:
             tag = str(node.tag)
             ctype = symbol_table.lookup_struct_union(tag)
