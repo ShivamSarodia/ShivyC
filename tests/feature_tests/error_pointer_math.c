@@ -28,4 +28,7 @@ int main() {
   p - q;
   // error: invalid arithmetic on pointer to incomplete type
   p - 1;
+  // error: invalid arithmetic on pointer to incomplete type
+  p++;
+
 }

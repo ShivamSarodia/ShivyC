@@ -28,6 +28,14 @@ void void_ret() {
   helper = 6;
 }
 
+int int_ret() {
+  int a = 3;
+  // force `a` to conflict with RAX
+  a = 3 / a;
+  // must emit `mov` because `a` is not in RAX
+  return a;
+}
+
 int array_sum(int arr[3]) {
   int sum = 0;
   for(int i = 0; i < 3; i++) {
