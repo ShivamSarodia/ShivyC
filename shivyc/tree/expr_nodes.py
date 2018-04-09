@@ -797,6 +797,46 @@ class PostDecr(_IncrDecr):
     descrip = "decrement"
     cmd = math_cmds.Subtr
     return_new = False
+    
+    
+class _ArithUnOp(_RExprNode):
+    """Base class for unary plus and minus."""
+
+    descrip = None
+    cmd = None
+
+    def __init__(self, expr):
+        """Initialize node."""
+        super().__init__()
+        self.expr = expr
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        expr = self.expr.make_il(il_code, symbol_table, c)
+        if expr.ctype.is_arith():
+            zero = ILValue(ctypes.integer)
+            il_code.register_literal_var(zero, "0")
+            zero, expr = arith_convert(zero, expr, il_code)
+            out = ILValue(zero.ctype)
+            il_code.add(self.cmd(out, zero, expr))
+            return out
+        else:
+            err = f"wrong type argument to unary {self.descrip}"
+            raise CompilerError(err, self.expr.r)
+
+
+class UnaryPlus(_ArithUnOp):
+    """Positive."""
+
+    descrip = "plus"
+    cmd = math_cmds.Add
+
+
+class UnaryMinus(_ArithUnOp):
+    """Negative."""
+
+    descrip = "minus"
+    cmd = math_cmds.Subtr
 
 
 class BoolNot(_RExprNode):
