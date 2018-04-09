@@ -40,6 +40,14 @@ int call_function(int f(int, long), int arg1, int arg2) {
   return f(arg1, arg2);
 }
 
+const int return_const() {
+  return 4;
+}
+
+int ptr_value(const int* p) {
+  return *p;
+}
+
 int main() {
   if(add(3, 4) != 7) return 1;
   if(add(helper_ret_5(), 4) != 9) return 2;
@@ -63,4 +71,11 @@ int main() {
   if(array_sum(arr) != 6) return 8;
 
   if(call_function(add, 5, 6) != 11) return 9;
+
+  int a = return_const();
+  if(a != 4) return 10;
+
+  if(ptr_value(&a) != 4) return 11;
+  const int* p = &a;
+  if(ptr_value(&a) != 4) return 12;
 }

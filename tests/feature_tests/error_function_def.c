@@ -41,6 +41,29 @@ int* return_pointer() {
   return a;
 }
 
+int const_param(const int a) {
+  // error: expression on left of '=' is not assignable
+  a = 3;
+}
+
+int const_ptr_param(const int* a) {
+  int b;
+  // verify we can assign directly to a
+  a = &b;
+  // error: expression on left of '=' is not assignable
+  *a = 3;
+}
+
+const int func() {
+  return 4;
+}
+
+// error: redefinition of 'a'
+void repeat_param(int a, int a) { }
+
+// error: storage class specified for function parameter
+void storage_on_param(static int a) { }
+
 int main() {
   // error: incorrect number of arguments for function call (expected 2, have 3)
   add(1,2,3);
