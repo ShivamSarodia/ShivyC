@@ -315,7 +315,7 @@ class Plus(_ArithBinOp):
             err = "invalid operand types for addition"
             raise CompilerError(err, self.op.r)
 
-        if pointer.ctype.arg.is_incomplete():
+        if not pointer.ctype.arg.is_complete():
             err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
 
@@ -347,8 +347,8 @@ class Minus(_ArithBinOp):
         if (left.ctype.is_pointer() and right.ctype.is_pointer()
              and left.ctype.compatible(right.ctype)):
 
-            if (left.ctype.arg.is_incomplete() or
-                  right.ctype.arg.is_incomplete()):
+            if (not left.ctype.arg.is_complete() or
+                  not right.ctype.arg.is_complete()):
                 err = "invalid arithmetic on pointers to incomplete types"
                 raise CompilerError(err, self.op.r)
 
@@ -367,7 +367,7 @@ class Minus(_ArithBinOp):
         # Left operand is pointer to complete object type, and right operand
         # is integer.
         elif left.ctype.is_pointer() and right.ctype.is_integral():
-            if left.ctype.arg.is_incomplete():
+            if not left.ctype.arg.is_complete():
                 err = "invalid arithmetic on pointer to incomplete type"
                 raise CompilerError(err, self.op.r)
 
@@ -650,7 +650,7 @@ class _CompoundPlusMinus(_RExprNode):
             and right.ctype.is_integral()
              and self.accept_pointer):
 
-            if lvalue.ctype().arg.is_incomplete():
+            if not lvalue.ctype().arg.is_complete():
                 err = "invalid arithmetic on pointer to incomplete type"
                 raise CompilerError(err, self.op.r)
 
@@ -743,7 +743,9 @@ class _IncrDecr(_RExprNode):
             il_code.register_literal_var(one, 1)
         elif val.ctype.is_pointer() and val.ctype.arg.is_complete():
             il_code.register_literal_var(one, val.ctype.arg.size)
-        elif val.ctype.is_pointer() and val.ctype.arg.is_incomplete():
+        elif val.ctype.is_pointer():
+            # technically, this message is not quite right because for
+            # non-object types, a type can be neither complete nor incomplete
             err = "invalid arithmetic on pointer to incomplete type"
             raise CompilerError(err, self.op.r)
         else:
@@ -947,7 +949,7 @@ class ArraySubsc(_LExprNode):
         This function is called in the case where one operand is a pointer
         and the other operand is an integer.
         """
-        if point.ctype.arg.is_incomplete():
+        if not point.ctype.arg.is_complete():
             err = "cannot subscript pointer to incomplete type"
             raise CompilerError(err, self.op.r)
 
