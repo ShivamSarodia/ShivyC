@@ -50,27 +50,6 @@ class Root(Node):
                 node.make_il(il_code, symbol_table, c)
 
 
-# class Main(Node):
-#     """Node for the main function."""
-#
-#     def __init__(self, body):
-#         """Initialize node."""
-#         super().__init__()
-#         self.body = body
-#
-#     def make_il(self, il_code, symbol_table, c):
-#         """Make code for this node."""
-#
-#         # This node will have c.is_global set True, so we must change it to
-#         # for the children context.
-#         c = c.set_global(False)
-#         self.body.make_il(il_code, symbol_table, c)
-#
-#         zero = ILValue(ctypes.integer)
-#         il_code.register_literal_var(zero, 0)
-#         il_code.add(control_cmds.Return(zero))
-
-
 class Compound(Node):
     """Node for a compound statement."""
 
@@ -115,11 +94,10 @@ class Return(Node):
             ret = set_type(il_value, c.return_type, il_code)
             il_code.add(control_cmds.Return(ret))
         elif self.return_value and c.return_type.is_void():
-            err = "return with expression in function with void return type"
+            err = "function with void return type cannot return value"
             raise CompilerError(err, self.r)
         elif not self.return_value and not c.return_type.is_void():
-            err = ("return without expression in function with non-void "
-                   "return type")
+            err = "function with non-void return type must return value"
             raise CompilerError(err, self.r)
         else:
             il_code.add(control_cmds.Return())
