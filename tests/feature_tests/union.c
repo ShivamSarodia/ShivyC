@@ -57,10 +57,9 @@ int main() {
   if((&array[0] + 3)->nested_union.b_int_one != 3) return 14;
 
   union D {
-   short a;
-   int b;
+    unsigned short a;
+    unsigned int b;
   } u;
-  u.b = 32768;
-  short min_short = 0-32768;
-  if(u.a != min_short) return 15;
+  u.b = 4294967295;
+  if(u.a != 65535) return 15;
 }
