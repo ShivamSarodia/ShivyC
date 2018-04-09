@@ -747,7 +747,7 @@ class _IncrDecr(_RExprNode):
             # technically, this message is not quite right because for
             # non-object types, a type can be neither complete nor incomplete
             err = "invalid arithmetic on pointer to incomplete type"
-            raise CompilerError(err, self.op.r)
+            raise CompilerError(err, self.expr.r)
         else:
             err = f"invalid type for {self.descrip} operator"
             raise CompilerError(err, self.expr.r)

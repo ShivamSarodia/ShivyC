@@ -30,5 +30,4 @@ int main() {
   p - 1;
   // error: invalid arithmetic on pointer to incomplete type
   p++;
-
 }
