@@ -519,16 +519,15 @@ class Declaration(Node):
                 ctype, identifier = self.make_ctype(
                     decl, base_type, symbol_table)
 
-                if isinstance(decl, decl_nodes.Function):
-                    param_names = [
-                        self.get_decl_infos(param, symbol_table)[0].identifier
-                        for param in decl.args]
+                if ctype.is_function():
+                    param_identifiers = self.extract_params(
+                        decl, symbol_table)
                 else:
-                    param_names = []
+                    param_identifiers = []
 
                 out.append(DeclInfo(
                     identifier, ctype, range, storage, init,
-                    self.body, param_names))
+                    self.body, param_identifiers))
 
         return out
 
@@ -593,6 +592,22 @@ class Declaration(Node):
             return prev_ctype, decl.identifier
 
         return self.make_ctype(decl.child, new_ctype, symbol_table)
+
+    def extract_params(self, decl, symbol_table):
+        """Return the parameter list for this function."""
+
+        identifiers = []
+        func_decl = None
+        while decl and not isinstance(decl, decl_nodes.Identifier):
+            if isinstance(decl, decl_nodes.Function):
+                func_decl = decl
+            decl = decl.child
+
+        for param in func_decl.args:
+            decl_info = self.get_decl_infos(param, symbol_table)[0]
+            identifiers.append(decl_info.identifier)
+
+        return identifiers
 
     def make_specs_ctype(self, specs, any_dec, symbol_table):
         """Make a ctype out of the provided list of declaration specifiers.
