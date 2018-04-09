@@ -162,7 +162,7 @@ def parse_postfix(index):
             match_token(index, token_kinds.identifier, ParserError.AFTER)
             member = p.tokens[index]
 
-            if token_is(index, token_kinds.dot):
+            if token_is(index - 1, token_kinds.dot):
                 cur = expr_nodes.ObjMember(cur, member)
             else:
                 cur = expr_nodes.ObjPtrMember(cur, member)
