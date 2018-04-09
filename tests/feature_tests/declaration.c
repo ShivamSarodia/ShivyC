@@ -9,6 +9,17 @@ int f2();
 
 int f4(int a, int b, int c) { return 0; }
 
+int func(int a, int b) {
+  a; b;
+  return a;
+}
+
+// Test declaration of function returning function.
+int (*getFunc(int z))(int a, int b) {
+  z;
+  return func;
+}
+
 int main() {
   int;
 
