@@ -432,9 +432,10 @@ class DeclInfo:
                 err = "first parameter of 'main' must be of integer type"
                 raise CompilerError(err, self.range)
 
-            is_ptr_array = second.arg.is_pointer() or second.arg.is_array()
-            if (not second.is_pointer() or not is_ptr_array
-                    or not second.arg.arg.compatible(ctypes.char)):
+            is_ptr_array = (second.is_pointer() and
+                            (second.arg.is_pointer() or second.arg.is_array()))
+
+            if not is_ptr_array or not second.arg.arg.compatible(ctypes.char):
                 err = "second parameter of 'main' must be like char**"
                 raise CompilerError(err, self.range)
 
