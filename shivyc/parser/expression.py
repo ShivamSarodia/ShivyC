@@ -147,13 +147,12 @@ def parse_postfix(index):
     cur, index = parse_primary(index)
 
     while True:
-        if len(p.tokens) > index:
-            tok = p.tokens[index]
+        old_range = cur.r
 
         if token_is(index, token_kinds.open_sq_brack):
             index += 1
             arg, index = parse_expression(index)
-            cur = expr_nodes.ArraySubsc(cur, arg, tok)
+            cur = expr_nodes.ArraySubsc(cur, arg)
             match_token(index, token_kinds.close_sq_brack, ParserError.GOT)
             index += 1
 
@@ -163,10 +162,10 @@ def parse_postfix(index):
             match_token(index, token_kinds.identifier, ParserError.AFTER)
             member = p.tokens[index]
 
-            if tok.kind == token_kinds.dot:
-                cur = expr_nodes.ObjMember(cur, member, tok)
+            if token_is(index - 1, token_kinds.dot):
+                cur = expr_nodes.ObjMember(cur, member)
             else:
-                cur = expr_nodes.ObjPtrMember(cur, member, tok)
+                cur = expr_nodes.ObjPtrMember(cur, member)
 
             index += 1
 
@@ -175,7 +174,7 @@ def parse_postfix(index):
             index += 1
 
             if token_is(index, token_kinds.close_paren):
-                return expr_nodes.FuncCall(cur, args, tok), index + 1
+                return expr_nodes.FuncCall(cur, args), index + 1
 
             while True:
                 arg, index = parse_assignment(index)
@@ -189,7 +188,7 @@ def parse_postfix(index):
             index = match_token(
                 index, token_kinds.close_paren, ParserError.GOT)
 
-            return expr_nodes.FuncCall(cur, args, tok), index
+            return expr_nodes.FuncCall(cur, args), index
 
         elif token_is(index, token_kinds.incr):
             index += 1
@@ -199,6 +198,8 @@ def parse_postfix(index):
             cur = expr_nodes.PostDecr(cur)
         else:
             return cur, index
+
+        cur.r = old_range + p.tokens[index - 1].r
 
 
 @add_range

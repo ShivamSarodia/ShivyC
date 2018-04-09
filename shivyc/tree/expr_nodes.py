@@ -875,12 +875,11 @@ class Deref(_LExprNode):
 class ArraySubsc(_LExprNode):
     """Array subscript."""
 
-    def __init__(self, head, arg, op):
+    def __init__(self, head, arg):
         """Initialize node."""
         super().__init__()
         self.head = head
         self.arg = arg
-        self.op = op
 
     def _lvalue(self, il_code, symbol_table, c):
         """Return lvalue form of this node.
@@ -951,7 +950,7 @@ class ArraySubsc(_LExprNode):
         """
         if not point.ctype.arg.is_complete():
             err = "cannot subscript pointer to incomplete type"
-            raise CompilerError(err, self.op.r)
+            raise CompilerError(err, self.r)
 
         shift = get_size(point.ctype.arg, arith, il_code)
         out = ILValue(point.ctype)
@@ -971,12 +970,11 @@ class ArraySubsc(_LExprNode):
 class _ObjLookup(_LExprNode):
     """Struct/union object lookup (. or ->)"""
 
-    def __init__(self, head, member, tok):
+    def __init__(self, head, member):
         """Initialize node."""
         super().__init__()
         self.head = head
         self.member = member
-        self.tok = tok
 
     def get_offset_info(self, struct_ctype):
         """Given a struct ctype, return the member offset and ctype.
@@ -1044,15 +1042,12 @@ class FuncCall(_RExprNode):
 
     func - Expression of type function pointer
     args - List of expressions for each argument
-    tok - Opening parenthesis of this function call, for error reporting
-
     """
-    def __init__(self, func, args, tok):
+    def __init__(self, func, args):
         """Initialize node."""
         super().__init__()
         self.func = func
         self.args = args
-        self.tok = tok
 
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
@@ -1116,7 +1111,7 @@ class FuncCall(_RExprNode):
             if self.args:
                 raise CompilerError(err, self.args[-1].r)
             else:
-                raise CompilerError(err, self.tok.r)
+                raise CompilerError(err, self.r)
 
         final_args = []
         for arg_given, arg_type in zip(self.args, arg_types):
