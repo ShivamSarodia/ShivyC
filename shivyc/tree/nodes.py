@@ -381,10 +381,15 @@ class DeclInfo:
 
         Caller must check that this function has a body.
         """
+        is_main = self.identifier.content == "main"
+
         for param in self.param_names:
             if not param:
                 err = "function definition missing parameter name"
                 raise CompilerError(err, self.range)
+
+        if is_main:
+            self.check_main_type()
 
         c = c.set_return(self.ctype.ret)
         il_code.start_func(self.identifier.content)
@@ -398,7 +403,7 @@ class DeclInfo:
             il_code.add(value_cmds.LoadArg(arg, i))
 
         self.body.make_il(il_code, symbol_table, c, no_scope=True)
-        if not il_code.always_returns() and self.identifier.content == "main":
+        if not il_code.always_returns() and is_main:
             zero = ILValue(ctypes.integer)
             il_code.register_literal_var(zero, 0)
             il_code.add(control_cmds.Return(zero))
@@ -406,6 +411,33 @@ class DeclInfo:
             il_code.add(control_cmds.Return(None))
 
         symbol_table.end_scope()
+
+    def check_main_type(self):
+        """Check if function signature matches signature expected of main.
+
+        Raises an exception if this function signature does not match the
+        function signature expected of the main function.
+        """
+        if not self.ctype.ret.compatible(ctypes.integer):
+            err = "'main' function must have integer return type"
+            raise CompilerError(err, self.range)
+        if len(self.ctype.args) not in {0, 2}:
+            err = "'main' function must have 0 or 2 arguments"
+            raise CompilerError(err, self.range)
+        if self.ctype.args:
+            first = self.ctype.args[0]
+            second = self.ctype.args[1]
+
+            if not first.compatible(ctypes.integer):
+                err = "first parameter of 'main' must be of integer type"
+                raise CompilerError(err, self.range)
+
+            is_ptr_array = (second.is_pointer() and
+                            (second.arg.is_pointer() or second.arg.is_array()))
+
+            if not is_ptr_array or not second.arg.arg.compatible(ctypes.char):
+                err = "second parameter of 'main' must be like char**"
+                raise CompilerError(err, self.range)
 
     def get_linkage(self, symbol_table, c):
         """Get linkage type for given decl_info object.
