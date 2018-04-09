@@ -116,23 +116,38 @@ class Identifier(DeclNode):
         super().__init__()
 
 
-class Struct(DeclNode):
-    """Represents a struct.
+class _StructUnion(DeclNode):
+    """Base class to represent a struct or a union C type.
 
     tag (Token) - Token containing the tag of this struct
-    members (List(Node)) - List of decl_nodes nodes of struct members, or None
-    r (Range) - range that the struct specifier covers
+    members (List(Node)) - List of decl_nodes nodes of members, or None
+    r (Range) - range that the specifier covers
     """
 
     def __init__(self, tag, members, r):
         self.tag = tag
         self.members = members
 
-        # These two members are a little hacky. They allow the
+        # These r and kind members are a little hacky. They allow the
         # make_specs_ctype function in tree.nodes.Declaration to treat this
         # as a Token for the purposes of determining the base type of the
         # declaration.
         self.r = r
-        self.kind = token_kinds.struct_kw
 
         super().__init__()
+
+
+class Struct(_StructUnion):
+    """Represents a struct C type."""
+
+    def __init__(self, tag, members, r):
+        self.kind = token_kinds.struct_kw
+        super().__init__(tag, members, r)
+
+
+class Union(_StructUnion):
+    """Represents a union C type."""
+
+    def __init__(self, tag, members, r):
+        self.kind = token_kinds.union_kw
+        super().__init__(tag, members, r)

@@ -113,6 +113,13 @@ def parse_decl_specifiers(index):
             matching = True
             continue
 
+        # Parse a union specifier if there is one.
+        if token_is(index, token_kinds.union_kw):
+            node, index = parse_union_spec(index + 1)
+            specs.append(node)
+            matching = True
+            continue
+
         # Try parsing any of the other specifiers
         for spec in decl_specifiers:
             if token_is(index, spec):
@@ -312,10 +319,11 @@ def parse_parameter_list(index):
     return params, index
 
 
-def parse_struct_spec(index):
-    """Parse a struct specifier as a decl_nodes.Struct node.
+def _parse_struct_union_spec(index, rtype):
+    """Parse a struct or union specifier as required rtype.
 
-    index - index right past the `struct` keyword
+    index - index right past the type definition keyword.
+    rtype - class from decl_nodes that specifies return type.
     """
     start_r = p.tokens[index - 1].r
 
@@ -326,18 +334,34 @@ def parse_struct_spec(index):
 
     members = None
     if token_is(index, token_kinds.open_brack):
-        members, index = parse_struct_members(index + 1)
+        members, index = parse_struct_union_members(index + 1)
 
     if name is None and members is None:
         err = "expected identifier or member list"
         raise_error(err, index, ParserError.AFTER)
 
     r = start_r + p.tokens[index - 1].r
-    return decl_nodes.Struct(name, members, r), index
+    return rtype(name, members, r), index
 
 
-def parse_struct_members(index):
-    """Parse the list of members of a struct as a list of Root nodes.
+def parse_struct_spec(index):
+    """Parse a struct specifier as a decl_nodes.Struct node.
+
+    index - index right past the `struct` keyword
+    """
+    return _parse_struct_union_spec(index, decl_nodes.Struct)
+
+
+def parse_union_spec(index):
+    """Parse a union specifier as a decl_nodes.Union node.
+
+    index - index right past the `union` keyword
+    """
+    return _parse_struct_union_spec(index, decl_nodes.Union)
+
+
+def parse_struct_union_members(index):
+    """Parse the list of members of struct or union as a list of Root nodes.
 
     index - index right past the open bracket starting the members list
     """

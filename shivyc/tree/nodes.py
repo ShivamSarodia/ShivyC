@@ -5,7 +5,8 @@ import shivyc.il_cmds.control as control_cmds
 import shivyc.il_cmds.value as value_cmds
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
-from shivyc.ctypes import PointerCType, ArrayCType, FunctionCType, StructCType
+from shivyc.ctypes import (PointerCType, ArrayCType, FunctionCType,
+                           StructCType, UnionCType)
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
 from shivyc.tree.utils import DirectLValue, report_err, set_type, check_cast
@@ -608,7 +609,8 @@ class Declaration(Node):
 
         all_type_specs = (set(ctypes.simple_types) |
                           {token_kinds.signed_kw, token_kinds.unsigned_kw,
-                           token_kinds.struct_kw})
+                           token_kinds.struct_kw, token_kinds.union_kw})
+        struct_union_specs = [token_kinds.struct_kw, token_kinds.union_kw]
 
         type_specs = [str(spec.kind) for spec in specs
                       if spec.kind in all_type_specs]
@@ -618,13 +620,13 @@ class Declaration(Node):
 
         const = token_kinds.const_kw in {spec.kind for spec in specs}
 
-        if specs_str == "struct":
-            s = [s for s in specs if s.kind == token_kinds.struct_kw][0]
+        if specs_str == "struct" or specs_str == "union":
+            node = [s for s in specs if s.kind in struct_union_specs][0]
 
             # This is a redeclaration of a struct if there are no storage
             # specifiers and it declares no variables.
             redec = not any_dec and storage is None
-            base_type = self.parse_struct_spec(s, redec, symbol_table)
+            base_type = self.parse_struct_union_spec(node, redec, symbol_table)
             if const: base_type = base_type.make_const()
         else:
             base_type = self.get_base_ctype(specs_str, spec_range, const)
@@ -694,42 +696,55 @@ class Declaration(Node):
 
         return storage
 
-    def parse_struct_spec(self, node, redec, symbol_table):
-        """Parse a struct ctype from the given decl_nodes.Struct node.
+    def parse_struct_union_spec(self, node, redec, symbol_table):
+        """Parse struct or union ctype from the given decl_nodes.Struct node.
 
-        node (decl_nodes.Struct) - the Struct node to parse
+        node (decl_nodes.Struct/Union) - the Struct or Union node to parse
         redec (bool) - Whether this declaration is alone like so:
 
            struct S;
+           union U;
 
         or declares variables/has storage specifiers:
 
            struct S *p;
            extern struct S;
+           union U *u;
+           extern union U;
 
         If it's the first, then this is always a forward declaration for a
         new `struct S` but if it's the second and a `struct S` already
         exists in higher scope, it's just using the higher scope struct.
         """
         has_members = node.members is not None
+
+        if node.kind == token_kinds.struct_kw:
+            ctype_req = StructCType
+        else:
+            ctype_req = UnionCType
+
         if node.tag:
             tag = str(node.tag)
-            ctype = symbol_table.lookup_struct(tag)
+            ctype = symbol_table.lookup_struct_union(tag)
 
-            if not ctype or has_members or redec:
-                ctype = symbol_table.add_struct(tag, StructCType(tag))
-
-            if has_members and ctype.is_complete():
-                err = f"redefinition of 'struct {tag}'"
+            if ctype and not isinstance(ctype, ctype_req):
+                err = f"defined as wrong kind of tag '{node.kind} {tag}'"
                 raise CompilerError(err, node.r)
 
-        else:
-            ctype = StructCType(None)
+            if not ctype or has_members or redec:
+                ctype = symbol_table.add_struct_union(tag, ctype_req(tag))
+
+            if has_members and ctype.is_complete():
+                err = f"redefinition of '{node.kind} {tag}'"
+                raise CompilerError(err, node.r)
+
+        else:  # anonymous struct/union
+            ctype = ctype_req(None)
 
         if not has_members:
             return ctype
 
-        # Struct does have members
+        # Struct or union does have members
         members = []
         member_set = set()
         for member in node.members:
@@ -741,20 +756,23 @@ class Declaration(Node):
                 with report_err():
                     if decl_info.identifier is None:
                         # someone snuck an abstract declarator into here!
-                        err = "missing name of struct member"
+                        err = f"missing name of {node.kind} member"
                         raise CompilerError(err, decl_info.range)
 
                     if decl_info.storage is not None:
-                        err = "cannot have storage specifier on struct member"
+                        err = f"cannot have storage specifier on " \
+                              f"{node.kind} member"
                         raise CompilerError(err, decl_info.range)
 
                     if decl_info.ctype.is_function():
-                        err = "cannot have function type as struct member"
+                        err = f"cannot have function type as " \
+                              f"{node.kind} member"
                         raise CompilerError(err, decl_info.range)
 
                     # TODO: 6.7.2.1.18 (allow flexible array members)
-                    if decl_info.ctype.is_incomplete():
-                        err = "cannot have incomplete type as struct member"
+                    if not decl_info.ctype.is_complete():
+                        err = f"cannot have incomplete type as " \
+                              f"{node.kind} member"
                         raise CompilerError(err, decl_info.range)
 
                     # TODO: 6.7.2.1.13 (anonymous structs)
