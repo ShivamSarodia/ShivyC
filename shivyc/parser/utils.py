@@ -125,6 +125,15 @@ def match_token(index, kind, message_type, message=None):
         raise ParserError(message, index, tokens, message_type)
 
 
+def token_range(start, end):
+    """Generate a range that encompasses tokens[start] to tokens[end-1]"""
+    global tokens
+
+    start_index = min(start, len(tokens) - 1, end - 1)
+    end_index = min(end - 1, len(tokens) - 1)
+    return tokens[start_index].r + tokens[end_index].r
+
+
 def add_range(parse_func):
     """Return a decorated function that tags the produced node with a range.
 
@@ -137,7 +146,7 @@ def add_range(parse_func):
     def parse_with_range(index):
         start_index = index
         node, end_index = parse_func(index)
-        node.r = tokens[start_index].r + tokens[end_index - 1].r
+        node.r = token_range(start_index, end_index)
 
         return node, end_index
 

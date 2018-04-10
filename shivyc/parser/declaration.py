@@ -7,7 +7,7 @@ import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
 from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
-                                 raise_error, log_error)
+                                 raise_error, log_error, token_range)
 
 
 @add_range
@@ -17,7 +17,7 @@ def parse_func_definition(index):
     specs, index = parse_decl_specifiers(index)
     end = find_decl_end(index)
     decl = parse_declarator(index, end)
-    range = p.tokens[index].r + p.tokens[end - 1].r
+    range = token_range(index, end)
 
     from shivyc.parser.statement import parse_compound_statement
     body, index = parse_compound_statement(end)
@@ -61,7 +61,7 @@ def parse_decls_inits(index, parse_inits=True):
     while True:
         end = find_decl_end(index)
         decls.append(parse_declarator(index, end))
-        ranges.append(p.tokens[index].r + p.tokens[end - 1].r)
+        ranges.append(token_range(index, end))
 
         index = end
         if token_is(index, token_kinds.equals) and parse_inits:
@@ -304,8 +304,8 @@ def parse_parameter_list(index):
         specs, index = parse_decl_specifiers(index)
 
         end = find_decl_end(index)
-        range = p.tokens[index].r + p.tokens[end - 1].r
         decl = parse_declarator(index, end)
+        range = token_range(index, end)
         params.append(decl_nodes.Root(specs, [decl], None, [range]))
 
         index = end
