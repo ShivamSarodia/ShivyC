@@ -211,7 +211,8 @@ def parse_primary(index):
         return expr_nodes.ParenExpr(node), index
     elif token_is(index, token_kinds.number):
         return expr_nodes.Number(p.tokens[index]), index + 1
-    elif token_is(index, token_kinds.identifier):
+    elif (token_is(index, token_kinds.identifier)
+          and not p.symbols.is_typedef(p.tokens[index])):
         return expr_nodes.Identifier(p.tokens[index]), index + 1
     elif token_is(index, token_kinds.string):
         return expr_nodes.String(p.tokens[index].content), index + 1

@@ -196,7 +196,6 @@ class String(_LExprNode):
 
 class Identifier(_LExprNode):
     """Expression that is a single identifier."""
-
     def __init__(self, identifier):
         """Initialize node."""
         super().__init__()
