@@ -32,12 +32,11 @@ def parse(tokens_to_parse):
     p.best_error = None
     p.tokens = tokens_to_parse
 
-    try:
+    with log_error():
         return parse_root(0)[0]
-    except ParserError as e:
-        log_error(e)
-        error_collector.add(p.best_error)
-        return None
+
+    error_collector.add(p.best_error)
+    return None
 
 
 @add_range
@@ -45,20 +44,14 @@ def parse_root(index):
     """Parse the given tokens into an AST."""
     items = []
     while True:
-        try:
+        with log_error():
             item, index = parse_func_definition(index)
             items.append(item)
-        except ParserError as e:
-            log_error(e)
-        else:
             continue
 
-        try:
+        with log_error():
             item, index = parse_declaration(index)
             items.append(item)
-        except ParserError as e:
-            log_error(e)
-        else:
             continue
 
         # If neither parse attempt above worked, break

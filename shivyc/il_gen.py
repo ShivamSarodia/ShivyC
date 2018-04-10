@@ -164,7 +164,16 @@ class SymbolTable:
 
     """
     Tables = namedtuple('Tables', ['vars', 'structs'])
-    Variable = namedtuple("Variable", ['il_value', 'linkage', 'defined'])
+
+    # il_value - if this is a standard variable, stores the IL value
+    # linkage - if this is a standard variable, stores the linkage
+    # defined - if this is a standard variable, stores whether this is defined
+    # ctype - if this is a typedef, stores the ctype
+    Variable = namedtuple(
+        "Variable", ['il_value', 'linkage', 'defined', 'ctype'])
+
+    # set default to None
+    Variable.__new__.__defaults__ = (None,) * len(Variable._fields)
 
     INTERNAL = 1
     EXTERNAL = 2
@@ -239,6 +248,9 @@ class SymbolTable:
         # if it's already declared in this scope
         if name in self.tables[-1].vars:
             var = self.tables[-1].vars[name]
+            if not var.il_value:
+                err = f"redeclared type definition '{name}' as variable"
+                raise CompilerError(err, identifier.r)
             if defined and var.defined:
                 raise CompilerError(f"redefinition of '{name}'", identifier.r)
             if linkage != var.linkage:
@@ -257,7 +269,8 @@ class SymbolTable:
         elif linkage == self.EXTERNAL:
             self.external[name] = var.il_value
 
-        # Verify the type is compatible with the previous type
+        # Verify the type is compatible with the previous type (if there was
+        # one)
         if not var.il_value.ctype.compatible(ctype):
             err = f"redeclared '{name}' with incompatible type"
             raise CompilerError(err, identifier.r)
@@ -285,6 +298,29 @@ class SymbolTable:
             self.tables[-1].structs[tag] = ctype
 
         return self.tables[-1].structs[tag]
+
+    def add_typedef(self, identifier, ctype):
+        """Add a type definition to the symbol table."""
+
+        name = identifier.content
+        if name in self.tables[-1].vars:
+            var = self.tables[-1].vars[name]
+            if var.il_value:
+                err = f"'{name}' redeclared as type definition in same scope"
+                raise CompilerError(err, identifier.r)
+            elif not var.ctype.compatible(ctype):
+                err = f"'{name}' redeclared as incompatible type in same scope"
+                raise CompilerError(err, identifier.r)
+            else:
+                return
+
+        self.tables[-1].vars[name] = self.Variable(None, None, None, ctype)
+
+    def lookup_typedef(self, identifier):
+        """Look up a typedef from the symbol table."""
+        var = self.lookup_raw(identifier.content)
+        if var:
+            return var.ctype
 
 
 class Context:

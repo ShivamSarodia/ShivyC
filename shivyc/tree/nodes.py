@@ -302,6 +302,7 @@ class DeclInfo:
     AUTO = 1
     STATIC = 2
     EXTERN = 3
+    TYPEDEF = 4
 
     def __init__(self, identifier, ctype, range,
                  storage=None, init=None, body=None, param_names=None):
@@ -322,6 +323,11 @@ class DeclInfo:
         if not self.identifier:
             err = "missing identifier name in declaration"
             raise CompilerError(err, self.range)
+
+        # The typedef is special
+        if self.storage == self.TYPEDEF:
+            self.process_typedef(symbol_table)
+            return
 
         if self.ctype.is_incomplete():
             err = "variable of incomplete type declared"
@@ -362,6 +368,19 @@ class DeclInfo:
             self.do_init(var, il_code, symbol_table, c)
         if self.body:
             self.do_body(il_code, symbol_table, c)
+
+    def process_typedef(self, symbol_table):
+        """Process type declarations."""
+
+        if self.init:
+            err = "typedef cannot have initializer"
+            raise CompilerError(err, self.range)
+
+        if self.body:
+            err = "function definition cannot be a typedef"
+            raise CompilerError(err, self.range)
+
+        symbol_table.add_typedef(self.identifier, self.ctype)
 
     def do_init(self, var, il_code, symbol_table, c):
         """Create code for initializing given variable.
@@ -621,34 +640,37 @@ class Declaration(Node):
         the above values.
         """
         spec_range = specs[0].r + specs[-1].r
-
-        all_type_specs = (set(ctypes.simple_types) |
-                          {token_kinds.signed_kw, token_kinds.unsigned_kw,
-                           token_kinds.struct_kw, token_kinds.union_kw})
-        struct_union_specs = [token_kinds.struct_kw, token_kinds.union_kw]
-
-        type_specs = [str(spec.kind) for spec in specs
-                      if spec.kind in all_type_specs]
-        specs_str = " ".join(sorted(type_specs))
-
         storage = self.get_storage([spec.kind for spec in specs], spec_range)
-
         const = token_kinds.const_kw in {spec.kind for spec in specs}
 
-        if specs_str == "struct" or specs_str == "union":
+        struct_union_specs = {token_kinds.struct_kw, token_kinds.union_kw}
+        if any(s.kind in struct_union_specs for s in specs):
             node = [s for s in specs if s.kind in struct_union_specs][0]
 
             # This is a redeclaration of a struct if there are no storage
             # specifiers and it declares no variables.
             redec = not any_dec and storage is None
             base_type = self.parse_struct_union_spec(node, redec, symbol_table)
-            if const: base_type = base_type.make_const()
-        else:
-            base_type = self.get_base_ctype(specs_str, spec_range, const)
 
+        # is a typedef
+        elif any(s.kind == token_kinds.identifier for s in specs):
+            ident = [s for s in specs if s.kind == token_kinds.identifier][0]
+            base_type = symbol_table.lookup_typedef(ident)
+
+        else:
+            all_type_specs = set(ctypes.simple_types)
+            all_type_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw,
+                               token_kinds.struct_kw, token_kinds.union_kw}
+
+            type_specs = [str(spec.kind) for spec in specs
+                          if spec.kind in all_type_specs]
+            specs_str = " ".join(sorted(type_specs))
+            base_type = self.get_base_ctype(specs_str, spec_range)
+
+        if const: base_type = base_type.make_const()
         return base_type, storage
 
-    def get_base_ctype(self, specs_str, spec_range, const):
+    def get_base_ctype(self, specs_str, spec_range):
         """Return a ctype given a sorted space-separated specifier string."""
 
         # replace "long long" with "long" for convenience
@@ -685,8 +707,7 @@ class Declaration(Node):
         }
 
         if specs_str in specs:
-            ctype = specs[specs_str]
-            return ctype.make_const() if const else ctype
+            return specs[specs_str]
 
         # TODO: provide more helpful feedback on what is wrong
         descrip = "unrecognized set of type specifiers"
@@ -699,7 +720,8 @@ class Declaration(Node):
         """
         storage_classes = {token_kinds.auto_kw: DeclInfo.AUTO,
                            token_kinds.static_kw: DeclInfo.STATIC,
-                           token_kinds.extern_kw: DeclInfo.EXTERN}
+                           token_kinds.extern_kw: DeclInfo.EXTERN,
+                           token_kinds.typedef_kw: DeclInfo.TYPEDEF}
 
         storage = None
         for kind in spec_kinds:
