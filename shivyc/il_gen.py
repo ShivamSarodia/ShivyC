@@ -222,13 +222,15 @@ class SymbolTable:
         """Look up the given identifier.
 
         This function returns the ILValue object for the identifier, or raises
-        an exception if not found.
+        an exception if not found or if it is a typedef.
 
         identifier (Token(Identifier)) - Identifier to look up
 
         """
         ret = self.lookup_raw(identifier.content)
-        if ret:
+
+        # typedefs have None as their ret.il_value
+        if ret and ret.il_value:
             return ret.il_value
         else:
             descrip = f"use of undeclared identifier '{identifier.content}'"
@@ -317,10 +319,31 @@ class SymbolTable:
         self.tables[-1].vars[name] = self.Variable(None, None, None, ctype)
 
     def lookup_typedef(self, identifier):
-        """Look up a typedef from the symbol table."""
+        """Look up a typedef from the symbol table.
+
+        If not found, raises an exception.
+        """
         var = self.lookup_raw(identifier.content)
-        if var:
+        if var and var.ctype:
             return var.ctype
+        else:
+            # This exception is only raised when the parser symbol table
+            # makes an error, and this only happens when there is another
+            # error in the source anyway. For example, consider this:
+            #
+            # int A;
+            # {
+            #   static typedef int A;
+            #   A a;
+            # }
+            #
+            # The parser symbol table will naively think that A is a
+            # typedef on the line `A a`, when in fact the IL gen step will
+            # still classify it as an integer because the `static
+            # typedef int A;` is not a valid declaration. In this case,
+            # we raise the error below.
+            err = f"use of undeclared type definition '{identifier.content}'"
+            raise CompilerError(err, identifier.r)
 
 
 class Context:

@@ -196,6 +196,7 @@ class String(_LExprNode):
 
 class Identifier(_LExprNode):
     """Expression that is a single identifier."""
+
     def __init__(self, identifier):
         """Initialize node."""
         super().__init__()
@@ -203,6 +204,9 @@ class Identifier(_LExprNode):
 
     def _lvalue(self, il_code, symbol_table, c):
         var = symbol_table.lookup_tok(self.identifier)
+        if not var:
+            pass
+
         return DirectLValue(var)
 
 
