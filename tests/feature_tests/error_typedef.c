@@ -22,7 +22,7 @@ int main() {
   typedef struct {
     int a;
     int b;
-  // error: 'struct_S' redeclared as incompatible type in same scope
+    // error: 'struct_S' redeclared as incompatible type in same scope
   } struct_S;
 
   const struct_S s;

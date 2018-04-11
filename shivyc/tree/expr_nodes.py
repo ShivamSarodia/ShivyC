@@ -204,9 +204,6 @@ class Identifier(_LExprNode):
 
     def _lvalue(self, il_code, symbol_table, c):
         var = symbol_table.lookup_tok(self.identifier)
-        if not var:
-            pass
-
         return DirectLValue(var)
 
 

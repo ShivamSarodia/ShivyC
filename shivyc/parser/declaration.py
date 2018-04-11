@@ -111,9 +111,9 @@ def parse_decl_specifiers(index):
     # represents the allowed kinds of type specifiers. Once the first
     # specifier is parsed, the type specifier class is set. If the type
     # specifier class is set to STRUCT or TYPEDEF, no further type
-    # specifiers are permitted (because only one can appear) in the type
-    # specifier list. If it is set to SIMPLE, more simple type specifiers
-    # are permitted. This is important for typedef parsing.
+    # specifiers are permitted in the type specifier list. If it is set to
+    # SIMPLE, more simple type specifiers are permitted. This is important
+    # for typedef parsing.
 
     SIMPLE = 1
     STRUCT = 2

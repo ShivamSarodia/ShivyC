@@ -16,7 +16,6 @@ int main() {
 
   typedef int A;
   {
-    A a;
     A A;
     A = 3;
     if(A != 3) return 1;
