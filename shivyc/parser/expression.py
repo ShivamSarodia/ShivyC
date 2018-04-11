@@ -3,8 +3,11 @@
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.expr_nodes as expr_nodes
+import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
-                                 raise_error)
+                                 raise_error, log_error, token_range)
+from shivyc.parser.declaration import (parse_abstract_declarator,
+                                       parse_spec_qual_list, find_decl_end)
 
 
 @add_range
@@ -106,7 +109,7 @@ def parse_additive(index):
 def parse_multiplicative(index):
     """Parse multiplicative expression."""
     return parse_series(
-        index, parse_unary,
+        index, parse_cast,
         {token_kinds.star: expr_nodes.Mult,
          token_kinds.slash: expr_nodes.Div,
          token_kinds.mod: expr_nodes.Mod})
@@ -115,7 +118,26 @@ def parse_multiplicative(index):
 @add_range
 def parse_cast(index):
     """Parse cast expression."""
-    # TODO: Implement cast operation
+    with log_error():
+        match_token(index, token_kinds.open_paren, ParserError.AT)
+
+        # save the start index for the range
+        start = index + 1
+        specs, index = parse_spec_qual_list(start)
+
+        if token_is(index, token_kinds.close_paren):
+            end = index
+            node = decl_nodes.Identifier(None)
+        else:
+            end = find_decl_end(index)
+            node = parse_abstract_declarator(index, end)
+            match_token(end, token_kinds.close_paren, ParserError.AT)
+
+        r = token_range(start, end)
+        decl_node = decl_nodes.Root(specs, [node], [None], [r])
+        expr_node, index = parse_cast(end + 1)
+        return expr_nodes.Cast(decl_node, expr_node), index
+
     return parse_unary(index)
 
 

@@ -5,7 +5,6 @@ import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
-from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
                                  raise_error, log_error, token_range, token_in)
 
@@ -36,6 +35,33 @@ def parse_declaration(index):
     """
     node, index = parse_decls_inits(index)
     return nodes.Declaration(node), index
+
+
+def parse_abstract_declarator(start, end):
+    """Parse an abstract declarator into a decl_nodes.Node.
+
+    This function raises a ParserError if the parsed entity is a declarator,
+    rather than an abstract declarator.
+    """
+    root = parse_declarator(start, end)
+    node = root
+    while not isinstance(node, decl_nodes.Identifier):
+        node = node.child
+
+    if node.identifier:
+        err = "expected abstract declarator, but identifier name was provided"
+        raise_error(err, start, ParserError.AT)
+    else:
+        return root
+
+
+def parse_spec_qual_list(index):
+    """Parse a specifier-qualifier list.
+
+    This function raises a parser error if any other declaration specifiers
+    are provided.
+    """
+    return parse_decl_specifiers(index, True)
 
 
 def parse_decls_inits(index, parse_inits=True):
@@ -69,6 +95,7 @@ def parse_decls_inits(index, parse_inits=True):
         if token_is(index, token_kinds.equals) and parse_inits:
             # Parse initializer expression
             # Currently, only simple initializers are supported
+            from shivyc.parser.expression import parse_assignment
             expr, index = parse_assignment(index + 1)
             inits.append(expr)
         else:
@@ -86,8 +113,10 @@ def parse_decls_inits(index, parse_inits=True):
     return node, index
 
 
-def parse_decl_specifiers(index):
+def parse_decl_specifiers(index, spec_qual=False):
     """Parse a declaration specifier.
+
+    If spec_qual=True, only accepts type specifiers and type qualifiers.
 
     Examples:
         int
@@ -101,9 +130,10 @@ def parse_decl_specifiers(index):
     type_specs = set(ctypes.simple_types.keys())
     type_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw}
 
-    other_specs = {token_kinds.auto_kw, token_kinds.static_kw,
-                   token_kinds.extern_kw, token_kinds.const_kw,
-                   token_kinds.typedef_kw}
+    type_quals = {token_kinds.const_kw}
+
+    storage_specs = {token_kinds.auto_kw, token_kinds.static_kw,
+                     token_kinds.extern_kw, token_kinds.typedef_kw}
 
     specs = []
 
@@ -146,7 +176,11 @@ def parse_decl_specifiers(index):
             index += 1
             type_spec_class = SIMPLE
 
-        elif token_in(index, other_specs):
+        elif token_in(index, type_quals):
+            specs.append(p.tokens[index])
+            index += 1
+
+        elif token_in(index, storage_specs) and not spec_qual:
             specs.append(p.tokens[index])
             index += 1
 
