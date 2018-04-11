@@ -103,8 +103,9 @@ class Set(_ValueCmd):
     SET converts between all scalar types, so the output and arg IL values
     need not have the same type if both are scalar types. If either one is
     a struct type, the other must be the same struct type.
-    """
 
+    TODO: split this up into finer IL commands.
+    """
     def __init__(self, output, arg): # noqa D102
         self.output = output
         self.arg = arg
@@ -116,10 +117,19 @@ class Set(_ValueCmd):
         return [self.output]
 
     def rel_spot_pref(self): # noqa D102
-        return {self.output: [self.arg]}
+        if self.output.ctype.weak_compat(ctypes.bool_t):
+            return {}
+        else:
+            return {self.output: [self.arg]}
+
+    def rel_spot_conf(self):
+        if self.output.ctype.weak_compat(ctypes.bool_t):
+            return {self.output: [self.arg]}
+        else:
+            return {}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        if self.output.ctype == ctypes.bool_t:
+        if self.output.ctype.weak_compat(ctypes.bool_t):
             return self._set_bool(spotmap, get_reg, asm_code)
 
         elif isinstance(spotmap[self.arg], LiteralSpot):
@@ -167,8 +177,9 @@ class Set(_ValueCmd):
         # When any scalar value is converted to _Bool, the result is 0 if the
         # value compares equal to 0; otherwise, the result is 1
 
-        # If arg_asm is a LITERAL, move to register.
-        if isinstance(spotmap[self.arg], LiteralSpot):
+        # If arg_asm is a LITERAL or conflicts with output, move to register.
+        if (isinstance(spotmap[self.arg], LiteralSpot)
+              or spotmap[self.arg] == spotmap[self.output]):
             r = get_reg([], [spotmap[self.output]])
             asm_code.add(
                 asm_cmds.Mov(r, spotmap[self.arg], self.arg.ctype.size))
