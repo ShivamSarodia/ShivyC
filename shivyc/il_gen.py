@@ -164,7 +164,16 @@ class SymbolTable:
 
     """
     Tables = namedtuple('Tables', ['vars', 'structs'])
-    Variable = namedtuple("Variable", ['il_value', 'linkage', 'defined'])
+
+    # il_value - if this is a standard variable, stores the IL value
+    # linkage - if this is a standard variable, stores the linkage
+    # defined - if this is a standard variable, stores whether this is defined
+    # ctype - if this is a typedef, stores the ctype
+    Variable = namedtuple(
+        "Variable", ['il_value', 'linkage', 'defined', 'ctype'])
+
+    # set default to None
+    Variable.__new__.__defaults__ = (None,) * len(Variable._fields)
 
     INTERNAL = 1
     EXTERNAL = 2
@@ -213,13 +222,15 @@ class SymbolTable:
         """Look up the given identifier.
 
         This function returns the ILValue object for the identifier, or raises
-        an exception if not found.
+        an exception if not found or if it is a typedef.
 
         identifier (Token(Identifier)) - Identifier to look up
 
         """
         ret = self.lookup_raw(identifier.content)
-        if ret:
+
+        # typedefs have None as their ret.il_value
+        if ret and ret.il_value:
             return ret.il_value
         else:
             descrip = f"use of undeclared identifier '{identifier.content}'"
@@ -239,6 +250,9 @@ class SymbolTable:
         # if it's already declared in this scope
         if name in self.tables[-1].vars:
             var = self.tables[-1].vars[name]
+            if not var.il_value:
+                err = f"redeclared type definition '{name}' as variable"
+                raise CompilerError(err, identifier.r)
             if defined and var.defined:
                 raise CompilerError(f"redefinition of '{name}'", identifier.r)
             if linkage != var.linkage:
@@ -257,7 +271,8 @@ class SymbolTable:
         elif linkage == self.EXTERNAL:
             self.external[name] = var.il_value
 
-        # Verify the type is compatible with the previous type
+        # Verify the type is compatible with the previous type (if there was
+        # one)
         if not var.il_value.ctype.compatible(ctype):
             err = f"redeclared '{name}' with incompatible type"
             raise CompilerError(err, identifier.r)
@@ -285,6 +300,50 @@ class SymbolTable:
             self.tables[-1].structs[tag] = ctype
 
         return self.tables[-1].structs[tag]
+
+    def add_typedef(self, identifier, ctype):
+        """Add a type definition to the symbol table."""
+
+        name = identifier.content
+        if name in self.tables[-1].vars:
+            var = self.tables[-1].vars[name]
+            if var.il_value:
+                err = f"'{name}' redeclared as type definition in same scope"
+                raise CompilerError(err, identifier.r)
+            elif not var.ctype.compatible(ctype):
+                err = f"'{name}' redeclared as incompatible type in same scope"
+                raise CompilerError(err, identifier.r)
+            else:
+                return
+
+        self.tables[-1].vars[name] = self.Variable(None, None, None, ctype)
+
+    def lookup_typedef(self, identifier):
+        """Look up a typedef from the symbol table.
+
+        If not found, raises an exception.
+        """
+        var = self.lookup_raw(identifier.content)
+        if var and var.ctype:
+            return var.ctype
+        else:
+            # This exception is only raised when the parser symbol table
+            # makes an error, and this only happens when there is another
+            # error in the source anyway. For example, consider this:
+            #
+            # int A;
+            # {
+            #   static typedef int A;
+            #   A a;
+            # }
+            #
+            # The parser symbol table will naively think that A is a
+            # typedef on the line `A a`, when in fact the IL gen step will
+            # still classify it as an integer because the `static
+            # typedef int A;` is not a valid declaration. In this case,
+            # we raise the error below.
+            err = f"use of undeclared type definition '{identifier.content}'"
+            raise CompilerError(err, identifier.r)
 
 
 class Context:
