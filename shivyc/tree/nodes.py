@@ -668,20 +668,20 @@ class Declaration(Node):
             base_type = symbol_table.lookup_typedef(ident)
 
         else:
-            all_type_specs = set(ctypes.simple_types)
-            all_type_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw,
-                               token_kinds.struct_kw, token_kinds.union_kw}
-
-            type_specs = [str(spec.kind) for spec in specs
-                          if spec.kind in all_type_specs]
-            specs_str = " ".join(sorted(type_specs))
-            base_type = self.get_base_ctype(specs_str, spec_range)
+            base_type = self.get_base_ctype(specs, spec_range)
 
         if const: base_type = base_type.make_const()
         return base_type, storage
 
-    def get_base_ctype(self, specs_str, spec_range):
-        """Return a ctype given a sorted space-separated specifier string."""
+    def get_base_ctype(self, specs, spec_range):
+        """Return a base ctype given a list of specs."""
+
+        base_specs = set(ctypes.simple_types)
+        base_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw}
+
+        our_base_specs = [str(spec.kind) for spec in specs
+                          if spec.kind in base_specs]
+        specs_str = " ".join(sorted(our_base_specs))
 
         # replace "long long" with "long" for convenience
         specs_str = specs_str.replace("long long", "long")

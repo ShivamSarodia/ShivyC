@@ -44,6 +44,9 @@ int main() {
     // error: use of undeclared type definition 'B'
     B b;
   }
+
+  // error: typedef cannot have initializer
+  typedef int init = 3;
 }
 
 typedef int F(void);
