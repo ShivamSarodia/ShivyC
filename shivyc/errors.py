@@ -21,6 +21,7 @@ class ErrorCollector:
     def add(self, issue):
         """Add the given error or warning (CompilerError) to list of errors."""
         self.issues.append(issue)
+        self.issues.sort()
 
     def ok(self):
         """Return True iff there are no errors."""
@@ -144,3 +145,18 @@ class CompilerError(Exception):
         else:
             return (f"{bold_color}shivyc: {color_code}{issue_type}:"
                     f"{reset_color} {self.descrip}")
+
+    def __lt__(self, other):  # pragma: no cover
+        """Provides sort order for printing errors."""
+
+        # everything without a range comes before everything with range
+        if not self.range:
+            return bool(other.range)
+
+        # no opinion between errors in different files
+        if self.range.start.file != other.range.start.file:
+            return False
+
+        this_tuple = self.range.start.line, self.range.start.col
+        other_tuple = other.range.start.line, other.range.start.col
+        return this_tuple < other_tuple

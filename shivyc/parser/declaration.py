@@ -1,11 +1,11 @@
 """Parser logic that parses declaration nodes."""
 
 import shivyc.ctypes as ctypes
+from shivyc.errors import error_collector, CompilerError
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
-from shivyc.parser.expression import parse_assignment
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
                                  raise_error, log_error, token_range, token_in)
 
@@ -36,6 +36,35 @@ def parse_declaration(index):
     """
     node, index = parse_decls_inits(index)
     return nodes.Declaration(node), index
+
+
+def parse_abstract_declarator(start, end):
+    """Parse an abstract declarator into a decl_nodes.Node.
+
+    This function raises a ParserError if the parsed entity is a declarator,
+    rather than an abstract declarator.
+    """
+    root = parse_declarator(start, end)
+    node = root
+    while not isinstance(node, decl_nodes.Identifier):
+        node = node.child
+
+    if node.identifier:
+        # add error to the error_collector because more of a semantic error
+        # than a parsing error
+        err = "expected abstract declarator, but identifier name was provided"
+        error_collector.add(CompilerError(err, node.identifier.r))
+
+    return root
+
+
+def parse_spec_qual_list(index):
+    """Parse a specifier-qualifier list.
+
+    This function raises a parser error if any other declaration specifiers
+    are provided.
+    """
+    return parse_decl_specifiers(index, True)
 
 
 def parse_decls_inits(index, parse_inits=True):
@@ -69,6 +98,7 @@ def parse_decls_inits(index, parse_inits=True):
         if token_is(index, token_kinds.equals) and parse_inits:
             # Parse initializer expression
             # Currently, only simple initializers are supported
+            from shivyc.parser.expression import parse_assignment
             expr, index = parse_assignment(index + 1)
             inits.append(expr)
         else:
@@ -86,13 +116,16 @@ def parse_decls_inits(index, parse_inits=True):
     return node, index
 
 
-def parse_decl_specifiers(index):
+def parse_decl_specifiers(index, spec_qual=False):
     """Parse a declaration specifier.
 
     Examples:
         int
         const char
         typedef int
+
+    If spec_qual=True, produces a CompilerError if given any specifiers
+    that are neither type specifier nor type qualifier.
 
     The returned `specs` list may contain two types of elements: tokens and
     Node objects. A Node object will be included for a struct or union
@@ -101,9 +134,10 @@ def parse_decl_specifiers(index):
     type_specs = set(ctypes.simple_types.keys())
     type_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw}
 
-    other_specs = {token_kinds.auto_kw, token_kinds.static_kw,
-                   token_kinds.extern_kw, token_kinds.const_kw,
-                   token_kinds.typedef_kw}
+    type_quals = {token_kinds.const_kw}
+
+    storage_specs = {token_kinds.auto_kw, token_kinds.static_kw,
+                     token_kinds.extern_kw, token_kinds.typedef_kw}
 
     specs = []
 
@@ -146,8 +180,16 @@ def parse_decl_specifiers(index):
             index += 1
             type_spec_class = SIMPLE
 
-        elif token_in(index, other_specs):
+        elif token_in(index, type_quals):
             specs.append(p.tokens[index])
+            index += 1
+
+        elif token_in(index, storage_specs):
+            if not spec_qual:
+                specs.append(p.tokens[index])
+            else:
+                err = "storage specifier not permitted here"
+                error_collector.add(CompilerError(err, p.tokens[index].r))
             index += 1
 
         else:

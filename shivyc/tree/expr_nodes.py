@@ -10,6 +10,7 @@ import shivyc.il_cmds.value as value_cmds
 from shivyc.ctypes import ArrayCType, PointerCType
 from shivyc.errors import CompilerError
 from shivyc.il_gen import ILValue
+from shivyc.tree.nodes import Declaration
 from shivyc.tree.utils import (IndirectLValue, DirectLValue, RelativeLValue,
                                check_cast, set_type, arith_convert,
                                get_size, report_err)
@@ -834,6 +835,40 @@ class BoolNot(_RExprNode):
         il_code.add(control_cmds.Label(end))
 
         return out
+
+
+class Cast(Declaration, _RExprNode):
+    """
+    Node representing a cast operation, like `(void*)p`.
+
+    node (decl_nodes.Root) - a declaration tree for this line
+
+    TODO: Share code between Cast and Declaration nodes more cleanly.
+    """
+    def __init__(self, type_node, expr):
+        Declaration.__init__(self, type_node)
+        _RExprNode.__init__(self)
+
+        self.expr = expr
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make IL for this cast operation."""
+
+        base_type, _ = self.make_specs_ctype(
+            self.node.specs, False, symbol_table)
+        ctype, _ = self.make_ctype(
+            self.node.decls[0], base_type, symbol_table)
+
+        if not ctype.is_void() and not ctype.is_scalar():
+            err = "can only cast to scalar or void type"
+            raise CompilerError(err, self.node.ranges[0])
+
+        il_value = self.expr.make_il(il_code, symbol_table, c)
+        if not il_value.ctype.is_scalar():
+            err = "can only cast from scalar type"
+            raise CompilerError(err, self.r)
+
+        return set_type(il_value, ctype, il_code)
 
 
 class AddrOf(_RExprNode):
