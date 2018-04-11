@@ -861,7 +861,7 @@ class Cast(Declaration, _RExprNode):
 
         if not ctype.is_void() and not ctype.is_scalar():
             err = "can only cast to scalar or void type"
-            raise CompilerError(err, self.r)
+            raise CompilerError(err, self.node.ranges[0])
 
         il_value = self.expr.make_il(il_code, symbol_table, c)
         if not il_value.ctype.is_scalar():

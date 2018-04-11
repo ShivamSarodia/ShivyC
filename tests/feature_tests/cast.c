@@ -21,4 +21,6 @@ int main() {
   unsigned char e = 0-10;
   int f = (signed char) e;
   if(f != 0-10) return 3;
+
+  (void) 5;
 }

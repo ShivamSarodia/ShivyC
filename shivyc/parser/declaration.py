@@ -1,6 +1,7 @@
 """Parser logic that parses declaration nodes."""
 
 import shivyc.ctypes as ctypes
+from shivyc.errors import error_collector, CompilerError
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
@@ -49,10 +50,12 @@ def parse_abstract_declarator(start, end):
         node = node.child
 
     if node.identifier:
+        # add error to the error_collector because more of a semantic error
+        # than a parsing error
         err = "expected abstract declarator, but identifier name was provided"
-        raise_error(err, start, ParserError.AT)
-    else:
-        return root
+        error_collector.add(CompilerError(err, node.identifier.r))
+
+    return root
 
 
 def parse_spec_qual_list(index):
@@ -116,12 +119,13 @@ def parse_decls_inits(index, parse_inits=True):
 def parse_decl_specifiers(index, spec_qual=False):
     """Parse a declaration specifier.
 
-    If spec_qual=True, only accepts type specifiers and type qualifiers.
-
     Examples:
         int
         const char
         typedef int
+
+    If spec_qual=True, produces a CompilerError if given any specifiers
+    that are neither type specifier nor type qualifier.
 
     The returned `specs` list may contain two types of elements: tokens and
     Node objects. A Node object will be included for a struct or union
@@ -180,8 +184,12 @@ def parse_decl_specifiers(index, spec_qual=False):
             specs.append(p.tokens[index])
             index += 1
 
-        elif token_in(index, storage_specs) and not spec_qual:
-            specs.append(p.tokens[index])
+        elif token_in(index, storage_specs):
+            if not spec_qual:
+                specs.append(p.tokens[index])
+            else:
+                err = "storage specifier not permitted here"
+                error_collector.add(CompilerError(err, p.tokens[index].r))
             index += 1
 
         else:
