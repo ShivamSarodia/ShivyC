@@ -5,24 +5,25 @@
 
 ********************************************************************/
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
+#include <stdbool.h>
 
-struct node {
+typedef struct node {
   struct node* next[27];
   int complete;
-};
+} Node;
 
 // Load words from the given dictionary into a trie.
-struct node* load(const char* dictionary);
+Node* load(const char* dictionary);
 
 // Check whether a word is in the given trie.
-int check(struct node* root, const char* word);
+bool check(Node* root, const char* word);
 
 int main() {
-  struct node* trie = load("tests/general_tests/trie/words.txt");
+  Node* trie = load("tests/general_tests/trie/words.txt");
 
   int NUM_WORDS = 10;
   char* words[10];
@@ -40,24 +41,24 @@ int main() {
   for(int word_num = 0; word_num < NUM_WORDS; word_num++) {
     char* word = words[word_num];
     if(check(trie, word)) {
-      printf("cannot find word %s\n", word);
-    } else {
       printf("found word %s\n", word);
+    } else {
+      printf("cannot find word %s\n", word);
     }
   }
 }
 
-struct node* load(const char* dictionary) {
+Node* load(const char* dictionary) {
   // sizeof is still in PR, so we hardcode this value
   int sizeof_node = 27 * 8 + 4;
 
-  struct node* root = malloc(sizeof_node);
+  Node* root = malloc(sizeof_node);
   for(int i = 0; i < 27; i++) root->next[i] = 0;
   root->complete = 1;
 
-  void* f = fopen(dictionary, "r");
+  FILE* f = fopen(dictionary, "r");
 
-  struct node** n = &root;
+  Node** n = &root;
   char c;
 
   while((c = fgetc(f)) + 1 != 0) {
@@ -88,8 +89,8 @@ struct node* load(const char* dictionary) {
   return root;
 }
 
-int check(struct node* root, const char* word) {
-  struct node* n = root;
+bool check(Node* root, const char* word) {
+  Node* n = root;
   for(int i = 0, len = strlen(word); i < len; i++) {
     if(word[i] == '\'') n = n->next[26];
     else n = n->next[tolower(word[i]) - 'a'];
