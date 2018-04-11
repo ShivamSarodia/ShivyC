@@ -813,30 +813,30 @@ class _ArithUnOp(_RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
         expr = self.expr.make_il(il_code, symbol_table, c)
-        if expr.ctype.is_arith():
-            zero = ILValue(ctypes.integer)
-            il_code.register_literal_var(zero, "0")
-            zero, expr = arith_convert(zero, expr, il_code)
-            out = ILValue(zero.ctype)
-            il_code.add(self.cmd(out, zero, expr))
+        if not expr.ctype.is_arith():
+            err = f"unary {self.descrip} requires arithmetic type operand"
+            raise CompilerError(err, self.expr.r)
+        if expr.ctype.size < 4:
+            expr = set_type(expr, ctypes.integer, il_code)
+        if self.cmd:
+            out = ILValue(expr.ctype)
+            il_code.add(self.cmd(out, expr))
             return out
         else:
-            err = f"wrong type argument to unary {self.descrip}"
-            raise CompilerError(err, self.expr.r)
+            return expr
 
 
 class UnaryPlus(_ArithUnOp):
     """Positive."""
 
-    descrip = "plus"
-    cmd = math_cmds.Add
+    descrip = 'plus'
 
 
 class UnaryMinus(_ArithUnOp):
     """Negative."""
 
-    descrip = "minus"
-    cmd = math_cmds.Subtr
+    descrip = 'minus'
+    cmd = math_cmds.Neg
 
 
 class BoolNot(_RExprNode):
