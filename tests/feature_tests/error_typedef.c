@@ -2,6 +2,12 @@ int main() {
   typedef int a;
   // error: 'a' redeclared as incompatible type in same scope
   typedef long a;
+  // error: redeclared type definition 'a' as variable
+  int a;
+
+  int variable;
+  // error: 'variable' redeclared as type definition in same scope
+  typedef int variable;
 
   struct {
     // error: cannot have storage specifier on struct member

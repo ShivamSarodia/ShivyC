@@ -98,11 +98,12 @@ def parse_decl_specifiers(index):
     Node objects. A Node object will be included for a struct or union
     declaration, and a token for all other declaration specifiers.
     """
-    type_specs = (list(ctypes.simple_types.keys())
-                  + [token_kinds.signed_kw, token_kinds.unsigned_kw])
-    other_specs = [token_kinds.auto_kw, token_kinds.static_kw,
+    type_specs = set(ctypes.simple_types.keys())
+    type_specs |= {token_kinds.signed_kw, token_kinds.unsigned_kw}
+
+    other_specs = {token_kinds.auto_kw, token_kinds.static_kw,
                    token_kinds.extern_kw, token_kinds.const_kw,
-                   token_kinds.typedef_kw]
+                   token_kinds.typedef_kw}
 
     specs = []
 
