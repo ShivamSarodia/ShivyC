@@ -2,6 +2,7 @@
 
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.nodes as nodes
+import shivyc.parser.utils as p
 
 from shivyc.parser.declaration import parse_declaration
 from shivyc.parser.expression import parse_expression
@@ -20,10 +21,8 @@ def parse_statement(index):
     for func in (parse_compound_statement, parse_return, parse_break,
                  parse_continue, parse_if_statement, parse_while_statement,
                  parse_for_statement):
-        try:
+        with log_error():
             return func(index)
-        except ParserError as e:
-            log_error(e)
 
     return parse_expr_statement(index)
 
@@ -36,28 +35,26 @@ def parse_compound_statement(index):
     statements/declarations, enclosed in braces.
 
     """
+    p.symbols.new_scope()
     index = match_token(index, token_kinds.open_brack, ParserError.GOT)
 
     # Read block items (statements/declarations) until there are no more.
     items = []
     while True:
-        try:
+        with log_error():
             item, index = parse_statement(index)
             items.append(item)
             continue
-        except ParserError as e:
-            log_error(e)
 
-        try:
+        with log_error():
             item, index = parse_declaration(index)
             items.append(item)
             continue
-        except ParserError as e:
-            log_error(e)
-            # When both of our parsing attempts fail, break out of the loop
-            break
+
+        break
 
     index = match_token(index, token_kinds.close_brack, ParserError.GOT)
+    p.symbols.end_scope()
 
     return nodes.Compound(items), index
 
@@ -185,10 +182,8 @@ def _get_first_for_clause(index):
     if token_is(index, token_kinds.semicolon):
         return None, index + 1
 
-    try:
+    with log_error():
         return parse_declaration(index)
-    except ParserError as e:
-        log_error(e)
 
     clause, index = parse_expression(index)
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)

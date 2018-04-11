@@ -4,6 +4,14 @@ int func(auto int a);
 // error: 'void' must be the only parameter
 int func1(void, void);
 
+typedef int Function(void);
+typedef int Array[10];
+
+// error: function cannot return function type
+Function f(void);
+// error: function cannot return array type
+Array f(void);
+
 extern int var;
 // error: redeclared 'var' with different linkage
 static int var;
