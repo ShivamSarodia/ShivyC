@@ -211,3 +211,33 @@ class Mod(_DivMod):
     """
 
     return_reg = spots.RDX
+
+
+class Neg(ILCommand):
+    """Negates given IL value.
+
+    No type promotion is done here.
+
+    """
+
+    def __init__(self, output, arg):  # noqa D102
+        self.output = output
+        self.arg = arg
+
+    def inputs(self):  # noqa D102
+        return [self.arg]
+
+    def outputs(self):  # noqa D102
+        return [self.output]
+
+    def rel_spot_pref(self):  # noqa D102
+        return {self.output: [self.arg]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
+        size = self.arg.ctype.size
+
+        output_spot = spotmap[self.output]
+        arg_spot = spotmap[self.arg]
+
+        asm_code.add(asm_cmds.Mov(output_spot, arg_spot, size))
+        asm_code.add(asm_cmds.Neg(output_spot, None, size))
