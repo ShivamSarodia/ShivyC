@@ -599,11 +599,11 @@ class Declaration(Node):
 
             if prev_ctype.is_function():
                 err = "function cannot return function type"
-                raise CompilerError(err, decl_info.range)
+                raise CompilerError(err, self.r)
 
             if prev_ctype.is_array():
                 err = "function cannot return array type"
-                raise CompilerError(err, decl_info.range)
+                raise CompilerError(err, self.r)
 
             # Function declarators cannot have a function or array return type.
             # TODO: Relevant only when typedef is implemented.
