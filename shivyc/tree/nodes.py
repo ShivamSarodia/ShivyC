@@ -622,6 +622,16 @@ class Declaration(Node):
                 func_decl = decl
             decl = decl.child
 
+        if not func_decl:
+            # This condition is true for the following code:
+            #
+            # typedef int F(void);
+            # F f { }
+            #
+            # See 6.9.1.2
+            err = "function definition missing parameter list"
+            raise CompilerError(err, self.r)
+
         for param in func_decl.args:
             decl_info = self.get_decl_infos(param, symbol_table)[0]
             identifiers.append(decl_info.identifier)
