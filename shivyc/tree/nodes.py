@@ -800,6 +800,7 @@ class Declaration(Node):
 
         # Struct or union does have members
         members = []
+        members_set = set()
         for member in node.members:
             decl_infos = []  # needed in case get_decl_infos below fails
             with report_err():
@@ -808,9 +809,11 @@ class Declaration(Node):
             for decl_info in decl_infos:
                 with report_err():
                     self._check_struct_member_decl_info(
-                        decl_info, node.kind, members)
+                        decl_info, node.kind, members_set)
 
-                members.append((decl_info.identifier.content, decl_info.ctype))
+                    name = decl_info.identifier.content
+                    members_set.add(name)
+                    members.append((name, decl_info.ctype))
 
         ctype.set_members(members)
         return ctype
