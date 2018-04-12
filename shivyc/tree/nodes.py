@@ -564,60 +564,60 @@ class Declaration(Node):
         elif isinstance(decl, decl_nodes.Array):
             new_ctype = ArrayCType(prev_ctype, decl.n)
         elif isinstance(decl, decl_nodes.Function):
-            # Prohibit storage class specifiers in parameters.
-            for param in decl.args:
-                decl_info = self.get_decl_infos(param, symbol_table)[0]
-                if decl_info.storage:
-                    err = "storage class specified for function parameter"
-                    raise CompilerError(err, decl_info.range)
-
-            # Create a new scope because if we create a new struct type inside
-            # the function parameters, it should be local to those parameters.
-            symbol_table.new_scope()
-            args = [
-                self.get_decl_infos(decl, symbol_table)[0].ctype
-                for decl in decl.args
-            ]
-            symbol_table.end_scope()
-
-            # adjust array and function parameters
-            has_void = False
-            for i in range(len(args)):
-                ctype = args[i]
-                if ctype.is_array():
-                    args[i] = PointerCType(ctype.el)
-                elif ctype.is_function():
-                    args[i] = PointerCType(ctype)
-                elif ctype.is_void():
-                    has_void = True
-
-            if has_void and len(args) > 1:
-                decl_info = self.get_decl_infos(decl.args[0], symbol_table)[0]
-                err = "'void' must be the only parameter"
-                raise CompilerError(err, decl_info.range)
-
-            if prev_ctype.is_function():
-                err = "function cannot return function type"
-                raise CompilerError(err, self.r)
-
-            if prev_ctype.is_array():
-                err = "function cannot return array type"
-                raise CompilerError(err, self.r)
-
-            # Function declarators cannot have a function or array return type.
-            # TODO: Relevant only when typedef is implemented.
-
-            if not args and not self.body:
-                new_ctype = FunctionCType([], prev_ctype, True)
-            elif has_void:
-                new_ctype = FunctionCType([], prev_ctype, False)
-            else:
-                new_ctype = FunctionCType(args, prev_ctype, False)
-
+            new_ctype = self._generate_func_ctype(
+                decl, prev_ctype, symbol_table)
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier
 
         return self.make_ctype(decl.child, new_ctype, symbol_table)
+
+    def _generate_func_ctype(self, decl, prev_ctype, symbol_table):
+        """Generate a function ctype from a given a decl_node."""
+
+        # Prohibit storage class specifiers in parameters.
+        for param in decl.args:
+            decl_info = self.get_decl_infos(param, symbol_table)[0]
+            if decl_info.storage:
+                err = "storage class specified for function parameter"
+                raise CompilerError(err, decl_info.range)
+
+        # Create a new scope because if we create a new struct type inside
+        # the function parameters, it should be local to those parameters.
+        symbol_table.new_scope()
+        args = [
+            self.get_decl_infos(decl, symbol_table)[0].ctype
+            for decl in decl.args
+        ]
+        symbol_table.end_scope()
+
+        # adjust array and function parameters
+        has_void = False
+        for i in range(len(args)):
+            ctype = args[i]
+            if ctype.is_array():
+                args[i] = PointerCType(ctype.el)
+            elif ctype.is_function():
+                args[i] = PointerCType(ctype)
+            elif ctype.is_void():
+                has_void = True
+        if has_void and len(args) > 1:
+            decl_info = self.get_decl_infos(decl.args[0], symbol_table)[0]
+            err = "'void' must be the only parameter"
+            raise CompilerError(err, decl_info.range)
+        if prev_ctype.is_function():
+            err = "function cannot return function type"
+            raise CompilerError(err, self.r)
+        if prev_ctype.is_array():
+            err = "function cannot return array type"
+            raise CompilerError(err, self.r)
+
+        if not args and not self.body:
+            new_ctype = FunctionCType([], prev_ctype, True)
+        elif has_void:
+            new_ctype = FunctionCType([], prev_ctype, False)
+        else:
+            new_ctype = FunctionCType(args, prev_ctype, False)
+        return new_ctype
 
     def extract_params(self, decl, symbol_table):
         """Return the parameter list for this function."""
@@ -800,7 +800,6 @@ class Declaration(Node):
 
         # Struct or union does have members
         members = []
-        member_set = set()
         for member in node.members:
             decl_infos = []  # needed in case get_decl_infos below fails
             with report_err():
@@ -808,36 +807,36 @@ class Declaration(Node):
 
             for decl_info in decl_infos:
                 with report_err():
-                    if decl_info.identifier is None:
-                        # someone snuck an abstract declarator into here!
-                        err = f"missing name of {node.kind} member"
-                        raise CompilerError(err, decl_info.range)
+                    self._check_struct_member_decl_info(
+                        decl_info, node.kind, members)
 
-                    if decl_info.storage is not None:
-                        err = f"cannot have storage specifier on " \
-                              f"{node.kind} member"
-                        raise CompilerError(err, decl_info.range)
-
-                    if decl_info.ctype.is_function():
-                        err = f"cannot have function type as " \
-                              f"{node.kind} member"
-                        raise CompilerError(err, decl_info.range)
-
-                    # TODO: 6.7.2.1.18 (allow flexible array members)
-                    if not decl_info.ctype.is_complete():
-                        err = f"cannot have incomplete type as " \
-                              f"{node.kind} member"
-                        raise CompilerError(err, decl_info.range)
-
-                    # TODO: 6.7.2.1.13 (anonymous structs)
-                    attr = decl_info.identifier.content
-
-                    if attr in member_set:
-                        err = f"duplicate member '{attr}'"
-                        raise CompilerError(err, decl_info.identifier.r)
-
-                    members.append((attr, decl_info.ctype))
-                    member_set.add(attr)
+                members.append((decl_info.identifier.content, decl_info.ctype))
 
         ctype.set_members(members)
         return ctype
+
+    def _check_struct_member_decl_info(self, decl_info, kind, members):
+        """Check whether given decl_info object is a valid struct member."""
+
+        if decl_info.identifier is None:
+            # someone snuck an abstract declarator into here!
+            err = f"missing name of {kind} member"
+            raise CompilerError(err, decl_info.range)
+
+        if decl_info.storage is not None:
+            err = f"cannot have storage specifier on {kind} member"
+            raise CompilerError(err, decl_info.range)
+
+        if decl_info.ctype.is_function():
+            err = f"cannot have function type as {kind} member"
+            raise CompilerError(err, decl_info.range)
+
+        # TODO: 6.7.2.1.18 (allow flexible array members)
+        if not decl_info.ctype.is_complete():
+            err = f"cannot have incomplete type as {kind} member"
+            raise CompilerError(err, decl_info.range)
+
+        # TODO: 6.7.2.1.13 (anonymous structs)
+        if decl_info.identifier.content in members:
+            err = f"duplicate member '{decl_info.identifier.content}'"
+            raise CompilerError(err, decl_info.identifier.r)
