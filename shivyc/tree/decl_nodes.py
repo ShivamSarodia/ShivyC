@@ -43,10 +43,9 @@ class Root(DeclNode):
 
     specs (List(Tokens/Nodes)) - list of the declaration specifiers, as tokens
     decls (List(Node)) - list of declarator nodes
-    ranges (List(Range)) - range of each declarator
     """
 
-    def __init__(self, specs, decls, inits=None, ranges=None):
+    def __init__(self, specs, decls, inits=None):
         """Generate root node."""
         self.specs = specs
         self.decls = decls
@@ -55,11 +54,6 @@ class Root(DeclNode):
             self.inits = inits
         else:
             self.inits = [None] * len(self.decls)
-
-        if ranges:
-            self.ranges = ranges
-        else:
-            self.ranges = [None] * len(self.decls)
 
         super().__init__()
 
