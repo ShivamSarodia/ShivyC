@@ -6,6 +6,10 @@ and a test class based off that metaclass. For each file that matches
 each file that matches "tests/frontend_tests/*.c", a frontend test function
 is generated.
 
+If a file name ends in "_helper.c", a test function is not generated for
+that file, but that file is linked into another test. For example,
+"function_helper.c" is linked into the test for "function.c".
+
 If the C file contains a line of the form:
 
 // Return: ###
@@ -31,7 +35,7 @@ import shivyc.main
 from shivyc.errors import error_collector
 
 
-def compile_with_shivyc(test_file_name):
+def compile_with_shivyc(test_file_names):
     """Compile given file with ShivyC.
 
     Errors are saved in the error collector.
@@ -39,7 +43,7 @@ def compile_with_shivyc(test_file_name):
     """
     # Mock out arguments to ShivyC call
     class MockArguments:
-        files = [test_file_name]
+        files = test_file_names
         show_reg_alloc_perf = False
         variables_on_stack = False
 
@@ -76,13 +80,17 @@ def _read_params(test_file_name):
     return exp_errors, exp_warnings, exp_ret_val
 
 
-def generate_test(test_file_name):
+def generate_test(test_file_name, helper_name):
     """Return a function that tests given file."""
 
     def test_function(self):
         exp_errors, exp_warnings, exp_ret_val = _read_params(test_file_name)
 
-        compile_with_shivyc(test_file_name)
+        if helper_name:
+            files = [test_file_name, helper_name]
+        else:
+            files = [test_file_name]
+        compile_with_shivyc(files)
 
         act_errors = []
         act_warnings = []
@@ -102,11 +110,17 @@ def generate_test(test_file_name):
 
 def new(glob_str, dct):
     """The implementation of __new__ used for generating tests."""
-    test_file_name = glob.glob(glob_str)
-    for test_file_name in test_file_name:
+    test_file_names = glob.glob(glob_str)
+    for test_file_name in test_file_names:
         short_name = test_file_name.split("/")[-1][:-2]
         test_func_name = "test_" + short_name
-        dct[test_func_name] = generate_test(test_file_name)
+
+        if not short_name.endswith("_helper"):
+            helper_name = test_file_name.replace(".c", "_helper.c")
+            if helper_name not in test_file_names:
+                helper_name = None
+
+            dct[test_func_name] = generate_test(test_file_name, helper_name)
 
 
 class TestUtils(unittest.TestCase):
@@ -170,7 +184,7 @@ class IntegrationTests(TestUtils):
         subprocess.run(rm.format(dir), shell=True, check=True)
 
         # Compile with ShivyC
-        compile_with_shivyc(str(pathlib.Path(dir).joinpath(cfile)))
+        compile_with_shivyc([str(pathlib.Path(dir).joinpath(cfile))])
         self.assertEqual(error_collector.issues, [])
 
         # Compile with gcc

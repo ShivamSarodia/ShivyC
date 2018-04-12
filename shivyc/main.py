@@ -66,8 +66,11 @@ def process_c_file(file, args):
     if not error_collector.ok():
         return None
 
+    # If parse() can salvage the input into a parse tree, it may emit an
+    # ast_root even when there are errors saved to the error_collector. In this
+    # case, we still want to continue the compiler stages.
     ast_root = parse(token_list)
-    if not error_collector.ok():
+    if not ast_root:
         return None
 
     il_code = ILCode()
@@ -114,11 +117,6 @@ def get_arguments():
     parser.add_argument("-z-reg-alloc-perf",
                         help="display register allocator performance info",
                         dest="show_reg_alloc_perf", action="store_true")
-
-    # Boolean flag for whether to allocate any variables in registers
-    parser.add_argument("-z-vars-on-stack",
-                        help="allocate all variables on the stack",
-                        dest="variables_on_stack", action="store_true")
 
     return parser.parse_args()
 

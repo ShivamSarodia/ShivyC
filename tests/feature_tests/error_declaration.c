@@ -4,8 +4,22 @@ int func(auto int a);
 // error: 'void' must be the only parameter
 int func1(void, void);
 
+typedef int Function(void);
+typedef int Array[10];
+
+// error: function cannot return function type
+Function f(void);
+// error: function cannot return array type
+Array f(void);
+
+extern int var;
+// error: redeclared 'var' with different linkage
+static int var;
+// error: redeclared 'var' with incompatible type
+extern long var;
+
 int main() {
-  // error: variable of void type declared
+  // error: variable of incomplete type declared
   void a;
 
   // error: missing identifier name in declaration
@@ -17,7 +31,7 @@ int main() {
   // error: unrecognized set of type specifiers
   unsigned signed int a;
 
-  // error: extern variable has initializer
+  // error: variable with linkage has initializer
   extern int a = 10;
 
   // error: too many storage classes in declaration specifiers
@@ -40,4 +54,8 @@ int main() {
   void (*f4)(long);
   // error: conversion from incompatible pointer type
   f3 = f4;
+
+  int redefined;
+  // error: redefinition of 'redefined'
+  int redefined;
 }

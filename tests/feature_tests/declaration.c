@@ -7,6 +7,19 @@ int f1(void);
 
 int f2();
 
+int f4(int a, int b, int c) { return 0; }
+
+int func(int a, int b) {
+  a; b;
+  return a;
+}
+
+// Test declaration of function returning function.
+int (*getFunc(int z))(int a, int b) {
+  z;
+  return func;
+}
+
 int main() {
   int;
 
@@ -25,8 +38,8 @@ int main() {
   int *j(int);
   int *k(int(int));
 
-  int (*f3)(int, int, int), f4(int, int, int);
-  // verify f1 and f2 are compatible
+  // verify pointer to function and decayed function are compatible
+  int (*f3)(int, int, int);
   f3 = f4;
 }
 

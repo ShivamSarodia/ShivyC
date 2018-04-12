@@ -2,6 +2,7 @@
 
 import shivyc.asm_cmds as asm_cmds
 import shivyc.ctypes as ctypes
+import shivyc.spots as spots
 from shivyc.il_cmds.base import ILCommand
 from shivyc.spots import RegSpot, MemSpot, LiteralSpot
 
@@ -53,14 +54,58 @@ class _ValueCmd(ILCommand):
                 return reg_size
 
 
+class LoadArg(ILCommand):
+    """Loads a function argument value into an IL value.
+
+    output is the IL value to load the function argument value into,
+    and arg_num is the index of the argument to load. For example,
+    at the start of the body of the following function:
+
+       int func(int a, int b);
+
+    the following two LoadArg commands would be appropriate
+
+       LoadArg(a, 0)
+       LoadArg(b, 1)
+
+    in order to load the first function argument into the variable a and
+    the second function argument into the variable b.
+    """
+    arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX, spots.R8, spots.R9]
+
+    def __init__(self, output, arg_num):
+        self.output = output
+        self.arg_reg = self.arg_regs[arg_num]
+
+    def inputs(self):
+        return []
+
+    def outputs(self):
+        return [self.output]
+
+    def clobber(self):
+        return [self.arg_reg]
+
+    def abs_spot_pref(self):
+        return {self.output: [self.arg_reg]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code):
+        if spotmap[self.output] == self.arg_reg:
+            return
+        else:
+            asm_code.add(asm_cmds.Mov(
+                spotmap[self.output], self.arg_reg, self.output.ctype.size))
+
+
 class Set(_ValueCmd):
     """SET - sets output IL value to arg IL value.
 
     SET converts between all scalar types, so the output and arg IL values
     need not have the same type if both are scalar types. If either one is
     a struct type, the other must be the same struct type.
-    """
 
+    TODO: split this up into finer IL commands.
+    """
     def __init__(self, output, arg): # noqa D102
         self.output = output
         self.arg = arg
@@ -72,10 +117,19 @@ class Set(_ValueCmd):
         return [self.output]
 
     def rel_spot_pref(self): # noqa D102
-        return {self.output: [self.arg]}
+        if self.output.ctype.weak_compat(ctypes.bool_t):
+            return {}
+        else:
+            return {self.output: [self.arg]}
+
+    def rel_spot_conf(self):
+        if self.output.ctype.weak_compat(ctypes.bool_t):
+            return {self.output: [self.arg]}
+        else:
+            return {}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        if self.output.ctype == ctypes.bool_t:
+        if self.output.ctype.weak_compat(ctypes.bool_t):
             return self._set_bool(spotmap, get_reg, asm_code)
 
         elif isinstance(spotmap[self.arg], LiteralSpot):
@@ -123,8 +177,9 @@ class Set(_ValueCmd):
         # When any scalar value is converted to _Bool, the result is 0 if the
         # value compares equal to 0; otherwise, the result is 1
 
-        # If arg_asm is a LITERAL, move to register.
-        if isinstance(spotmap[self.arg], LiteralSpot):
+        # If arg_asm is a LITERAL or conflicts with output, move to register.
+        if (isinstance(spotmap[self.arg], LiteralSpot)
+              or spotmap[self.arg] == spotmap[self.output]):
             r = get_reg([], [spotmap[self.output]])
             asm_code.add(
                 asm_cmds.Mov(r, spotmap[self.arg], self.arg.ctype.size))

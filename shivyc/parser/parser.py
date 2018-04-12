@@ -15,14 +15,12 @@ the function cannot parse the entity from the tokens.
 
 """
 import shivyc.parser.utils as p
-import shivyc.token_kinds as token_kinds
 import shivyc.tree.nodes as nodes
 
 from shivyc.errors import error_collector
-from shivyc.parser.utils import (add_range, log_error, match_token,
-                                 ParserError, raise_error)
-from shivyc.parser.statement import parse_compound_statement
-from shivyc.parser.declaration import parse_declaration
+from shivyc.parser.utils import (add_range, log_error, ParserError,
+                                 raise_error)
+from shivyc.parser.declaration import parse_declaration, parse_func_definition
 
 
 def parse(tokens_to_parse):
@@ -34,12 +32,11 @@ def parse(tokens_to_parse):
     p.best_error = None
     p.tokens = tokens_to_parse
 
-    try:
+    with log_error():
         return parse_root(0)[0]
-    except ParserError as e:
-        log_error(e)
-        error_collector.add(p.best_error)
-        return None
+
+    error_collector.add(p.best_error)
+    return None
 
 
 @add_range
@@ -47,20 +44,14 @@ def parse_root(index):
     """Parse the given tokens into an AST."""
     items = []
     while True:
-        try:
-            item, index = parse_main(index)
+        with log_error():
+            item, index = parse_func_definition(index)
             items.append(item)
-        except ParserError as e:
-            log_error(e)
-        else:
             continue
 
-        try:
+        with log_error():
             item, index = parse_declaration(index)
             items.append(item)
-        except ParserError as e:
-            log_error(e)
-        else:
             continue
 
         # If neither parse attempt above worked, break
@@ -71,20 +62,3 @@ def parse_root(index):
         return nodes.Root(items), index
     else:
         raise_error("unexpected token", index, ParserError.AT)
-
-
-@add_range
-def parse_main(index):
-    """Parse a main function containing block items.
-
-    Ex: int main() { return 4; }
-
-    """
-    err = "expected main function starting"
-    index = match_token(index, token_kinds.int_kw, ParserError.AT, err)
-    index = match_token(index, token_kinds.main, ParserError.AT, err)
-    index = match_token(index, token_kinds.open_paren, ParserError.AT, err)
-    index = match_token(index, token_kinds.close_paren, ParserError.AT, err)
-
-    node, index = parse_compound_statement(index)
-    return nodes.Main(node), index

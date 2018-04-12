@@ -4,6 +4,7 @@ int div(); // test function prototype
 int strcmp(char*, char*);
 char* strcpy(char*, char*);
 char* strncpy(char*, char*, long);
+int atoi(char *str);
 
 int signal(int, int(int));
 
@@ -14,6 +15,11 @@ int main() {
 
   b = isalpha(65); // 'A'
   if(b != 1) return 1;
+
+  // Coax the return IL value of atoi to be assigned to a register
+  // that is not RAX, so we can test the `mov` operation that moves a
+  // return value from RAX to the spot its IL value is stored in.
+  if(1/atoi("1") != 1) return 14;
 
   b = isalpha(52);
   if(b != 0) return 2;

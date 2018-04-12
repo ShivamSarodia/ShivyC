@@ -1,3 +1,5 @@
+struct S { int a; } s;
+
 int main() {
   int* a; int *b;
 
@@ -28,4 +30,8 @@ int main() {
   p - q;
   // error: invalid arithmetic on pointer to incomplete type
   p - 1;
+  // error: invalid arithmetic on pointer to incomplete type
+  p++;
+  // error: invalid type for increment operator
+  s++;
 }

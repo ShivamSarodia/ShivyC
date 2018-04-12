@@ -6,7 +6,7 @@ import shivyc.token_kinds as token_kinds
 
 
 class CType:
-    """Represents a C type, like `int` or `double` or a struct.
+    """Represents a C type, like `int` or `double` or a struct or union.
 
     size (int) - The result of sizeof on this type.
     """
@@ -33,6 +33,13 @@ class CType:
 
     def is_complete(self):
         """Check whether this is a complete type."""
+        return False
+
+    def is_incomplete(self):
+        """Check whether this is an incomplete type.
+
+        An object type must be either complete or incomplete.
+        """
         return False
 
     def is_object(self):
@@ -68,7 +75,7 @@ class CType:
         return False
 
     def is_struct_union(self):
-        """Checke whether this has struct or union type."""
+        """Check whether this has struct or union type."""
         return False
 
     def make_unsigned(self):
@@ -161,12 +168,15 @@ class VoidCType(CType):
         """Return True iff other is a compatible type to self."""
         return other.is_void()
 
-    def is_complete(self):
+    def is_incomplete(self):
         """Check if this is a complete type."""
-        return False
+        return True
 
     def is_void(self):
         """Check whether this is a void type."""
+        return True
+
+    def is_object(self):
         return True
 
 
@@ -222,6 +232,9 @@ class ArrayCType(CType):
         """Check if this is a complete type."""
         return self.n is not None
 
+    def is_incomplete(self):
+        return not self.is_complete()
+
     def is_object(self):
         """Check if this is an object type."""
         return True
@@ -242,7 +255,7 @@ class FunctionCType(CType):
     between the parentheses.
     """
 
-    def __init__(self, args, ret, no_info=False):
+    def __init__(self, args, ret, no_info):
         """Initialize type."""
         self.args = args
         self.ret = ret
@@ -269,23 +282,20 @@ class FunctionCType(CType):
 
         return True
 
-    def is_complete(self):
-        return False
-
     def is_function(self):
         """Check if this is a function type."""
         return True
 
 
-class StructCType(CType):
-    """Represents a struct ctype.
+class _UnionStructCType(CType):
+    """Base class for struct and union C types.
 
-    tag - Name of the struct as a string, or None if it's anonymous
+    tag - Name of the struct/union as a string, or None if it's anonymous
 
-    members - List of members of the struct. Each element of the list should be
+    members - List of members of this type. Each element of the list should be
     a tuple (str, ctype) where `str` is the string of the identifier used to
     access that member and ctype is the ctype of that member.
-    complete - Boolean indicating whether this struct is complete
+    complete - Boolean indicating whether this type is complete
     """
 
     def __init__(self, tag, members=None):
@@ -295,9 +305,9 @@ class StructCType(CType):
         super().__init__(1)
 
     def weak_compat(self, other):
-        """Return True iff other is a compatible type to self.
+        """Return True if other is a compatible type to self.
 
-        Within a single translation unit, two structs are compatible iff
+        Within a single translation unit, two structs are compatible if
         they are the exact same declaration.
         """
         return self._orig is other._orig
@@ -305,6 +315,9 @@ class StructCType(CType):
     def is_complete(self):
         """Check whether this is a complete type."""
         return self.members is not None
+
+    def is_incomplete(self):
+        return not self.is_complete()
 
     def is_object(self):
         """Check whether this is an object type."""
@@ -322,11 +335,18 @@ class StructCType(CType):
         return self.offsets.get(member, (None, None))
 
     def set_members(self, members):
-        """Add the given members to this struct.
+        """Add the given members to this type.
 
         The members list is given in the format as described in the class
         description.
         """
+        raise NotImplementedError
+
+
+class StructCType(_UnionStructCType):
+    """Represents a struct ctype."""
+
+    def set_members(self, members):
         self.members = members
 
         cur_offset = 0
@@ -335,6 +355,20 @@ class StructCType(CType):
             cur_offset += ctype.size
 
         self.size = cur_offset
+
+
+class UnionCType(_UnionStructCType):
+    """Represents a union ctype.
+
+    Similar to struct type, but different offset is used.
+    """
+
+    def set_members(self, members):
+        self.members = members
+        self.size = max([ctype.size for _, ctype in members], default=0)
+        for member, ctype in members:
+            self.offsets[member] = 0, ctype
+
 
 # These definitions are here to permit convenient creation of new integer,
 # char, etc. types. However, DO NOT test whether a ctype is one of these by

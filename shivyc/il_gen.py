@@ -2,31 +2,54 @@
 
 from collections import namedtuple
 from copy import copy
+import shivyc.il_cmds.control as control_cmds
 from shivyc.errors import CompilerError
 
 
 class ILCode:
     """Stores the IL code generated from the AST.
 
-    commands (List) - The commands recorded.
+    commands - Dictionary mapping function name to list of IL commands for
+    that function.
     label_num (int) - Unique identifier returned by get_label
-    externs (List(str)) - List of external identifiers in code
-    literals (Dict(ILValue -> str)) - Mapping from ILValue to the literal
-    value it represents
-    variables (Dict(ILValue -> str or None)) - Mapping from ILValue to None
-    if it is on stack, else its label in ASM.
+    automatic_storage - Dictionary mapping IL value to name for the
+    variables that have storage type automatic.
+    static_storage - Like automatic_storage, but for storage type static.
+    no_storage - Like automatic_storage, but for values that do not need
+    storage.
+    defined - Values that are defined in this translation unit
+    external - Dictionary mapping IL value to name for variables that have
+    external linkage.
 
     """
+    STATIC = 1
+    AUTOMATIC = 2
 
     def __init__(self):
         """Initialize IL code."""
-        self.commands = []
+        self.commands = {}
+        self.cur_func = None
+
         self.label_num = 0
 
-        self.variables = []
-        self.externs = {}
+        self.automatic_storage = {}
+        self.static_storage = {}
+        self.no_storage = {}
+
+        self.defined = {}
+
+        self.external = {}
+
         self.literals = {}
         self.string_literals = {}
+
+    def start_func(self, func):
+        """Start a new function in the IL code.
+
+        Call start_func before generating code for a new function.
+        """
+        self.cur_func = func
+        self.commands[func] = []
 
     def add(self, command):
         """Add a new command to the IL code.
@@ -34,31 +57,51 @@ class ILCode:
         command (ILCommand) - command to be added
 
         """
-        self.commands.append(command)
+        self.commands[self.cur_func].append(command)
 
-    def register_local_var(self, il_value):
-        """Add a stack variable.
+    def always_returns(self):
+        """Return true if this function ends in a return command."""
+        return (self.commands[self.cur_func] and
+                isinstance(self.commands[self.cur_func][-1],
+                           control_cmds.Return))
 
-        Using this function, register every variable which needs local stack
-        allocation. Note that while variables registered with this function
-        are called "stack variables" above, the register allocator may opt
-        to place them in registers if appropriate.
+    def register_storage(self, il_value, storage, name):
+        """Register the storage duration of this IL value.
 
-        il_value - ILValue to register as a variable
+        Using this function, register every non-free variable. For example,
+        most local variables should be registered with AUTOMATIC storage
+        duration, and static variables should be registered with STATIC
+        storage duration.
+
+        In addition, it is important that variables that do not need to be
+        allocated storage be registered with storage of None. For example,
+        functions and values that are declared as extern fall into this
+        category.
+
+        This function may be called multiple times on the same IL value. If
+        one of the calls gives it a storage of ILCode.AUTOMATIC or
+        ILCode.STATIC, that storage is preserved and any calls that give it
+        a storage of None are wiped.
         """
-        if il_value not in self.variables:
-            self.variables.append(il_value)
+        if (not storage and il_value not in self.automatic_storage
+              and il_value not in self.static_storage):
+            self.no_storage[il_value] = name
+        elif storage == ILCode.AUTOMATIC:
+            self.automatic_storage[il_value] = name
+        elif storage == ILCode.STATIC:
+            self.static_storage[il_value] = name
 
-    def register_extern_var(self, il_value, name):
-        """Register an extern variable.
+    def register_defined(self, il_value, name):
+        """Register this IL value as being defined in this translation unit."""
+        self.defined[il_value] = name
 
-        Using this function, register every extern variable. Do not also
-        call register_local_var on this ILValue.
+    def register_extern_linkage(self, il_value, name):
+        """Register this IL value as having external linkage.
 
-        il_value (ILValue) - IL value to register as an extern variable
-        name (str) - name of the extern variable
+        If this IL value is defined in this translation unit, it will be made
+        available globally in the generated assembly code.
         """
-        self.externs[il_value] = name
+        self.external[il_value] = name
 
     def register_literal_var(self, il_value, value):
         """Register a literal IL value.
@@ -86,31 +129,6 @@ class ILCode:
         # Import is here to prevent circular import.
         from shivyc.asm_gen import ASMCode
         return ASMCode.get_label()
-
-    def __str__(self):  # pragma: no cover
-        return "\n".join(str(command) for command in self.commands)
-
-    def __iter__(self):
-        """Return the lines of code in order when iterating through ILCode.
-
-        The returned lines will have command, arg1, arg2, and output as
-        attributes, some of which may be NONE if not applicable for that
-        command.
-
-        """
-        return iter(self.commands)
-
-    def __eq__(self, other):  # pragma: no cover
-        """Check for equality between this IL code object and another.
-
-        Equality is only checked by verifying the IL commands are correct! The
-        arguments are currently not examined. This is a very weak form of
-        equality checking, and could perhaps be improved.
-
-        """
-        if len(self.commands) != len(other.commands):
-            return False
-        return all(c1 == c2 for c1, c2 in zip(self.commands, other.commands))
 
 
 class ILValue:
@@ -147,13 +165,33 @@ class SymbolTable:
     """
     Tables = namedtuple('Tables', ['vars', 'structs'])
 
+    # il_value - if this is a standard variable, stores the IL value
+    # linkage - if this is a standard variable, stores the linkage
+    # defined - if this is a standard variable, stores whether this is defined
+    # ctype - if this is a typedef, stores the ctype
+    Variable = namedtuple(
+        "Variable", ['il_value', 'linkage', 'defined', 'ctype'])
+
+    # set default to None
+    Variable.__new__.__defaults__ = (None,) * len(Variable._fields)
+
+    INTERNAL = 1
+    EXTERNAL = 2
+
     def __init__(self):
         """Initialize symbol table.
 
         `tables` is a list of namedtuples of dictionaries. Each dictionary
         in the namedtuple is the symbol table for a different namespace.
+
+        `internal` and `external` are dictionaries mapping an identifier (
+        string) to IL values. `internal` is used for all IL values with
+        internal linkage, and `external` is used for all IL values with
+        external linkage.
         """
         self.tables = []
+        self.internal = {}
+        self.external = {}
         self.new_scope()
 
     def new_scope(self):
@@ -164,11 +202,14 @@ class SymbolTable:
         """End the most recently started scope."""
         self.tables.pop()
 
-    def lookup(self, name):
+    def lookup_raw(self, name):
         """Look up the variable identifier with the given name.
 
-        This function returns the ILValue object for the identifier, or None if
-        not found.
+        This function returns the Variable object for the identifier,
+        or None if not found.
+
+        Callers should prefer the function lookup_tok over this function,
+        because the Variable object definition is subject to change.
 
         name (str) - Identifier name to search for.
 
@@ -181,53 +222,128 @@ class SymbolTable:
         """Look up the given identifier.
 
         This function returns the ILValue object for the identifier, or raises
-        an exception if not found.
+        an exception if not found or if it is a typedef.
 
         identifier (Token(Identifier)) - Identifier to look up
 
         """
-        ret = self.lookup(identifier.content)
-        if ret:
-            return ret
+        ret = self.lookup_raw(identifier.content)
+
+        # typedefs have None as their ret.il_value
+        if ret and ret.il_value:
+            return ret.il_value
         else:
             descrip = f"use of undeclared identifier '{identifier.content}'"
             raise CompilerError(descrip, identifier.r)
 
-    def add(self, identifier, ctype):
+    def add(self, identifier, ctype, defined, linkage):
         """Add an identifier with the given name and type to the symbol table.
 
         identifier (Token) - Identifier to add, for error purposes.
         ctype (CType) - C type of the identifier we're adding.
+        defined (bool) - Whether this identifier was defined (or declared)
+        linkage - one of INTERNAL, EXTERNAL, or None
         return (ILValue) - the ILValue added
         """
         name = identifier.content
-        if name not in self.tables[-1].vars:
-            il_value = ILValue(ctype)
-            self.tables[-1].vars[name] = il_value
-            return il_value
-        else:
-            raise CompilerError(f"redefinition of '{name}'", identifier.r)
 
-    def lookup_struct(self, tag):
-        """Look up struct by tag name and return its ctype object.
+        # if it's already declared in this scope
+        if name in self.tables[-1].vars:
+            var = self.tables[-1].vars[name]
+            if not var.il_value:
+                err = f"redeclared type definition '{name}' as variable"
+                raise CompilerError(err, identifier.r)
+            if defined and var.defined:
+                raise CompilerError(f"redefinition of '{name}'", identifier.r)
+            if linkage != var.linkage:
+                err = f"redeclared '{name}' with different linkage"
+                raise CompilerError(err, identifier.r)
+        elif linkage == self.INTERNAL and name in self.internal:
+            var = self.Variable(self.internal[name], linkage, defined)
+        elif linkage == self.EXTERNAL and name in self.external:
+            var = self.Variable(self.external[name], linkage, defined)
+        else:
+            var = self.Variable(ILValue(ctype), linkage, defined)
+
+        self.tables[-1].vars[name] = var
+        if linkage == self.INTERNAL:
+            self.internal[name] = var.il_value
+        elif linkage == self.EXTERNAL:
+            self.external[name] = var.il_value
+
+        # Verify the type is compatible with the previous type (if there was
+        # one)
+        if not var.il_value.ctype.compatible(ctype):
+            err = f"redeclared '{name}' with incompatible type"
+            raise CompilerError(err, identifier.r)
+
+        return var.il_value
+
+    def lookup_struct_union(self, tag):
+        """Looks up for struct or union by tag name and returns
+        its ctype object.
 
         If not found, returns None.
         """
         for _, structs in self.tables[::-1]:
             if tag in structs: return structs[tag]
 
-    def add_struct(self, tag, ctype):
-        """Add struct to the symbol table and return it.
+    def add_struct_union(self, tag, ctype):
+        """Add struct or union to the symbol table and return it.
 
-        If struct already exists in the topmost scope, this function does
-        not modify the symbol table and just returns the existing struct
-        ctype. Otherwise, this function adds this struct to the topmost
-        scope and returns it.
+        If struct or union already exists in the topmost scope, this function
+        does not modify the symbol table and just returns the existing ctype.
+        Otherwise, this function adds this type to the topmost scope and
+        returns it.
         """
         if tag not in self.tables[-1].structs:
             self.tables[-1].structs[tag] = ctype
 
         return self.tables[-1].structs[tag]
+
+    def add_typedef(self, identifier, ctype):
+        """Add a type definition to the symbol table."""
+
+        name = identifier.content
+        if name in self.tables[-1].vars:
+            var = self.tables[-1].vars[name]
+            if var.il_value:
+                err = f"'{name}' redeclared as type definition in same scope"
+                raise CompilerError(err, identifier.r)
+            elif not var.ctype.compatible(ctype):
+                err = f"'{name}' redeclared as incompatible type in same scope"
+                raise CompilerError(err, identifier.r)
+            else:
+                return
+
+        self.tables[-1].vars[name] = self.Variable(None, None, None, ctype)
+
+    def lookup_typedef(self, identifier):
+        """Look up a typedef from the symbol table.
+
+        If not found, raises an exception.
+        """
+        var = self.lookup_raw(identifier.content)
+        if var and var.ctype:
+            return var.ctype
+        else:
+            # This exception is only raised when the parser symbol table
+            # makes an error, and this only happens when there is another
+            # error in the source anyway. For example, consider this:
+            #
+            # int A;
+            # {
+            #   static typedef int A;
+            #   A a;
+            # }
+            #
+            # The parser symbol table will naively think that A is a
+            # typedef on the line `A a`, when in fact the IL gen step will
+            # still classify it as an integer because the `static
+            # typedef int A;` is not a valid declaration. In this case,
+            # we raise the error below.
+            err = f"use of undeclared type definition '{identifier.content}'"
+            raise CompilerError(err, identifier.r)
 
 
 class Context:
@@ -245,6 +361,7 @@ class Context:
         """Initialize Context."""
         self.break_label = None
         self.continue_label = None
+        self.return_type = None
         self.is_global = False
 
     def set_global(self, val):
@@ -263,4 +380,10 @@ class Context:
         """Return copy of self with break_label set to given value."""
         c = copy(self)
         c.continue_label = lab
+        return c
+
+    def set_return(self, ctype):
+        """Return copy of self with return_type set to given value."""
+        c = copy(self)
+        c.return_type = ctype
         return c

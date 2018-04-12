@@ -1,5 +1,8 @@
 """Utilities for the parser."""
 
+from contextlib import contextmanager
+import copy
+
 from shivyc.errors import CompilerError, Range
 
 
@@ -8,6 +11,38 @@ from shivyc.errors import CompilerError, Range
 # list of tokens. Then, all functions in the parser can reference this
 # variable rather than passing around the tokens list everywhere.
 tokens = None
+
+
+class SimpleSymbolTable:
+    """Table to record every declared symbol.
+
+    This is required to parse typedefs in C, because the parser must know
+    whether a given identifier denotes a type or a value. For every
+    declared identifier, the table records whether or not it is a type
+    defnition.
+    """
+    def __init__(self):
+        self.symbols = []
+        self.new_scope()
+
+    def new_scope(self):
+        self.symbols.append({})
+
+    def end_scope(self):
+        self.symbols.pop()
+
+    def add_symbol(self, identifier, is_typedef):
+        self.symbols[-1][identifier.content] = is_typedef
+
+    def is_typedef(self, identifier):
+        name = identifier.content
+        for table in self.symbols[::-1]:
+            if name in table:
+                return table[name]
+        return False
+
+
+symbols = SimpleSymbolTable()
 
 
 class ParserError(CompilerError):
@@ -86,25 +121,46 @@ def raise_error(err, index, error_type):
 best_error = None
 
 
-def log_error(error):
-    """Log the error in the parser to be used for error reporting.
+@contextmanager
+def log_error():
+    """Wrap this context manager around conditional parsing code.
 
-    The value of error.amount_parsed is used to determine the amount
+    For example,
+
+    with log_error():
+        [try parsing something]
+        return
+
+    [try parsing something else]
+
+    will run the code in [try parsing something]. If an error occurs,
+    it will be saved and then [try parsing something else] will run.
+
+    The value of e.amount_parsed is used to determine the amount
     successfully parsed before encountering the error.
-
-    error (ParserError) - Error encountered.
-
     """
-    global best_error
+    global best_error, symbols
 
-    if not best_error or error.amount_parsed >= best_error.amount_parsed:
-        best_error = error
+    # back up the global symbols table, so if parsing fails we can reset it
+    symbols_bak = copy.deepcopy(symbols)
+    try:
+        yield
+    except ParserError as e:
+        if not best_error or e.amount_parsed >= best_error.amount_parsed:
+            best_error = e
+        symbols = symbols_bak
 
 
 def token_is(index, kind):
-    """Return true iff the next token is of the given kind."""
+    """Return true if the next token is of the given kind."""
     global tokens
     return len(tokens) > index and tokens[index].kind == kind
+
+
+def token_in(index, kinds):
+    """Return true if the next token is in the given list/set of kinds."""
+    global tokens
+    return len(tokens) > index and tokens[index].kind in kinds
 
 
 def match_token(index, kind, message_type, message=None):
@@ -125,6 +181,15 @@ def match_token(index, kind, message_type, message=None):
         raise ParserError(message, index, tokens, message_type)
 
 
+def token_range(start, end):
+    """Generate a range that encompasses tokens[start] to tokens[end-1]"""
+    global tokens
+
+    start_index = min(start, len(tokens) - 1, end - 1)
+    end_index = min(end - 1, len(tokens) - 1)
+    return tokens[start_index].r + tokens[end_index].r
+
+
 def add_range(parse_func):
     """Return a decorated function that tags the produced node with a range.
 
@@ -134,10 +199,10 @@ def add_range(parse_func):
     """
     global tokens
 
-    def parse_with_range(index):
+    def parse_with_range(index, *args):
         start_index = index
-        node, end_index = parse_func(index)
-        node.r = tokens[start_index].r + tokens[end_index - 1].r
+        node, end_index = parse_func(index, *args)
+        node.r = token_range(start_index, end_index)
 
         return node, end_index
 

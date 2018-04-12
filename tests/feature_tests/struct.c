@@ -57,4 +57,34 @@ int main() {
   array[3].b_struct.b_int_one = 3;
   if(array[3].b_struct.b_int_one != 3) return 13;
   if((&array[0] + 3)->b_struct.b_int_one != 3) return 14;
+
+
+  // Check with array members
+  struct F {
+    int array[10];
+  };
+
+  struct F array2[10];
+  array2[5].array[5] = 3;
+  if(array2[5].array[5] != 3) return 15;
+
+  // Check anonymous struct
+  struct {
+    int a;
+  } s;
+  s.a = 3;
+  if(s.a != 3) return 16;
+
+
+  // Check with union members
+  struct C {
+    int c_int;
+    union D {
+      int d_int;
+      long d_long;
+    } nested_union_d;
+    union E {
+      int e_int;
+    } nested_union_e;
+  };
 }

@@ -5,9 +5,6 @@ from shivyc.tokens import TokenKind
 keyword_kinds = []
 symbol_kinds = []
 
-# Until function definition is ready, we define `main` as a hardcoded keyword
-main = TokenKind("main", keyword_kinds)
-
 bool_kw = TokenKind("_Bool", keyword_kinds)
 char_kw = TokenKind("char", keyword_kinds)
 short_kw = TokenKind("short", keyword_kinds)
@@ -29,8 +26,10 @@ auto_kw = TokenKind("auto", keyword_kinds)
 static_kw = TokenKind("static", keyword_kinds)
 extern_kw = TokenKind("extern", keyword_kinds)
 struct_kw = TokenKind("struct", keyword_kinds)
+union_kw = TokenKind("union", keyword_kinds)
 const_kw = TokenKind("const", keyword_kinds)
 sizeof_kw = TokenKind("sizeof", keyword_kinds)
+typedef_kw = TokenKind("typedef", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
 minus = TokenKind("-", symbol_kinds)

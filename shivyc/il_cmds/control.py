@@ -95,11 +95,12 @@ class JumpNotZero(_GeneralJump):
 class Return(ILCommand):
     """RETURN - returns the given value from function.
 
-    For now, arg must have type int.
-
+    If arg is None, then returns from the function without putting any value
+    in the return register. Today, only supports values that fit in one
+    register.
     """
 
-    def __init__(self, arg): # noqa D102
+    def __init__(self, arg=None): # noqa D102
         # arg must already be cast to return type
         self.arg = arg
 
@@ -116,7 +117,7 @@ class Return(ILCommand):
         return {self.arg: [spots.RAX]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
-        if spotmap[self.arg] != spots.RAX:
+        if self.arg and spotmap[self.arg] != spots.RAX:
             size = self.arg.ctype.size
             asm_code.add(asm_cmds.Mov(spots.RAX, spotmap[self.arg], size))
 
@@ -197,4 +198,4 @@ class Call(ILCommand):
         asm_code.add(asm_cmds.Call(func_spot, None, self.func.ctype.size))
 
         if not self.void_return and spotmap[self.ret] != spots.RAX:
-            asm_code.add(asm_cmds.Mov(self.ret, spots.RAX, ret_size))
+            asm_code.add(asm_cmds.Mov(spotmap[self.ret], spots.RAX, ret_size))

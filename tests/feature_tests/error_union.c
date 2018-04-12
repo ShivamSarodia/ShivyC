@@ -1,22 +1,22 @@
 int main() {
-  struct R {
-    // error: cannot have storage specifier on struct member
+  union R {
+    // error: cannot have storage specifier on union member
     extern int a;
 
-    // error: cannot have storage specifier on struct member
+    // error: cannot have storage specifier on union member
     auto int a;
 
-    // error: cannot have incomplete type as struct member
-    struct R a;
+    // error: cannot have incomplete type as union member
+    union R a;
 
-    // error: cannot have function type as struct member
+    // error: cannot have function type as union member
     int function(int);
 
-    // error: missing name of struct member
+    // error: missing name of union member
     int*;
   };
 
-  struct S {
+  union S {
     int apple;
     // error: duplicate member 'apple'
     int apple;
@@ -26,69 +26,74 @@ int main() {
     int banana, banana;
   };
 
-  struct A {
+  union A {
     int a;
   } *a;
 
-  struct B {
+  union B {
     int a;
   } *b;
 
   // error: conversion from incompatible pointer type
   a = b;
 
-  struct C *p;
+  union C *p;
   // error: invalid arithmetic on pointer to incomplete type
   p + 1;
 
-  struct C {
+  union C {
     int a;
   };
   p + 1;
 
   {
-    struct C* q;
+    union C* q;
     q + 1;
 
-    struct C;
-    struct C* r;
+    union C;
+    union C* r;
 
     // error: invalid arithmetic on pointer to incomplete type
     r + 1;
 
-    struct C {
+    union C {
       int a;
     };
 
     r + 1;
   }
 
-  struct D {
-    int a;
-  };
-
-  // error: redefinition of 'struct D'
-  struct D {
-    int a;
-  };
-
-  // error: defined as wrong kind of tag 'union D'
   union D {
     int a;
   };
 
-  struct E;
-  // error: defined as wrong kind of tag 'union E'
-  union E;
+  // error: redefinition of 'union D'
+  union D {
+    int a;
+  };
 
-  struct Struct {
+  // error: defined as wrong kind of tag 'struct D'
+  struct D {
+    int b;
+  };
+
+  union D1;
+
+  // error: defined as wrong kind of tag 'struct D1'
+  struct D1;
+
+  union D2 {
+    int a;
+  };
+
+  // error: defined as wrong kind of tag 'struct D2'
+  struct D2 ddd;
+
+  union Union {
     int a;
     long b;
     int* c;
   } s, *s_p;
-
-  // error: variable of incomplete type declared
-  struct E e;
 
   // error: request for member in something not a structure or union
   10.a;
