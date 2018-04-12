@@ -199,9 +199,9 @@ def add_range(parse_func):
     """
     global tokens
 
-    def parse_with_range(index):
+    def parse_with_range(index, *args):
         start_index = index
-        node, end_index = parse_func(index)
+        node, end_index = parse_func(index, *args)
         node.r = token_range(start_index, end_index)
 
         return node, end_index

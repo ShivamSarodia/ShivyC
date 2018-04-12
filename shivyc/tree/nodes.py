@@ -526,14 +526,13 @@ class Declaration(Node):
 
     def get_decl_infos(self, node, symbol_table):
         """Given a node, returns a list of decl_info objects for that node."""
+
         any_dec = bool(node.decls)
         base_type, storage = self.make_specs_ctype(
             node.specs, any_dec, symbol_table)
 
-        proc = zip(node.decls, node.ranges, node.inits)
-
         out = []
-        for decl, range, init in proc:
+        for decl, init in zip(node.decls, node.inits):
             with report_err():
                 ctype, identifier = self.make_ctype(
                     decl, base_type, symbol_table)
@@ -545,7 +544,7 @@ class Declaration(Node):
                     param_identifiers = []
 
                 out.append(DeclInfo(
-                    identifier, ctype, range, storage, init,
+                    identifier, ctype, decl.r, storage, init,
                     self.body, param_identifiers))
 
         return out
