@@ -4,6 +4,7 @@ import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.expr_nodes as expr_nodes
 import shivyc.tree.decl_nodes as decl_nodes
+import shivyc.tree.nodes as nodes
 from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
                                  raise_error, log_error)
 from shivyc.parser.declaration import (parse_abstract_declarator,
@@ -150,10 +151,35 @@ def parse_unary(index):
         node, index = parse_cast(index + 1)
         return expr_nodes.BoolNot(node), index
     elif token_is(index, token_kinds.sizeof_kw):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.Sizeof(node), index
+        node, index, size = parse_sizeof(index + 1)
+        return expr_nodes.Sizeof(node, size), index
     else:
         return parse_postfix(index)
+
+def parse_sizeof(index):
+    """Parse the content of the sizeof call
+    example : sizeof(int), sizeof a, etc.
+    """
+    if token_is(index, token_kinds.open_paren):
+        """hacky bit : we create a Declaration node to use the make_specs_ctype
+        and make_ctype methods
+        """
+        specs, index = parse_spec_qual_list(index + 1)
+        node, index = parse_abstract_declarator(index)
+        match_token(index, token_kinds.close_paren, ParserError.AT)
+        index += 1
+        decl_node = nodes.Declaration(decl_nodes.Root(specs, [node]))
+        
+        base_type, _ = decl_node.make_specs_ctype(
+            decl_node.node.specs, False, None)
+        ctype, _ = decl_node.make_ctype(
+            decl_node.node.decls[0], base_type, None)
+
+        return nodes.Node, index, ctype.size
+
+    else:
+        node, index = parse_unary(index)
+        return node, index, None
 
 
 @add_range
