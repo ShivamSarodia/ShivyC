@@ -1,8 +1,10 @@
 int main() {
   int a = 5, b = 10; long c; unsigned int d;
 
-  a = 5; b = 10;
   if(a == b) return 1;
+
+  if(5 == a);
+  else return 36;
 
   if(&a == &b) return 2;
 
