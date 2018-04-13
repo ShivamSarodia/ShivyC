@@ -72,6 +72,13 @@ class _GeneralCmp(ILCommand):
         else:
             return arg1_spot, arg2_spot
 
+    def _fix_literal_wrong_order(self, arg1_spot, arg2_spot):
+        """If the first operand is a literal, swap the operands."""
+        if self._is_imm(arg1_spot):
+            return arg2_spot, arg1_spot
+        else:
+            return arg1_spot, arg2_spot
+
     def make_asm(self, spotmap, home_spots, get_reg, asm_code):  # noqa D102
         regs = []
 
@@ -87,6 +94,8 @@ class _GeneralCmp(ILCommand):
             spotmap[self.arg1], spotmap[self.arg2], regs, get_reg, asm_code)
         arg1_spot, arg2_spot = self._fix_either_literal64(
             arg1_spot, arg2_spot, regs, get_reg, asm_code)
+        arg1_spot, arg2_spot = self._fix_literal_wrong_order(
+            arg1_spot, arg2_spot)
 
         arg_size = self.arg1.ctype.size
         neq_val_spot = LiteralSpot(0)
