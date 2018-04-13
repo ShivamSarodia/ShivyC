@@ -18,9 +18,9 @@ int main() {
   c = (unsigned char) d;
   if(c != 0) return 2;
 
-  unsigned char e = 0-10;
+  unsigned char e = -10;
   int f = (signed char) e;
-  if(f != 0-10) return 3;
+  if(f != -10) return 3;
 
   (void) 5;
 }
