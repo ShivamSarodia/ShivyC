@@ -239,5 +239,6 @@ class Neg(ILCommand):
         output_spot = spotmap[self.output]
         arg_spot = spotmap[self.arg]
 
-        asm_code.add(asm_cmds.Mov(output_spot, arg_spot, size))
+        if output_spot != arg_spot:
+            asm_code.add(asm_cmds.Mov(output_spot, arg_spot, size))
         asm_code.add(asm_cmds.Neg(output_spot, None, size))
