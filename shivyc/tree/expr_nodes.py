@@ -799,6 +799,46 @@ class PostDecr(_IncrDecr):
     return_new = False
 
 
+class _ArithUnOp(_RExprNode):
+    """Base class for unary plus and minus."""
+
+    descrip = None
+    cmd = None
+
+    def __init__(self, expr):
+        """Initialize node."""
+        super().__init__()
+        self.expr = expr
+
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        expr = self.expr.make_il(il_code, symbol_table, c)
+        if not expr.ctype.is_arith():
+            err = f"unary {self.descrip} requires arithmetic type operand"
+            raise CompilerError(err, self.expr.r)
+        if expr.ctype.size < 4:
+            expr = set_type(expr, ctypes.integer, il_code)
+        if self.cmd:
+            out = ILValue(expr.ctype)
+            il_code.add(self.cmd(out, expr))
+            return out
+        else:
+            return expr
+
+
+class UnaryPlus(_ArithUnOp):
+    """Positive."""
+
+    descrip = 'plus'
+
+
+class UnaryMinus(_ArithUnOp):
+    """Negative."""
+
+    descrip = 'minus'
+    cmd = math_cmds.Neg
+
+
 class BoolNot(_RExprNode):
     """Boolean not."""
 
