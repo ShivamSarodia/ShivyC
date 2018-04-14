@@ -98,7 +98,9 @@ class _LExprNode(nodes.Node):
         # Decay array
         if lvalue.ctype().is_array():
             addr = lvalue.addr(il_code)
-            return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
+            return set_type(
+                addr, PointerCType(lvalue.ctype().el, lvalue.ctype().size), il_code
+            )
 
         # Decay function
         elif lvalue.ctype().is_function():
@@ -907,10 +909,13 @@ class Sizeof(_RExprNode):
             dummy_il_code.start_func("main")
             expr_il_value = self.expr.make_il(dummy_il_code, symbol_table, c)
             expr_ctype = expr_il_value.ctype
-            v = int(str(expr_ctype.size))
+            
+            if expr_ctype.is_pointer() and expr_ctype.array_size != None:
+                v = int(str(expr_ctype.array_size))
+            else:
+                v = int(str(expr_ctype.size))
         
         il_value = ILValue(ctypes.unsig_longint)
-        #il_value = ILValue(ctypes.integer)
         il_code.register_literal_var(il_value, v)
         return il_value
 

@@ -187,9 +187,10 @@ class PointerCType(CType):
 
     """
 
-    def __init__(self, arg, const=False):
+    def __init__(self, arg, array_size = None, const=False):
         """Initialize type."""
         self.arg = arg
+        self.array_size = array_size # pointer may in fact be an array
         super().__init__(8, const)
 
     def weak_compat(self, other):
