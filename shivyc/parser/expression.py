@@ -153,6 +153,12 @@ def parse_unary(index):
     elif token_is(index, token_kinds.sizeof_kw):
         node, index, size = parse_sizeof(index + 1)
         return expr_nodes.Sizeof(node, size), index
+    elif token_is(index, token_kinds.plus):
+        node, index = parse_cast(index + 1)
+        return expr_nodes.UnaryPlus(node), index
+    elif token_is(index, token_kinds.minus):
+        node, index = parse_cast(index + 1)
+        return expr_nodes.UnaryMinus(node), index
     else:
         return parse_postfix(index)
 

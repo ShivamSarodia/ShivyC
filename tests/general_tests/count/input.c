@@ -37,7 +37,7 @@ int main()
   int p_else = 0; // if it was a line character before the else
   int else_state = 0; // counter to keep track of else letters
 
-  while( (c = getchar()) != (0-1) ) {
+  while( (c = getchar()) != (-1) ) {
     // Check for line splices
     int next = getchar();
     if( (c == '\\') && (next == '\n') ) {

@@ -32,7 +32,7 @@ int main() {
 
   if(array[0] != 15) return 16;
   if(array[2] != 20) return 17;
-  if((array+4)[0-2] != 20) return 21;
+  if((array+4)[-2] != 20) return 21;
 
   // Test array subscripting
   array[1] = 35;
