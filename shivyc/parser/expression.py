@@ -89,11 +89,19 @@ def parse_equality(index):
 def parse_relational(index):
     """Parse relational expression."""
     return parse_series(
-        index, parse_additive,
+        index, parse_bitwise,
         {token_kinds.lt: expr_nodes.LessThan,
          token_kinds.gt: expr_nodes.GreaterThan,
          token_kinds.ltoe: expr_nodes.LessThanOrEq,
          token_kinds.gtoe: expr_nodes.GreaterThanOrEq})
+
+
+@add_range
+def parse_bitwise(index):
+    return parse_series(
+        index, parse_additive,
+        {token_kinds.lbitshift: expr_nodes.LBitShift,
+         token_kinds.rbitshift: expr_nodes.RBitShift})
 
 
 @add_range

@@ -54,6 +54,8 @@ ltoe = TokenKind("<=", symbol_kinds)
 gtoe = TokenKind(">=", symbol_kinds)
 amp = TokenKind("&", symbol_kinds)
 pound = TokenKind("#", symbol_kinds)
+lbitshift = TokenKind("<<", symbol_kinds)
+rbitshift = TokenKind(">>", symbol_kinds)
 
 dquote = TokenKind('"', symbol_kinds)
 squote = TokenKind("'", symbol_kinds)

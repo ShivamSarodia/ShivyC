@@ -118,6 +118,76 @@ class Mult(_AddMult):
     Inst = asm_cmds.Imul
 
 
+class _BitShiftCmd(ILCommand):
+    """Base class for bitwise shift commands."""
+
+    # The ASM instruction to generate for this command. Override this value
+    # in subclasses.
+    Inst = None
+
+    def __init__(self, output, arg1, arg2): # noqa D102
+        self.output = output
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+    def inputs(self): # noqa D102
+        return [self.arg1, self.arg2]
+
+    def outputs(self): # noqa D102
+        return [self.output]
+
+    def rel_spot_pref(self): # noqa D102
+        return {self.output: [self.arg1, self.arg2]}
+
+    def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
+        arg1_spot = spotmap[self.arg1]
+        arg1_size = self.arg1.ctype.size
+        arg2_spot = spotmap[self.arg2]
+        arg2_size = self.arg2.ctype.size
+
+        # According Intel® 64 and IA-32 software developer's manual
+        # Vol. 2B 4-582 second (count) operand must be represented as
+        # imm8 or CL register.
+        if not self._is_imm8(arg2_spot) and arg2_spot != spots.RCX:
+            asm_code.add(asm_cmds.Mov(spots.RCX, arg2_spot, arg2_size))
+            arg2_spot = spots.RCX
+
+        # Destination operand must be register or a memory spot.
+        if not (isinstance(arg1_spot, spots.MemSpot) or
+                isinstance(arg1_spot, spots.RegSpot)):
+            arg1_spot_new = get_reg([], [spots.RCX])
+            asm_code.add(asm_cmds.Mov(arg1_spot_new, arg1_spot, arg1_size))
+            arg1_spot = arg1_spot_new
+
+        # Get temp register for computation.
+        temp = get_reg([spotmap[self.output], arg1_spot],
+                       [arg2_spot])
+
+        if temp == arg1_spot:
+            asm_code.add(self.Inst(arg1_spot, arg2_spot, arg1_size, 1))
+        else:
+            asm_code.add(asm_cmds.Mov(temp, arg1_spot, arg1_size))
+            asm_code.add(self.Inst(temp, arg2_spot, arg1_size, 1))
+
+
+class RBitShift(_BitShiftCmd):
+    """Right bitwise shift operator for IL value.
+    Shifts each bit in IL value left operand to the right by position
+    indicated by right operand."""
+
+    comm = False
+    Inst = asm_cmds.Sar
+
+
+class LBitShift(_BitShiftCmd):
+    """Left bitwise shift operator for IL value.
+    Shifts each bit in IL value left operand to the left by position
+    indicated by right operand."""
+
+    comm = False
+    Inst = asm_cmds.Sal
+
+
 class _DivMod(ILCommand):
     """Base class for ILCommand Div and Mod."""
 

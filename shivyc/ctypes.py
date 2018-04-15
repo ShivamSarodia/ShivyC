@@ -385,6 +385,7 @@ bool_t._bool = True
 
 char = IntegerCType(1, True)
 unsig_char = IntegerCType(1, False)
+unsig_char_max = 255
 
 short = IntegerCType(2, True)
 unsig_short = IntegerCType(2, False)
