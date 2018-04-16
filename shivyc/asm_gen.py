@@ -47,8 +47,21 @@ class ASMCode:
         """
         self.globals.append(f"\t.global {name}")
 
-    def add_data(self, name, size):
-        self.data.append(f"\t.comm {name}, {size}")
+    def add_data(self, name, size, init):
+        """Add static data to the code.
+
+        init - The value to initialize `name` to
+        """
+        self.data.append(f"{name}:")
+        size_strs = {1: "byte",
+                     2: "word",
+                     4: "int",
+                     8: "quad"}
+
+        if init:
+            self.data.append(f"\t.{size_strs[size]} {init}")
+        else:
+            self.data.append(f"\t.zero {size}")
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
@@ -63,9 +76,12 @@ class ASMCode:
         assembling.
 
         """
-        header = ["\t.intel_syntax noprefix"] + self.data
-        if self.string_literals:
-            header += ["\t.section .data"] + self.string_literals + [""]
+        header = ["\t.intel_syntax noprefix"]
+        if self.string_literals or self.data:
+            header += ["\t.section .data"]
+            header += self.data
+            header += self.string_literals
+            header += [""]
 
         header += ["\t.section .text"] + self.globals
         header += [str(line) for line in self.lines]
@@ -416,7 +432,8 @@ class ASMGen:
 
             s = MemSpot(name)
             global_spotmap[value] = s
-            self.asm_code.add_data(name, value.ctype.size)
+            self.asm_code.add_data(name, value.ctype.size,
+                                   self.il_code.init_vals.get(value, 0))
 
         for value in self.il_code.string_literals:
             name = f"__strlit{string_literal_number}"
