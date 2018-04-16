@@ -48,4 +48,8 @@ int main() {
   if(1099511627776 + 1099511627776 != never_dead) return 11;
 
   dummy = dummy + never_dead + not_dead;
+
+  unsigned int l = 4294967295;
+  unsigned int m = 4294967295;
+  if(l + m != 4294967295 + 4294967295) return 12;
 }

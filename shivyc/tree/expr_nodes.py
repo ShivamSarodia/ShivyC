@@ -13,7 +13,7 @@ from shivyc.il_gen import ILValue
 from shivyc.tree.nodes import Declaration
 from shivyc.tree.utils import (IndirectLValue, DirectLValue, RelativeLValue,
                                check_cast, set_type, arith_convert,
-                               get_size, report_err)
+                               get_size, report_err, shift_into_range)
 
 
 class _ExprNode(nodes.Node):
@@ -253,7 +253,23 @@ class _ArithBinOp(_RExprNode):
 
         if left.ctype.is_arith() and right.ctype.is_arith():
             left, right = arith_convert(left, right, il_code)
+
+            if left.literal_val is not None and right.literal_val is not None:
+                # If NotImplementedError is raised, continue with execution.
+                try:
+                    val = self._arith_const(
+                        shift_into_range(left.literal_val, left.ctype),
+                        shift_into_range(right.literal_val, right.ctype),
+                        left.ctype)
+                    out = ILValue(left.ctype)
+                    il_code.register_literal_var(out, val)
+                    return out
+
+                except NotImplementedError:
+                    pass
+
             return self._arith(left, right, il_code)
+
         else:
             return self._nonarith(left, right, il_code)
 
@@ -274,6 +290,27 @@ class _ArithBinOp(_RExprNode):
         out = ILValue(left.ctype)
         il_code.add(self.default_il_cmd(out, left, right))
         return out
+
+    def _arith_const(self, left, right, ctype):
+        """Return the result on compile-time constant operands.
+
+        For example, an expression like `4 + 3` can be evaluated at compile
+        time without emitting any IL code. This doubles as both an
+        implementation of constant expressions in C and as a compiler
+        optimization.
+
+        Promotions and conversions are done by caller, so the implementation of
+        this function need not convert operands. Also, the `left` and
+        `right` values are guaranteed to be in the range of representable
+        values for the given ctype.
+
+        If this function raises NotImplementedError, the caller will use
+        the _arith function on given operands instead.
+
+        left_val - the NUMERICAL value of the left operand
+        right_val - the NUMERICAL value of the right operand.
+        """
+        raise NotImplementedError
 
     def _nonarith(self, left, right, il_code):
         """Return the result of this operation on given nonarithmetic operands.
@@ -297,6 +334,9 @@ class Plus(_ArithBinOp):
         super().__init__(left, right, op)
 
     default_il_cmd = math_cmds.Add
+
+    def _arith_const(self, left, right, ctype):
+        return shift_into_range(left + right, ctype)
 
     def _nonarith(self, left, right, il_code):
         """Make addition code if either operand is non-arithmetic type."""
@@ -335,6 +375,9 @@ class Minus(_ArithBinOp):
         super().__init__(left, right, op)
 
     default_il_cmd = math_cmds.Subtr
+
+    def _arith_const(self, left, right, ctype):
+        return shift_into_range(left - right, ctype)
 
     def _nonarith(self, left, right, il_code):
         """Make subtraction code if both operands are non-arithmetic type."""
@@ -385,6 +428,9 @@ class Mult(_ArithBinOp):
         super().__init__(left, right, op)
 
     default_il_cmd = math_cmds.Mult
+
+    def _arith_const(self, left, right, ctype):
+        return shift_into_range(left * right, ctype)
 
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for multiplication"
@@ -815,7 +861,12 @@ class _ArithUnOp(_RExprNode):
             expr = set_type(expr, ctypes.integer, il_code)
         if self.cmd:
             out = ILValue(expr.ctype)
-            il_code.add(self.cmd(out, expr))
+            if expr.literal_val is not None:
+                val = -shift_into_range(expr.literal_val, expr.ctype)
+                val = shift_into_range(val, expr.ctype)
+                il_code.register_literal_var(out, val)
+            else:
+                il_code.add(self.cmd(out, expr))
             return out
         else:
             return expr

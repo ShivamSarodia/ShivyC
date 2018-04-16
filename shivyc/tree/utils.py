@@ -299,14 +299,29 @@ def check_cast(il_value, ctype, range):
 def set_type(il_value, ctype, il_code, output=None):
     """If necessary, emit code to cast given il_value to the given ctype.
 
+    If `output` is given, then this function expects output.ctype to be the
+    same as ctype, sets `output` to the casted value, and returns output.
+
+    If `output` is not given, this function returns an IL value with type
+    ctype. If `il_value.ctype` matches given ctype, this function may return
+    `il_value` directly. So, the return value should never have its value
+    changed because this may affect the value in the given `il_value`.
+
     This function does no type checking and will never produce a warning or
     error.
-
     """
     if not output and il_value.ctype.compatible(ctype):
         return il_value
     elif output == il_value:
         return il_value
+    elif not output and il_value.literal_val is not None:
+        output = ILValue(ctype)
+        if ctype.is_integral():
+            val = shift_into_range(il_value.literal_val, ctype)
+        else:
+            val = il_value.literal_val
+        il_code.register_literal_var(output, val)
+        return output
     else:
         if not output:
             output = ILValue(ctype)
@@ -389,3 +404,20 @@ def get_size(ctype, num, il_code):
     il_code.add(math_cmds.Mult(total, long_num, size))
 
     return total
+
+
+def shift_into_range(val, ctype):
+    """Shift a numerical value into range for given integral ctype."""
+
+    if ctype.signed:
+        max_val = 1 << (ctype.size * 8 - 1)
+        range = 2 * max_val
+    else:
+        max_val = 1 << ctype.size * 8
+        range = max_val
+
+    val = val % range
+    if val >= max_val:
+        val -= range
+
+    return val
