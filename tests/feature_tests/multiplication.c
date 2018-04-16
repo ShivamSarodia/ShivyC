@@ -28,5 +28,9 @@ int main() {
   long k = 2147483648;
   if(k * j != 9223372034707292160) return 7;
 
+  unsigned int l = 4294967295;
+  unsigned int m = 4294967295;
+  if(l * m != (unsigned int)4294967295 * (unsigned int)4294967295) return 8;
+
   return 0;
 }

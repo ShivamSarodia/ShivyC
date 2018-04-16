@@ -51,5 +51,5 @@ int main() {
 
   unsigned int l = 4294967295;
   unsigned int m = 4294967295;
-  if(l + m != 4294967295 + 4294967295) return 12;
+  if(l + m != (unsigned int)4294967295 + (unsigned int)4294967295) return 12;
 }

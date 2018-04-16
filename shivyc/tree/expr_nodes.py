@@ -446,6 +446,9 @@ class Div(_ArithBinOp):
 
     default_il_cmd = math_cmds.Div
 
+    def _arith_const(self, left, right, ctype):
+        return shift_into_range(int(left / right), ctype)
+
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for division"
         raise CompilerError(err, self.op.r)
