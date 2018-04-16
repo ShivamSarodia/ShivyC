@@ -20,4 +20,8 @@ int main() {
   int m = 3;
   m = m / m;
   if(m != 1) return 4;
+
+  unsigned long n = 4294967295;
+  int o = -4;
+  if(n / o != (unsigned long)4294967295 / -4) return 5;
 }
