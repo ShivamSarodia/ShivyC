@@ -109,7 +109,7 @@ class ILCode:
         il_value - ILValue object that has a literal value
         value - Literal value to store in the ILValue
         """
-        il_value = int(value)
+        il_value.literal_val = int(value)
         self.literals[il_value] = value
 
     def register_string_literal(self, il_value, chars):
