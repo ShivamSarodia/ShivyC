@@ -221,7 +221,7 @@ class ArrayCType(CType):
         """Initialize type."""
         self.el = el
         self.n = n
-        super().__init__(n * self.el.size)
+        super().__init__((n or 1) * self.el.size)
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""

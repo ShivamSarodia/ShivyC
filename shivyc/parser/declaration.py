@@ -14,6 +14,7 @@ import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
 import shivyc.tree.nodes as nodes
+from shivyc.parser.expression import parse_expression
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
                                  raise_error, log_error, token_in)
 
@@ -402,12 +403,20 @@ def _parse_declarator(start, end, is_typedef):
 
     # Last element indicates an array type
     elif p.tokens[end - 1].kind == token_kinds.close_sq_brack:
-        first = p.tokens[end - 3].kind == token_kinds.open_sq_brack
-        number = p.tokens[end - 2].kind == token_kinds.number
-        if first and number:
-            return decl_nodes.Array(
-                int(p.tokens[end - 2].content),
-                _parse_declarator(start, end - 3, is_typedef))
+        open_sq = _find_pair_backward(
+            end - 1, token_kinds.open_sq_brack, token_kinds.close_sq_brack,
+            "mismatched square brackets in declaration")
+
+        if open_sq == end - 2:
+            num_el = None
+        else:
+            num_el, index = parse_expression(open_sq + 1)
+            if index != end - 1:
+                err = "unexpected token in array size"
+                raise_error(err, index, ParserError.AFTER)
+
+        return decl_nodes.Array(
+            num_el, _parse_declarator(start, open_sq, is_typedef))
 
     raise_error("faulty declaration syntax", start, ParserError.AT)
 
