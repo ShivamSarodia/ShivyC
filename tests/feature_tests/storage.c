@@ -19,6 +19,8 @@ extern int intern_var;
 
 extern int extern_var_2;
 
+int func();
+
 int main() {
   auto char* p;
   p = stdout;
@@ -57,4 +59,13 @@ int main() {
   if(b != 7) return 11;
   set_b_to_1();
   if(b != 7) return 12;
+
+  for(int i = 1; i < 10; i++) {
+    if(func() != i) return 13;
+  }
+}
+
+int func() {
+  static int a = 1;
+  return a++;
 }
