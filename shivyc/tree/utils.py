@@ -284,7 +284,7 @@ def check_cast(il_value, ctype, range):
             return
 
     # Cast from null pointer constant to pointer okay
-    elif ctype.is_pointer() and il_value.null_ptr_const:
+    elif ctype.is_pointer() and il_value.literal_val == 0:
         return
 
     # Cast from pointer to boolean okay

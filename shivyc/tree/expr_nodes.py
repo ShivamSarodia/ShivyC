@@ -168,11 +168,6 @@ class Number(_RExprNode):
             raise CompilerError(err, self.number.r)
 
         il_code.register_literal_var(il_value, v)
-
-        # Literal integer 0 is a null pointer constant
-        if v == 0:
-            il_value.null_ptr_const = True
-
         return il_value
 
 
@@ -444,9 +439,9 @@ class _Equality(_ArithBinOp):
 
         # If either operand is a null pointer constant, cast it to the
         # other's pointer type.
-        if left.ctype.is_pointer() and right.null_ptr_const:
+        if left.ctype.is_pointer() and right.literal_val == 0:
             right = set_type(right, left.ctype, il_code)
-        elif right.ctype.is_pointer() and left.null_ptr_const:
+        elif right.ctype.is_pointer() and left.literal_val == 0:
             left = set_type(left, right.ctype, il_code)
 
         # If both operands are not pointer types, quit now

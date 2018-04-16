@@ -109,6 +109,7 @@ class ILCode:
         il_value - ILValue object that has a literal value
         value - Literal value to store in the ILValue
         """
+        il_value = int(value)
         self.literals[il_value] = value
 
     def register_string_literal(self, il_value, chars):
@@ -135,19 +136,15 @@ class ILValue:
     """Value that appears as an element in generated IL code.
 
     ctype (CType) - C type of this value.
-
+    literal_val - the value of this IL value if it represents a literal
+    value. Do not set this value directly; it is set by the
+    ILCode.register_literal_var function.
     """
 
-    def __init__(self, ctype, null_ptr_const=False):
-        """Initialize IL value.
-
-        ctype (CType) - type of this ILValue
-        null_ptr_const (Bool) - True iff this represents a null pointer
-        constant. Used for some pointer operations, because a null pointer
-        constant is valid in many pointer spots.
-        """
+    def __init__(self, ctype):
+        """Initialize IL value."""
         self.ctype = ctype
-        self.null_ptr_const = null_ptr_const
+        self.literal_val = None
 
     def __str__(self):  # pragma: no cover
         return f'{id(self) % 1000:03}'
