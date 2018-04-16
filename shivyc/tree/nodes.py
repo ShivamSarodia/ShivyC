@@ -336,7 +336,7 @@ class DeclInfo:
         linkage = self.get_linkage(symbol_table, c)
 
         if not c.is_global and self.init and linkage:
-            err = "variable with linkage has initializer"
+            err = "local variable with linkage has initializer"
             raise CompilerError(err, self.range)
 
         defined = self.get_defined()
