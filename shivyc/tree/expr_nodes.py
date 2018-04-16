@@ -416,7 +416,7 @@ class _IntBinOp(_ArithBinOp):
         return left.ctype.is_integral() and right.ctype.is_integral()
 
 
-class Div(_IntBinOp):
+class Div(_ArithBinOp):
     """Expression that is quotient of two expressions."""
 
     def __init__(self, left, right, op):

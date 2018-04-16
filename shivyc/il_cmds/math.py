@@ -136,8 +136,11 @@ class _BitShiftCmd(ILCommand):
     def outputs(self): # noqa D102
         return [self.output]
 
+    def abs_spot_pref(self): # noqa D102
+        return {self.arg2: [spots.RCX]}
+
     def rel_spot_pref(self): # noqa D102
-        return {self.output: [self.arg1, self.arg2]}
+        return {self.output: [self.arg1]}
 
     def make_asm(self, spotmap, home_spots, get_reg, asm_code): # noqa D102
         arg1_spot = spotmap[self.arg1]
@@ -152,22 +155,15 @@ class _BitShiftCmd(ILCommand):
             asm_code.add(asm_cmds.Mov(spots.RCX, arg2_spot, arg2_size))
             arg2_spot = spots.RCX
 
-        # Destination operand must be register or a memory spot.
-        if not (isinstance(arg1_spot, spots.MemSpot) or
-                isinstance(arg1_spot, spots.RegSpot)):
-            arg1_spot_new = get_reg([], [spots.RCX])
-            asm_code.add(asm_cmds.Mov(arg1_spot_new, arg1_spot, arg1_size))
-            arg1_spot = arg1_spot_new
-
-        # Get temp register for computation.
-        temp = get_reg([spotmap[self.output], arg1_spot],
-                       [arg2_spot])
-
-        if temp == arg1_spot:
+        if spotmap[self.output] == arg2_spot:
             asm_code.add(self.Inst(arg1_spot, arg2_spot, arg1_size, 1))
         else:
-            asm_code.add(asm_cmds.Mov(temp, arg1_spot, arg1_size))
-            asm_code.add(self.Inst(temp, arg2_spot, arg1_size, 1))
+            out_spot = spotmap[self.output]
+            temp_spot = get_reg([out_spot, arg1_spot], [arg2_spot])
+            asm_code.add(asm_cmds.Mov(temp_spot, arg1_spot, arg1_size))
+            asm_code.add(self.Inst(temp_spot, arg2_spot, arg1_size, 1))
+            if temp_spot != out_spot:
+                asm_code.add(asm_cmds.Mov(out_spot, temp_spot, arg1_size))
 
 
 class RBitShift(_BitShiftCmd):
@@ -175,7 +171,6 @@ class RBitShift(_BitShiftCmd):
     Shifts each bit in IL value left operand to the right by position
     indicated by right operand."""
 
-    comm = False
     Inst = asm_cmds.Sar
 
 
@@ -184,7 +179,6 @@ class LBitShift(_BitShiftCmd):
     Shifts each bit in IL value left operand to the left by position
     indicated by right operand."""
 
-    comm = False
     Inst = asm_cmds.Sal
 
 

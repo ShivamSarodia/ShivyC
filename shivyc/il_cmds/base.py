@@ -141,9 +141,7 @@ class ILCommand:
 
     def _is_imm8(self, spot):
         """Return True if given spot is a 8-bit immediate operand."""
-        return (self._is_imm(spot) and
-                (int(spot.detail) > ctypes.unsig_char_max or
-                 int(spot.detail) < ctypes.unsig_char_max))
+        return self._is_imm(spot) and int(spot.detail) < ctypes.unsig_char_max
 
     def _is_imm64(self, spot):
         """Return True if given spot is a 64-bit immediate operand."""
