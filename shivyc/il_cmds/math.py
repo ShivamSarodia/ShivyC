@@ -79,11 +79,8 @@ class _AddMult(ILCommand):
                     asm_code.add(asm_cmds.Neg(temp, None, size))
 
             else:  # both are imm64
-                temp2 = get_reg([], [temp])
-
-                asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
-                asm_code.add(asm_cmds.Mov(temp2, arg2_spot, size))
-                asm_code.add(self.Inst(temp, temp2, size))
+                raise NotImplementedError(
+                    "never reach because of constant folding")
 
         if temp != spotmap[self.output]:
             asm_code.add(asm_cmds.Mov(spotmap[self.output], temp, size))
