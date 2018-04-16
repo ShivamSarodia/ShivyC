@@ -353,10 +353,6 @@ class DeclInfo:
 
         storage = self.get_storage(defined, linkage, il_code)
 
-        if storage == il_code.STATIC and self.init:
-            raise NotImplementedError(
-                "initializer on static storage unsupported")
-
         name = self.identifier.content
         il_code.register_storage(var, storage, name)
         if linkage == symbol_table.EXTERNAL:
@@ -365,7 +361,7 @@ class DeclInfo:
             il_code.register_defined(var, name)
 
         if self.init:
-            self.do_init(var, il_code, symbol_table, c)
+            self.do_init(var, storage, il_code, symbol_table, c)
         if self.body:
             self.do_body(il_code, symbol_table, c)
 
@@ -382,16 +378,24 @@ class DeclInfo:
 
         symbol_table.add_typedef(self.identifier, self.ctype)
 
-    def do_init(self, var, il_code, symbol_table, c):
+    def do_init(self, var, storage, il_code, symbol_table, c):
         """Create code for initializing given variable.
 
         Caller must check that this object has an initializer.
         """
-        init_val = self.init.make_il(il_code, symbol_table, c)
-        lval = DirectLValue(var)
+        # little bit hacky, but will be fixed when full initializers are
+        # implemented shortly
 
-        if lval.ctype().is_arith() or lval.ctype().is_pointer():
-            lval.set_to(init_val, il_code, self.identifier.r)
+        init = self.init.make_il(il_code, symbol_table, c)
+        if storage == il_code.STATIC and init.literal_val is None:
+            err = ("non-constant initializer for variable with static "
+                   "storage duration")
+            raise CompilerError(err, self.init.r)
+        elif storage == il_code.STATIC:
+            il_code.register_static_init(var, init.literal_val)
+        elif var.ctype.is_arith() or var.ctype.is_pointer():
+            lval = DirectLValue(var)
+            lval.set_to(init, il_code, self.identifier.r)
         else:
             err = "declared variable is not of assignable type"
             raise CompilerError(err, self.range)

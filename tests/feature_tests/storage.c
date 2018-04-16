@@ -6,13 +6,18 @@ extern void* stdout;
 int redef_func(int, int);
 int redef_func(int, int);
 
+extern int a;
+void set_a_to_1(void);
+
+static int b = 7;
+void set_b_to_1(void);
+
 static int intern_var;
 
 // should have no effect
 extern int intern_var;
 
-// has internal linkage
-int extern_var_2;
+extern int extern_var_2;
 
 int main() {
   auto char* p;
@@ -43,5 +48,13 @@ int main() {
     if(intern_var != 7) return 7;
   }
 
-  if(extern_var_2 != 0) return 8;
+  if(extern_var_2 != 8) return 8;
+
+  if(a != 3) return 9;
+  set_a_to_1();
+  if(a != 1) return 10;
+
+  if(b != 7) return 11;
+  set_b_to_1();
+  if(b != 7) return 12;
 }

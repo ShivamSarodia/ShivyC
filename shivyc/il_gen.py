@@ -34,6 +34,7 @@ class ILCode:
 
         self.automatic_storage = {}
         self.static_storage = {}
+        self.init_vals = {}
         self.no_storage = {}
 
         self.defined = {}
@@ -120,6 +121,14 @@ class ILCode:
 
         """
         self.string_literals[il_value] = chars
+
+    def register_static_init(self, il_value, init_val):
+        """Register the initial value for object of static storage duration.
+
+        il_value - ILValue object to initialize
+        init_val - the numeric value to initialize it to
+        """
+        self.init_vals[il_value] = init_val
 
     def get_label(self):
         """Return a unique label identifier string."""
