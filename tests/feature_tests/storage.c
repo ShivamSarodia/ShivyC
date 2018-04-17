@@ -19,6 +19,15 @@ extern int intern_var;
 
 extern int extern_var_2;
 
+int tent_var;
+int tent_var;
+int tent_var_1;
+extern int tent_var_1;
+void set_tent_vars(void);
+
+int tent_var_2;
+int tent_var_2 = 10;
+
 int func();
 
 int main() {
@@ -63,6 +72,13 @@ int main() {
   for(int i = 1; i < 10; i++) {
     if(func() != i) return 13;
   }
+
+  if(tent_var) return 14;
+  if(tent_var_1) return 15;
+  set_tent_vars();
+  if(tent_var != 3) return 16;
+  if(tent_var_1 != 3) return 17;
+  if(tent_var_2 != 10) return 18;
 }
 
 int func() {
