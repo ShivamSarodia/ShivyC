@@ -18,6 +18,10 @@ static int var;
 // error: redeclared 'var' with incompatible type
 extern long var;
 
+int var1;
+// error: redeclared 'var1' with different linkage
+static int var1;
+
 int main() {
   // error: variable of incomplete type declared
   void a;

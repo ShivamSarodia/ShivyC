@@ -6,4 +6,4 @@
 # usage: make_asm c_file.c
 # creates a .s file with the same name as the given .c file
 
-gcc -S -masm=intel -fno-asynchronous-unwind-tables -fno-stack-protector $1
+gcc --std=c11 -Wall -pedantic -S -masm=intel -fno-asynchronous-unwind-tables -fno-stack-protector $1
