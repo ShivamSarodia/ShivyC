@@ -338,13 +338,12 @@ class DeclInfo:
             raise CompilerError(err, self.range)
 
         linkage = self.get_linkage(symbol_table, c)
+        defined = self.get_defined(symbol_table, c)
+        storage = self.get_storage(defined, linkage, symbol_table)
 
         if not c.is_global and self.init and linkage:
             err = "variable with linkage has initializer"
             raise CompilerError(err, self.range)
-
-        defined = self.get_defined(symbol_table, c)
-        storage = self.get_storage(defined, linkage, symbol_table)
 
         var = symbol_table.add_variable(
             self.identifier,
@@ -417,7 +416,8 @@ class DeclInfo:
         iter = zip(self.ctype.args, self.param_names, range(num_params))
         for ctype, param, i in iter:
             arg = symbol_table.add_variable(
-                param, ctype, True, None, symbol_table.AUTOMATIC)
+                param, ctype, symbol_table.DEFINED, None,
+                symbol_table.AUTOMATIC)
             il_code.add(value_cmds.LoadArg(arg, i))
 
         self.body.make_il(il_code, symbol_table, c, no_scope=True)

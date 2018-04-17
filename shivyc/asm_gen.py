@@ -19,6 +19,7 @@ class ASMCode:
     def __init__(self):
         """Initialize ASMCode."""
         self.lines = []
+        self.comm = []
         self.globals = []
         self.data = []
         self.string_literals = []
@@ -50,7 +51,7 @@ class ASMCode:
     def add_data(self, name, size, init):
         """Add static data to the code.
 
-        init - The value to initialize `name` to
+        init - the value to initialize `name` to
         """
         self.data.append(f"{name}:")
         size_strs = {1: "byte",
@@ -62,6 +63,12 @@ class ASMCode:
             self.data.append(f"\t.{size_strs[size]} {init}")
         else:
             self.data.append(f"\t.zero {size}")
+
+    def add_comm(self, name, size, local):
+        """Add a common symbol to the code."""
+        if local:
+            self.comm.append(f"\t.local {name}")
+        self.comm.append(f"\t.comm {name} {size}")
 
     def add_string_literal(self, name, chars):
         """Add a string literal to the ASM code."""
@@ -77,6 +84,7 @@ class ASMCode:
 
         """
         header = ["\t.intel_syntax noprefix"]
+        header += self.comm
         if self.string_literals or self.data:
             header += ["\t.section .data"]
             header += self.data
@@ -414,6 +422,8 @@ class ASMGen:
         local_static_number = 0
 
         EXTERNAL = self.symbol_table.EXTERNAL
+        INTERNAL = self.symbol_table.INTERNAL
+        TENTATIVE = self.symbol_table.TENTATIVE
         DEFINED = self.symbol_table.DEFINED
 
         for value in self.il_code.literals:
@@ -444,8 +454,12 @@ class ASMGen:
             s = MemSpot(name)
             global_spotmap[value] = s
 
-            init_val = self.il_code.static_inits.get(value, 0)
-            self.asm_code.add_data(name, value.ctype.size, init_val)
+            if self.symbol_table.def_state.get(value) == TENTATIVE:
+                local = (self.symbol_table.linkage_type[value] == INTERNAL)
+                self.asm_code.add_comm(name, value.ctype.size, local)
+            else:
+                init_val = self.il_code.static_inits.get(value, 0)
+                self.asm_code.add_data(name, value.ctype.size, init_val)
 
         for value in self.il_code.string_literals:
             name = f"__strlit{string_literal_number}"

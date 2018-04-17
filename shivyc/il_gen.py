@@ -116,9 +116,9 @@ class SymbolTable:
     Tables = namedtuple('Tables', ['vars', 'structs'])
 
     # Definition statuses
-    DEFINED = 1
-    UNDEFINED = 2
-    TENTATIVE = 3
+    UNDEFINED = 1
+    TENTATIVE = 2
+    DEFINED = 3
 
     # Linkages
     INTERNAL = 1
@@ -207,7 +207,7 @@ class SymbolTable:
         ctype (CType) - C type of the identifier we're adding.
         defined - one of DEFINED, UNDEFINED, or TENTATIVE
         linkage - one of INTERNAL, EXTERNAL, or None
-        storage - one of STATIC or AUTOMATIC
+        storage - STATIC, AUTOMATIC, or None
 
         return (ILValue) - the ILValue added
         """
@@ -241,8 +241,7 @@ class SymbolTable:
             self.linkages[linkage][name] = var
             self.linkage_type[var] = linkage
 
-        # TODO: be smarter here
-        self.def_state[var] = defined
+        self.def_state[var] = max(self.def_state.get(var, 0), defined)
 
         # If this variable has not been assigned a storage duration, or the
         # previous storage duration was None, assign it this storage duration.
