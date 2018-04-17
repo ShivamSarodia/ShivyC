@@ -418,63 +418,66 @@ class ASMGen:
         """
         global_spotmap = {}
 
-        string_literal_number = 0
-        local_static_number = 0
+        EXTERNAL = self.symbol_table.EXTERNAL
+        DEFINED = self.symbol_table.DEFINED
 
+        num = 0
+
+        for value in (set(self.il_code.literals.keys()) |
+                      set(self.il_code.string_literals.keys()) |
+                      set(self.symbol_table.storage.keys())):
+            num += 1
+            spot = self._get_nondynamic_spot(value, num)
+            if spot: global_spotmap[value] = spot
+
+        externs = self.symbol_table.linkages[EXTERNAL].values()
+        for v in externs:
+            if self.symbol_table.def_state.get(v) == DEFINED:
+                self.asm_code.add_global(self.symbol_table.names[v])
+
+        return global_spotmap
+
+    def _get_nondynamic_spot(self, v, num):
+        """Get a spot for non-dynamic values.
+
+        In particular, assigns a spot to all literals, string literals,
+        variables with no storage, and variables with static storage.
+
+        v - value to get a spot for, or None if the value goes in a dynamic
+        spot like a register
+        nnum - positive integer guaranteed never to be the same for two
+        distinct calls to this function
+        """
         EXTERNAL = self.symbol_table.EXTERNAL
         INTERNAL = self.symbol_table.INTERNAL
         TENTATIVE = self.symbol_table.TENTATIVE
-        DEFINED = self.symbol_table.DEFINED
 
-        for value in self.il_code.literals:
-            s = LiteralSpot(self.il_code.literals[value])
-            global_spotmap[value] = s
+        if v in self.il_code.literals:
+            return LiteralSpot(self.il_code.literals[v])
 
-        no_storage = [v for v in self.symbol_table.storage if
-                      not self.symbol_table.storage[v]]
+        elif v in self.il_code.string_literals:
+            name = f"__strlit{num}"
+            self.asm_code.add_string_literal(
+                name, self.il_code.string_literals[v])
+            return MemSpot(name)
 
         # Values with no storage can be referenced directly by name
-        for value in no_storage:
-            s = MemSpot(self.symbol_table.names[value])
-            global_spotmap[value] = s
+        elif not self.symbol_table.storage.get(v, True):
+            return MemSpot(self.symbol_table.names[v])
 
-        static_storage = [v for v in self.symbol_table.storage if
-                          (self.symbol_table.storage[v] ==
-                           self.symbol_table.STATIC)]
+        elif self.symbol_table.storage.get(v) == self.symbol_table.STATIC:
+            name = self.symbol_table.names[v]
+            if self.symbol_table.linkage_type.get(v) != EXTERNAL:
+                name = f"{name}.{num}"
 
-        for value in static_storage:
-            name = self.symbol_table.names[value]
-
-            # Mangle internal static values for when multiple functions
-            # declare static variables with the same name
-            if self.symbol_table.linkage_type.get(value) != EXTERNAL:
-                name = f"{name}.{local_static_number}"
-                local_static_number += 1
-
-            s = MemSpot(name)
-            global_spotmap[value] = s
-
-            if self.symbol_table.def_state.get(value) == TENTATIVE:
-                local = (self.symbol_table.linkage_type[value] == INTERNAL)
-                self.asm_code.add_comm(name, value.ctype.size, local)
+            if self.symbol_table.def_state.get(v) == TENTATIVE:
+                local = (self.symbol_table.linkage_type[v] == INTERNAL)
+                self.asm_code.add_comm(name, v.ctype.size, local)
             else:
-                init_val = self.il_code.static_inits.get(value, 0)
-                self.asm_code.add_data(name, value.ctype.size, init_val)
+                init_val = self.il_code.static_inits.get(v, 0)
+                self.asm_code.add_data(name, v.ctype.size, init_val)
 
-        for value in self.il_code.string_literals:
-            name = f"__strlit{string_literal_number}"
-            string_literal_number += 1
-
-            self.asm_code.add_string_literal(
-                name, self.il_code.string_literals[value])
-            global_spotmap[value] = MemSpot(name)
-
-        for value in self.symbol_table.linkage_type:
-            if (self.symbol_table.linkage_type[value] == EXTERNAL
-                  and self.symbol_table.def_state.get(value) == DEFINED):
-                self.asm_code.add_global(self.symbol_table.names[value])
-
-        return global_spotmap
+            return MemSpot(name)
 
     def _get_free_values(self, commands, global_spotmap):
         """Generate list of free values.
