@@ -199,7 +199,7 @@ class Identifier(_LExprNode):
         self.identifier = identifier
 
     def _lvalue(self, il_code, symbol_table, c):
-        var = symbol_table.lookup_tok(self.identifier)
+        var = symbol_table.lookup_variable(self.identifier)
         return DirectLValue(var)
 
 

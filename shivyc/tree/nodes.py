@@ -334,34 +334,22 @@ class DeclInfo:
             raise CompilerError(err, self.range)
 
         linkage = self.get_linkage(symbol_table, c)
+        defined = self.get_defined(symbol_table, c)
+        storage = self.get_storage(defined, linkage, symbol_table)
 
         if not c.is_global and self.init and linkage:
             err = "local variable with linkage has initializer"
             raise CompilerError(err, self.range)
 
-        defined = self.get_defined()
-
-        var = symbol_table.add(
+        var = symbol_table.add_variable(
             self.identifier,
             self.ctype,
             defined,
-            linkage)
-
-        storage = self.get_storage(defined, linkage, il_code)
-
-        if storage == il_code.STATIC and self.init:
-            raise NotImplementedError(
-                "initializer on static storage unsupported")
-
-        name = self.identifier.content
-        il_code.register_storage(var, storage, name)
-        if linkage == symbol_table.EXTERNAL:
-            il_code.register_extern_linkage(var, name)
-        if defined:
-            il_code.register_defined(var, name)
+            linkage,
+            storage)
 
         if self.init:
-            self.do_init(var, il_code, symbol_table, c)
+            self.do_init(var, storage, il_code, symbol_table, c)
         if self.body:
             self.do_body(il_code, symbol_table, c)
 
@@ -382,16 +370,24 @@ class DeclInfo:
 
         symbol_table.add_typedef(self.identifier, self.ctype)
 
-    def do_init(self, var, il_code, symbol_table, c):
+    def do_init(self, var, storage, il_code, symbol_table, c):
         """Create code for initializing given variable.
 
         Caller must check that this object has an initializer.
         """
-        init_val = self.init.make_il(il_code, symbol_table, c)
-        lval = DirectLValue(var)
+        # little bit hacky, but will be fixed when full initializers are
+        # implemented shortly
 
-        if lval.ctype().is_arith() or lval.ctype().is_pointer():
-            lval.set_to(init_val, il_code, self.identifier.r)
+        init = self.init.make_il(il_code, symbol_table, c)
+        if storage == symbol_table.STATIC and init.literal_val is None:
+            err = ("non-constant initializer for variable with static "
+                   "storage duration")
+            raise CompilerError(err, self.init.r)
+        elif storage == symbol_table.STATIC:
+            il_code.static_initialize(var, init.literal_val)
+        elif var.ctype.is_arith() or var.ctype.is_pointer():
+            lval = DirectLValue(var)
+            lval.set_to(init, il_code, self.identifier.r)
         else:
             err = "declared variable is not of assignable type"
             raise CompilerError(err, self.range)
@@ -419,7 +415,9 @@ class DeclInfo:
         num_params = len(self.ctype.args)
         iter = zip(self.ctype.args, self.param_names, range(num_params))
         for ctype, param, i in iter:
-            arg = symbol_table.add(param, ctype, True, None)
+            arg = symbol_table.add_variable(
+                param, ctype, symbol_table.DEFINED, None,
+                symbol_table.AUTOMATIC)
             il_code.add(value_cmds.LoadArg(arg, i))
 
         self.body.make_il(il_code, symbol_table, c, no_scope=True)
@@ -467,11 +465,8 @@ class DeclInfo:
         if c.is_global and self.storage == DeclInfo.STATIC:
             linkage = symbol_table.INTERNAL
         elif self.storage == DeclInfo.EXTERN:
-            var = symbol_table.lookup_raw(self.identifier.content)
-            if var and var.linkage:
-                linkage = var.linkage
-            else:
-                linkage = symbol_table.EXTERNAL
+            cur_linkage = symbol_table.lookup_linkage(self.identifier)
+            linkage = cur_linkage or symbol_table.EXTERNAL
         elif self.ctype.is_function() and not self.storage:
             linkage = symbol_table.EXTERNAL
         elif c.is_global and not self.storage:
@@ -481,23 +476,26 @@ class DeclInfo:
 
         return linkage
 
-    def get_defined(self):
+    def get_defined(self, symbol_table, c):
         """Determine whether this is a definition."""
-        if self.storage == self.EXTERN and not (self.init or self.body):
-            return False
+        if (c.is_global and self.storage in {None, self.STATIC}
+              and self.ctype.is_object() and not self.init):
+            return symbol_table.TENTATIVE
+        elif self.storage == self.EXTERN and not (self.init or self.body):
+            return symbol_table.UNDEFINED
         elif self.ctype.is_function() and not self.body:
-            return False
+            return symbol_table.UNDEFINED
         else:
-            return True
+            return symbol_table.DEFINED
 
-    def get_storage(self, defined, linkage, il_code):
+    def get_storage(self, defined, linkage, symbol_table):
         """Determine the storage duration."""
-        if not defined or not self.ctype.is_object():
+        if defined == symbol_table.UNDEFINED or not self.ctype.is_object():
             storage = None
         elif linkage or self.storage == self.STATIC:
-            storage = il_code.STATIC
+            storage = symbol_table.STATIC
         else:
-            storage = il_code.AUTOMATIC
+            storage = symbol_table.AUTOMATIC
 
         return storage
 
