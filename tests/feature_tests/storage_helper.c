@@ -1,8 +1,8 @@
 int extern_var = 0;
 int extern_var_2 = 4 + 4;
 
-extern int tent_var;
-extern int tent_var_1;
+int tent_var;
+int tent_var_1;
 
 int a = 3;
 void set_a_to_1() {
