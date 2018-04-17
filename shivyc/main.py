@@ -74,12 +74,13 @@ def process_c_file(file, args):
         return None
 
     il_code = ILCode()
-    ast_root.make_il(il_code, SymbolTable(), Context())
+    symbol_table = SymbolTable()
+    ast_root.make_il(il_code, symbol_table, Context())
     if not error_collector.ok():
         return None
 
     asm_code = ASMCode()
-    ASMGen(il_code, asm_code, args).make_asm()
+    ASMGen(il_code, symbol_table, asm_code, args).make_asm()
     asm_source = asm_code.full_code()
     if not error_collector.ok():
         return None

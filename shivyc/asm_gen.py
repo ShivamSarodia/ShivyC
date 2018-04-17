@@ -258,9 +258,10 @@ class ASMGen:
     # List of registers used by the get_reg function.
     all_registers = alloc_registers
 
-    def __init__(self, il_code, asm_code, arguments):
+    def __init__(self, il_code, symbol_table, asm_code, arguments):
         """Initialize ASMGen."""
         self.il_code = il_code
+        self.symbol_table = symbol_table
         self.asm_code = asm_code
         self.arguments = arguments
 
@@ -412,28 +413,39 @@ class ASMGen:
         string_literal_number = 0
         local_static_number = 0
 
+        EXTERNAL = self.symbol_table.EXTERNAL
+        DEFINED = self.symbol_table.DEFINED
+
         for value in self.il_code.literals:
             s = LiteralSpot(self.il_code.literals[value])
             global_spotmap[value] = s
 
-        for value in self.il_code.no_storage:
-            # These values can be referenced by their name in the ASM
-            s = MemSpot(self.il_code.no_storage[value])
+        no_storage = [v for v in self.symbol_table.storage if
+                      not self.symbol_table.storage[v]]
+
+        # Values with no storage can be referenced directly by name
+        for value in no_storage:
+            s = MemSpot(self.symbol_table.names[value])
             global_spotmap[value] = s
 
-        for value in self.il_code.static_storage:
-            name = self.il_code.static_storage[value]
+        static_storage = [v for v in self.symbol_table.storage if
+                          (self.symbol_table.storage[v] ==
+                           self.symbol_table.STATIC)]
 
-            # internal static values should get name mangled, in case
-            # multiple functions declare static variables with the same name
-            if value not in self.il_code.external:
+        for value in static_storage:
+            name = self.symbol_table.names[value]
+
+            # Mangle internal static values for when multiple functions
+            # declare static variables with the same name
+            if self.symbol_table.linkage_type.get(value) != EXTERNAL:
                 name = f"{name}.{local_static_number}"
                 local_static_number += 1
 
             s = MemSpot(name)
             global_spotmap[value] = s
-            self.asm_code.add_data(name, value.ctype.size,
-                                   self.il_code.init_vals.get(value, 0))
+
+            init_val = self.il_code.static_inits.get(value, 0)
+            self.asm_code.add_data(name, value.ctype.size, init_val)
 
         for value in self.il_code.string_literals:
             name = f"__strlit{string_literal_number}"
@@ -443,9 +455,10 @@ class ASMGen:
                 name, self.il_code.string_literals[value])
             global_spotmap[value] = MemSpot(name)
 
-        for value in self.il_code.external:
-            if value in self.il_code.defined:
-                self.asm_code.add_global(self.il_code.external[value])
+        for value in self.symbol_table.linkage_type:
+            if (self.symbol_table.linkage_type[value] == EXTERNAL
+                  and self.symbol_table.def_state.get(value) == DEFINED):
+                self.asm_code.add_global(self.symbol_table.names[value])
 
         return global_spotmap
 
