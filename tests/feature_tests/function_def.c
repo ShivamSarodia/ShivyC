@@ -56,6 +56,16 @@ int ptr_value(const int* p) {
   return *p;
 }
 
+int sum_array(int a[][2], int len) {
+  int sum = 0;
+  for(int i = 0; i < len; i++) {
+    for(int j = 0; j < 2; j++) {
+      sum += a[i][j];
+    }
+  }
+  return sum;
+}
+
 int main() {
   if(add(3, 4) != 7) return 1;
   if(add(helper_ret_5(), 4) != 9) return 2;
@@ -86,4 +96,11 @@ int main() {
   if(ptr_value(&a) != 4) return 11;
   const int* p = &a;
   if(ptr_value(&a) != 4) return 12;
+
+  int arr1[2][2];
+  arr1[0][0] = 1;
+  arr1[0][1] = 1;
+  arr1[1][0] = 1;
+  arr1[1][1] = 1;
+  if(sum_array(arr1, 2) != 4) return 13;
 }

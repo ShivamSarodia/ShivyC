@@ -575,8 +575,17 @@ class Declaration(Node):
 
         if decl.n:
             il_value = decl.n.make_il(self.il_code, self.symbol_table, self.c)
+            if not il_value.ctype.is_integral():
+                err = "array size must have integral type"
+                raise CompilerError(err, decl.r)
             if il_value.literal_val is None:
                 err = "array size must be compile-time constant"
+                raise CompilerError(err, decl.r)
+            if il_value.literal_val <= 0:
+                err = "array size must be positive"
+                raise CompilerError(err, decl.r)
+            if not prev_ctype.is_complete():
+                err = "array elements must have complete type"
                 raise CompilerError(err, decl.r)
             return ArrayCType(prev_ctype, il_value.literal_val)
         else:

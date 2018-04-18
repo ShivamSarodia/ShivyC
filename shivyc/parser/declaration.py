@@ -380,6 +380,14 @@ def _parse_declarator(start, end, is_typedef):
     Expects the declarator to start at start and end at end-1 inclusive.
     Prefer to use the parse_declarator function externally over this function.
     """
+    decl = _parse_declarator_raw(start, end, is_typedef)
+    decl.r = p.tokens[start].r + p.tokens[end - 1].r
+    return decl
+
+
+def _parse_declarator_raw(start, end, is_typedef):
+    """Like _parse_declarator, but doesn't add `.r` range attribute."""
+
     if start == end:
         return decl_nodes.Identifier(None)
 
