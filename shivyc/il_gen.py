@@ -233,6 +233,10 @@ class SymbolTable:
         if not var.ctype.compatible(ctype):
             err = f"redeclared '{name}' with incompatible type"
             raise CompilerError(err, identifier.r)
+        else:
+            # Update type of stored variable (in case this declaration
+            # completed an object type)
+            var.ctype = ctype
 
         self.tables[-1].vars[name] = var
 

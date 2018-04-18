@@ -353,7 +353,7 @@ class DeclInfo:
         if self.body:
             self.do_body(il_code, symbol_table, c)
 
-        if self.ctype.is_incomplete():
+        if not linkage and self.ctype.is_incomplete():
             err = "variable of incomplete type declared"
             raise CompilerError(err, self.range)
 
