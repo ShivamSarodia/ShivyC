@@ -1,14 +1,12 @@
 int main() {
-  int array[5]; void* p;
+  int array[2+3];
   if(&array != &array) return 1;
   if(array != array) return 2;
   if(&array[0] != &array[0]) return 13;
 
-  // The funky (p=____) allows comparisons between distinct pointer
-  // types. It's basically a ratchet version of a cast.
-  if(&array[0] != (p=array)) return 13;
+  if(&array[0] != (void*)array) return 13;
   if(&array[3] != &array[0] + 3) return 14;
-  if(&array + 1 != (p=&array[0] + 5)) return 15;
+  if(&array + 1 != (void*)(&array[0] + 5)) return 15;
 
   int array2[5];
   if(&array2 != &array2) return 3;
@@ -18,11 +16,11 @@ int main() {
 
   int array3[6];
   if(array == array3) return 7;
-  if(&array == (p=&array3)) return 8;
+  if(&array == (void*)&array3) return 8;
 
   unsigned int array4[5];
-  if(&array == (p=&array4)) return 9;
-  if(array == (p=array4)) return 10;
+  if(&array == (void*)&array4) return 9;
+  if(array == (void*)array4) return 10;
 
   *array = 15;
   if(*array != 15) return 11;

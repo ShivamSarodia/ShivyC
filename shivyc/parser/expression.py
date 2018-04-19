@@ -6,8 +6,6 @@ import shivyc.tree.expr_nodes as expr_nodes
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
                                  raise_error, log_error)
-from shivyc.parser.declaration import (parse_abstract_declarator,
-                                       parse_spec_qual_list)
 
 
 @add_range
@@ -118,6 +116,10 @@ def parse_multiplicative(index):
 @add_range
 def parse_cast(index):
     """Parse cast expression."""
+
+    from shivyc.parser.declaration import (
+        parse_abstract_declarator, parse_spec_qual_list)
+
     with log_error():
         match_token(index, token_kinds.open_paren, ParserError.AT)
         specs, index = parse_spec_qual_list(index + 1)

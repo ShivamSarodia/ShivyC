@@ -943,10 +943,12 @@ class Cast(Declaration, _RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make IL for this cast operation."""
 
-        base_type, _ = self.make_specs_ctype(
-            self.node.specs, False, symbol_table)
-        ctype, _ = self.make_ctype(
-            self.node.decls[0], base_type, symbol_table)
+        self.il_code = il_code
+        self.symbol_table = symbol_table
+        self.c = c
+
+        base_type, _ = self.make_specs_ctype(self.node.specs, False)
+        ctype, _ = self.make_ctype(self.node.decls[0], base_type)
 
         if not ctype.is_void() and not ctype.is_scalar():
             err = "can only cast to scalar or void type"

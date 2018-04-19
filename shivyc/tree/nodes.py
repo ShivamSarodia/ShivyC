@@ -329,10 +329,6 @@ class DeclInfo:
             self.process_typedef(symbol_table)
             return
 
-        if self.ctype.is_incomplete():
-            err = "variable of incomplete type declared"
-            raise CompilerError(err, self.range)
-
         if self.body and not self.ctype.is_function():
             err = "function definition provided for non-function type"
             raise CompilerError(err, self.range)
@@ -342,7 +338,7 @@ class DeclInfo:
         storage = self.get_storage(defined, linkage, symbol_table)
 
         if not c.is_global and self.init and linkage:
-            err = "variable with linkage has initializer"
+            err = "local variable with linkage has initializer"
             raise CompilerError(err, self.range)
 
         var = symbol_table.add_variable(
@@ -356,6 +352,10 @@ class DeclInfo:
             self.do_init(var, storage, il_code, symbol_table, c)
         if self.body:
             self.do_body(il_code, symbol_table, c)
+
+        if not linkage and self.ctype.is_incomplete():
+            err = "variable of incomplete type declared"
+            raise CompilerError(err, self.range)
 
     def process_typedef(self, symbol_table):
         """Process type declarations."""
@@ -517,27 +517,29 @@ class Declaration(Node):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this declaration."""
 
-        decl_infos = self.get_decl_infos(self.node, symbol_table)
+        # So we don't need to pass these variables to every function
+        self.il_code = il_code
+        self.symbol_table = symbol_table
+        self.c = c
+
+        decl_infos = self.get_decl_infos(self.node)
         for info in decl_infos:
             with report_err():
                 info.process(il_code, symbol_table, c)
 
-    def get_decl_infos(self, node, symbol_table):
+    def get_decl_infos(self, node):
         """Given a node, returns a list of decl_info objects for that node."""
 
         any_dec = bool(node.decls)
-        base_type, storage = self.make_specs_ctype(
-            node.specs, any_dec, symbol_table)
+        base_type, storage = self.make_specs_ctype(node.specs, any_dec)
 
         out = []
         for decl, init in zip(node.decls, node.inits):
             with report_err():
-                ctype, identifier = self.make_ctype(
-                    decl, base_type, symbol_table)
+                ctype, identifier = self.make_ctype(decl, base_type)
 
                 if ctype.is_function():
-                    param_identifiers = self.extract_params(
-                        decl, symbol_table)
+                    param_identifiers = self.extract_params(decl)
                 else:
                     param_identifiers = []
 
@@ -547,7 +549,7 @@ class Declaration(Node):
 
         return out
 
-    def make_ctype(self, decl, prev_ctype, symbol_table):
+    def make_ctype(self, decl, prev_ctype):
         """Generate a ctype from the given declaration.
 
         Return a `ctype, identifier token` tuple.
@@ -560,33 +562,53 @@ class Declaration(Node):
         if isinstance(decl, decl_nodes.Pointer):
             new_ctype = PointerCType(prev_ctype, decl.const)
         elif isinstance(decl, decl_nodes.Array):
-            new_ctype = ArrayCType(prev_ctype, decl.n)
+            new_ctype = self._generate_array_ctype(decl, prev_ctype)
         elif isinstance(decl, decl_nodes.Function):
-            new_ctype = self._generate_func_ctype(
-                decl, prev_ctype, symbol_table)
+            new_ctype = self._generate_func_ctype(decl, prev_ctype)
         elif isinstance(decl, decl_nodes.Identifier):
             return prev_ctype, decl.identifier
 
-        return self.make_ctype(decl.child, new_ctype, symbol_table)
+        return self.make_ctype(decl.child, new_ctype)
 
-    def _generate_func_ctype(self, decl, prev_ctype, symbol_table):
+    def _generate_array_ctype(self, decl, prev_ctype):
+        """Generate a function ctype from a given a decl_node."""
+
+        if decl.n:
+            il_value = decl.n.make_il(self.il_code, self.symbol_table, self.c)
+            if not il_value.ctype.is_integral():
+                err = "array size must have integral type"
+                raise CompilerError(err, decl.r)
+            if il_value.literal_val is None:
+                err = "array size must be compile-time constant"
+                raise CompilerError(err, decl.r)
+            if il_value.literal_val <= 0:
+                err = "array size must be positive"
+                raise CompilerError(err, decl.r)
+            if not prev_ctype.is_complete():
+                err = "array elements must have complete type"
+                raise CompilerError(err, decl.r)
+            return ArrayCType(prev_ctype, il_value.literal_val)
+        else:
+            return ArrayCType(prev_ctype, None)
+
+    def _generate_func_ctype(self, decl, prev_ctype):
         """Generate a function ctype from a given a decl_node."""
 
         # Prohibit storage class specifiers in parameters.
         for param in decl.args:
-            decl_info = self.get_decl_infos(param, symbol_table)[0]
+            decl_info = self.get_decl_infos(param)[0]
             if decl_info.storage:
                 err = "storage class specified for function parameter"
                 raise CompilerError(err, decl_info.range)
 
         # Create a new scope because if we create a new struct type inside
         # the function parameters, it should be local to those parameters.
-        symbol_table.new_scope()
+        self.symbol_table.new_scope()
         args = [
-            self.get_decl_infos(decl, symbol_table)[0].ctype
+            self.get_decl_infos(decl)[0].ctype
             for decl in decl.args
         ]
-        symbol_table.end_scope()
+        self.symbol_table.end_scope()
 
         # adjust array and function parameters
         has_void = False
@@ -599,7 +621,7 @@ class Declaration(Node):
             elif ctype.is_void():
                 has_void = True
         if has_void and len(args) > 1:
-            decl_info = self.get_decl_infos(decl.args[0], symbol_table)[0]
+            decl_info = self.get_decl_infos(decl.args[0])[0]
             err = "'void' must be the only parameter"
             raise CompilerError(err, decl_info.range)
         if prev_ctype.is_function():
@@ -617,7 +639,7 @@ class Declaration(Node):
             new_ctype = FunctionCType(args, prev_ctype, False)
         return new_ctype
 
-    def extract_params(self, decl, symbol_table):
+    def extract_params(self, decl):
         """Return the parameter list for this function."""
 
         identifiers = []
@@ -638,12 +660,12 @@ class Declaration(Node):
             raise CompilerError(err, self.r)
 
         for param in func_decl.args:
-            decl_info = self.get_decl_infos(param, symbol_table)[0]
+            decl_info = self.get_decl_infos(param)[0]
             identifiers.append(decl_info.identifier)
 
         return identifiers
 
-    def make_specs_ctype(self, specs, any_dec, symbol_table):
+    def make_specs_ctype(self, specs, any_dec):
         """Make a ctype out of the provided list of declaration specifiers.
 
         any_dec - Whether these specifiers are used to declare a variable.
@@ -665,12 +687,12 @@ class Declaration(Node):
             # This is a redeclaration of a struct if there are no storage
             # specifiers and it declares no variables.
             redec = not any_dec and storage is None
-            base_type = self.parse_struct_union_spec(node, redec, symbol_table)
+            base_type = self.parse_struct_union_spec(node, redec)
 
         # is a typedef
         elif any(s.kind == token_kinds.identifier for s in specs):
             ident = [s for s in specs if s.kind == token_kinds.identifier][0]
-            base_type = symbol_table.lookup_typedef(ident)
+            base_type = self.symbol_table.lookup_typedef(ident)
 
         else:
             base_type = self.get_base_ctype(specs, spec_range)
@@ -748,7 +770,7 @@ class Declaration(Node):
 
         return storage
 
-    def parse_struct_union_spec(self, node, redec, symbol_table):
+    def parse_struct_union_spec(self, node, redec):
         """Parse struct or union ctype from the given decl_nodes.Struct node.
 
         node (decl_nodes.Struct/Union) - the Struct or Union node to parse
@@ -777,14 +799,14 @@ class Declaration(Node):
 
         if node.tag:
             tag = str(node.tag)
-            ctype = symbol_table.lookup_struct_union(tag)
+            ctype = self.symbol_table.lookup_struct_union(tag)
 
             if ctype and not isinstance(ctype, ctype_req):
                 err = f"defined as wrong kind of tag '{node.kind} {tag}'"
                 raise CompilerError(err, node.r)
 
             if not ctype or has_members or redec:
-                ctype = symbol_table.add_struct_union(tag, ctype_req(tag))
+                ctype = self.symbol_table.add_struct_union(tag, ctype_req(tag))
 
             if has_members and ctype.is_complete():
                 err = f"redefinition of '{node.kind} {tag}'"
@@ -802,7 +824,7 @@ class Declaration(Node):
         for member in node.members:
             decl_infos = []  # needed in case get_decl_infos below fails
             with report_err():
-                decl_infos = self.get_decl_infos(member, symbol_table)
+                decl_infos = self.get_decl_infos(member)
 
             for decl_info in decl_infos:
                 with report_err():

@@ -378,10 +378,14 @@ def arith_conversion_type(type1, type2):
 
     # Otherwise, both operands are converted to the unsigned integer type
     # corresponding to the type of the operand with signed integer type.
-    elif type1_promo.signed:
-        return type1_promo.make_unsigned()
-    elif type2_promo.signed:
-        return type2_promo.make_unsigned()
+    #
+    # Commented because this code /should/ never be reached, because all
+    # combinations will be caught by one of the above two conditions.
+    #
+    # elif type1_promo.signed:
+    #     return type1_promo.make_unsigned()
+    # elif type2_promo.signed:
+    #     return type2_promo.make_unsigned()
 
 
 def arith_convert(left, right, il_code):
