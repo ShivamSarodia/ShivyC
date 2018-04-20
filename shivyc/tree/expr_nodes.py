@@ -251,7 +251,7 @@ class _ArithBinOp(_RExprNode):
         left = self.left.make_il(il_code, symbol_table, c)
         right = self.right.make_il(il_code, symbol_table, c)
 
-        if left.ctype.is_arith() and right.ctype.is_arith():
+        if self._check_type(left, right):
             left, right = arith_convert(left, right, il_code)
 
             if left.literal_val is not None and right.literal_val is not None:
@@ -274,6 +274,14 @@ class _ArithBinOp(_RExprNode):
             return self._nonarith(left, right, il_code)
 
     default_il_cmd = None
+
+    def _check_type(self, left, right):
+        """Returns True if both arguments has arithmetic type.
+
+        left - ILValue for left operand
+        right - ILValue for right operand
+        """
+        return left.ctype.is_arith() and right.ctype.is_arith()
 
     def _arith(self, left, right, il_code):
         """Return the result of this operation on given arithmetic operands.
@@ -437,6 +445,18 @@ class Mult(_ArithBinOp):
         raise CompilerError(err, self.op.r)
 
 
+class _IntBinOp(_ArithBinOp):
+    """Base class for operations that works with integral type operands."""
+
+    def _check_type(self, left, right):
+        """Performs additional type check for operands.
+
+        left - ILValue for left operand
+        right - ILValue for right operand
+        """
+        return left.ctype.is_integral() and right.ctype.is_integral()
+
+
 class Div(_ArithBinOp):
     """Expression that is quotient of two expressions."""
 
@@ -454,7 +474,7 @@ class Div(_ArithBinOp):
         raise CompilerError(err, self.op.r)
 
 
-class Mod(_ArithBinOp):
+class Mod(_IntBinOp):
     """Expression that is modulus of two expressions."""
 
     def __init__(self, left, right, op):
@@ -466,6 +486,32 @@ class Mod(_ArithBinOp):
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for modulus"
         raise CompilerError(err, self.op.r)
+
+
+class _BitShift(_IntBinOp):
+    """Represents a `<<` and `>>` bitwise shift operators.
+    Each of operands must have integer type.
+    """
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        super().__init__(left, right, op)
+
+    def _nonarith(self, left, right, il_code):
+        err = "invalid operand types for bitwise shift"
+        raise CompilerError(err, self.op.r)
+
+
+class RBitShift(_BitShift):
+    """Represent a `>>` operator."""
+
+    default_il_cmd = math_cmds.RBitShift
+
+
+class LBitShift(_BitShift):
+    """Represent a `<<` operator."""
+
+    default_il_cmd = math_cmds.LBitShift
 
 
 class _Equality(_ArithBinOp):
