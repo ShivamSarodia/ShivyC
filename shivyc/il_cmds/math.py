@@ -284,12 +284,12 @@ class Mod(_DivMod):
     return_reg = spots.RDX
 
 
-class Neg(ILCommand):
-    """Negates given IL value.
+class _NegNot(ILCommand):
+    """Base class for NEG and NOT."""
 
-    No type promotion is done here.
-
-    """
+    # The ASM instruction to generate for this command. Override this value
+    # in subclasses.
+    Inst = None
 
     def __init__(self, output, arg):  # noqa D102
         self.output = output
@@ -312,4 +312,24 @@ class Neg(ILCommand):
 
         if output_spot != arg_spot:
             asm_code.add(asm_cmds.Mov(output_spot, arg_spot, size))
-        asm_code.add(asm_cmds.Neg(output_spot, None, size))
+        asm_code.add(self.Inst(output_spot, None, size))
+
+
+class Neg(_NegNot):
+    """Negates given IL value (two's complement).
+
+    No type promotion is done here.
+
+    """
+
+    Inst = asm_cmds.Neg
+
+
+class Not(_NegNot):
+    """Logically negates each bit of given IL value (one's complement).
+
+    No type promotion is done here.
+
+    """
+
+    Inst = asm_cmds.Not

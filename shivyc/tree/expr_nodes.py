@@ -890,9 +890,10 @@ class PostDecr(_IncrDecr):
 
 
 class _ArithUnOp(_RExprNode):
-    """Base class for unary plus and minus."""
+    """Base class for unary plus, minus, and bit-complement."""
 
     descrip = None
+    opnd_descrip = "arithmetic"
     cmd = None
 
     def __init__(self, expr):
@@ -903,35 +904,66 @@ class _ArithUnOp(_RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
         expr = self.expr.make_il(il_code, symbol_table, c)
-        if not expr.ctype.is_arith():
-            err = f"unary {self.descrip} requires arithmetic type operand"
+        if not self._check_type(expr):
+            err = f"{self.descrip} requires {self.opnd_descrip} type operand"
             raise CompilerError(err, self.expr.r)
+        # perform integer promotion
         if expr.ctype.size < 4:
             expr = set_type(expr, ctypes.integer, il_code)
         if self.cmd:
             out = ILValue(expr.ctype)
-            if expr.literal_val is not None:
-                val = -shift_into_range(expr.literal_val, expr.ctype)
+            # perform constant folding
+            if expr.literal_val:
+                val = self._arith_const(expr.literal_val, expr.ctype)
                 val = shift_into_range(val, expr.ctype)
                 il_code.register_literal_var(out, val)
             else:
                 il_code.add(self.cmd(out, expr))
             return out
-        else:
-            return expr
+        return expr
+
+    def _check_type(self, expr):
+        """Returns True if the argument has arithmetic type.
+
+        This default implementation can be overriden by derived classes if a
+        different type is required.
+
+        """
+        return expr.ctype.is_arith()
+
+    def _arith_const(self, expr, ctype):
+        """Return the result on compile-time constant operand."""
+        raise NotImplementedError
 
 
 class UnaryPlus(_ArithUnOp):
     """Positive."""
 
-    descrip = 'plus'
+    descrip = "unary plus"
 
 
 class UnaryMinus(_ArithUnOp):
     """Negative."""
 
-    descrip = 'minus'
+    descrip = "unary minus"
     cmd = math_cmds.Neg
+
+    def _arith_const(self, expr, ctype):
+        return -shift_into_range(expr, ctype)
+
+
+class Compl(_ArithUnOp):
+    """Logical bitwise negative."""
+
+    descrip = "bit-complement"
+    opnd_descrip = "integral"
+    cmd = math_cmds.Not
+
+    def _check_type(self, expr):
+        return expr.ctype.is_integral()
+
+    def _arith_const(self, expr, ctype):
+        return ~shift_into_range(expr, ctype)
 
 
 class BoolNot(_RExprNode):
