@@ -913,7 +913,7 @@ class _ArithUnOp(_RExprNode):
         if self.cmd:
             out = ILValue(expr.ctype)
             # perform constant folding
-            if expr.literal_val:
+            if expr.literal_val is not None:
                 val = self._arith_const(expr.literal_val, expr.ctype)
                 val = shift_into_range(val, expr.ctype)
                 il_code.register_literal_var(out, val)
