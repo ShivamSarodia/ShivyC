@@ -150,6 +150,9 @@ class Sub(_ASMCommand): name = "sub"  # noqa: D101
 class Neg(_ASMCommand): name = "neg"  # noqa: D101
 
 
+class Not(_ASMCommand): name = "not"  # noqa: D101
+
+
 class Div(_ASMCommand): name = "div"  # noqa: D101
 
 

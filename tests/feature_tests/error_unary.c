@@ -4,4 +4,7 @@ int main() {
 
   // error: unary plus requires arithmetic type operand
   +"";
+
+  // error: bit-complement requires integral type operand
+  ~"";
 }

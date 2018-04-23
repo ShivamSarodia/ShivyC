@@ -165,6 +165,9 @@ def parse_unary(index):
     elif token_is(index, token_kinds.minus):
         node, index = parse_cast(index + 1)
         return expr_nodes.UnaryMinus(node), index
+    elif token_is(index, token_kinds.compl):
+        node, index = parse_cast(index + 1)
+        return expr_nodes.Compl(node), index
     else:
         return parse_postfix(index)
 
