@@ -9,7 +9,7 @@ import shivyc.il_cmds.value as value_cmds
 
 from shivyc.ctypes import ArrayCType, PointerCType
 from shivyc.errors import CompilerError
-from shivyc.il_gen import ILValue
+from shivyc.il_gen import ILValue, ILCode
 from shivyc.tree.nodes import Declaration
 from shivyc.tree.utils import (IndirectLValue, DirectLValue, RelativeLValue,
                                check_cast, set_type, arith_convert,
@@ -98,7 +98,9 @@ class _LExprNode(nodes.Node):
         # Decay array
         if lvalue.ctype().is_array():
             addr = lvalue.addr(il_code)
-            return set_type(addr, PointerCType(lvalue.ctype().el), il_code)
+            return set_type(
+                addr, PointerCType(lvalue.ctype().el, lvalue.ctype().size), il_code
+            )
 
         # Decay function
         elif lvalue.ctype().is_function():
@@ -1056,6 +1058,35 @@ class AddrOf(_RExprNode):
         else:
             err = "operand of unary '&' must be lvalue"
             raise CompilerError(err, self.expr.r)
+
+
+class Sizeof(_RExprNode):
+    """Sizeof expression."""
+
+    def __init__(self, expr, size = None):
+        """Initialize node."""
+        super().__init__()
+        self.expr = expr
+        self.size = size
+    
+    def make_il(self, il_code, symbol_table, c):
+        """Make code for this node."""
+        if self.size != None:
+            v = self.size
+        else:
+            dummy_il_code = ILCode()
+            dummy_il_code.start_func("main")
+            expr_il_value = self.expr.make_il(dummy_il_code, symbol_table, c)
+            expr_ctype = expr_il_value.ctype
+            
+            if expr_ctype.is_pointer() and expr_ctype.array_size != None:
+                v = int(str(expr_ctype.array_size))
+            else:
+                v = int(str(expr_ctype.size))
+        
+        il_value = ILValue(ctypes.unsig_longint)
+        il_code.register_literal_var(il_value, v)
+        return il_value
 
 
 class Deref(_LExprNode):

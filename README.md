@@ -79,6 +79,7 @@ Many thanks to our current and past contributers:
 * [cclauss](https://github.com/cclauss)
 * [TBladen](https://github.com/tbladen)
 * [christian-stephen](https://github.com/christian-stephen)
+* [pougetat](https://github.com/pougetat)
 * [jubnzv](https://github.com/jubnzv)
 
 ## References
