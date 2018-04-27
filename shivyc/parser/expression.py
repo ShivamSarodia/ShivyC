@@ -5,7 +5,7 @@ import shivyc.token_kinds as token_kinds
 import shivyc.tree.expr_nodes as expr_nodes
 import shivyc.tree.decl_nodes as decl_nodes
 from shivyc.parser.utils import (add_range, match_token, token_is, ParserError,
-                                 raise_error, log_error)
+                                 raise_error, log_error, token_in)
 
 
 @add_range
@@ -136,27 +136,34 @@ def parse_cast(index):
 @add_range
 def parse_unary(index):
     """Parse unary expression."""
-    if token_is(index, token_kinds.incr):
-        node, index = parse_unary(index + 1)
-        return expr_nodes.PreIncr(node), index
-    elif token_is(index, token_kinds.decr):
-        node, index = parse_unary(index + 1)
-        return expr_nodes.PreDecr(node), index
-    elif token_is(index, token_kinds.amp):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.AddrOf(node), index
-    elif token_is(index, token_kinds.star):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.Deref(node), index
-    elif token_is(index, token_kinds.bool_not):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.BoolNot(node), index
-    elif token_is(index, token_kinds.plus):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.UnaryPlus(node), index
-    elif token_is(index, token_kinds.minus):
-        node, index = parse_cast(index + 1)
-        return expr_nodes.UnaryMinus(node), index
+
+    unary_args = {token_kinds.incr: (parse_unary, expr_nodes.PreIncr),
+                  token_kinds.decr: (parse_unary, expr_nodes.PreDecr),
+                  token_kinds.amp: (parse_cast, expr_nodes.AddrOf),
+                  token_kinds.star: (parse_cast, expr_nodes.Deref),
+                  token_kinds.bool_not: (parse_cast, expr_nodes.BoolNot),
+                  token_kinds.plus: (parse_cast, expr_nodes.UnaryPlus),
+                  token_kinds.minus: (parse_cast, expr_nodes.UnaryMinus)}
+
+    if token_in(index, unary_args):
+        parse_func, NodeClass = unary_args[p.tokens[index].kind]
+        subnode, index = parse_func(index + 1)
+        return NodeClass(subnode), index
+    elif token_is(index, token_kinds.sizeof_kw):
+        with log_error():
+            node, index = parse_unary(index + 1)
+            return expr_nodes.SizeofExpr(node), index
+
+        from shivyc.parser.declaration import (
+            parse_abstract_declarator, parse_spec_qual_list)
+
+        match_token(index + 1, token_kinds.open_paren, ParserError.AFTER)
+        specs, index = parse_spec_qual_list(index + 2)
+        node, index = parse_abstract_declarator(index)
+        match_token(index, token_kinds.close_paren, ParserError.AT)
+        decl_node = decl_nodes.Root(specs, [node])
+
+        return expr_nodes.SizeofType(decl_node), index + 1
     else:
         return parse_postfix(index)
 

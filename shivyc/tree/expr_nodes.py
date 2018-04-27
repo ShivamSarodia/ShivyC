@@ -63,7 +63,7 @@ class _RExprNode(nodes.Node):
     An RExprNode-derived node implements only the _make_il function.
     """
     def __init__(self):  # noqa D102
-        super().__init__()
+        nodes.Node.__init__(self)
         self._cache_raw_ilvalue = None
 
     def make_il(self, il_code, symbol_table, c):  # noqa D102
@@ -926,6 +926,65 @@ class BoolNot(_RExprNode):
         return out
 
 
+class _SizeofNode(_RExprNode):
+    """Base class for common logic for the two sizeof nodes."""
+
+    def __init__(self):
+        super().__init__()
+
+    def sizeof_ctype(self, ctype, range, il_code):
+        """Raise CompilerError if ctype is not valid as sizeof argument."""
+
+        if ctype.is_function():
+            err = "sizeof argument cannot have function type"
+            raise CompilerError(err, range)
+
+        if ctype.is_incomplete():
+            err = "sizeof argument cannot have incomplete type"
+            raise CompilerError(err, range)
+
+        out = ILValue(ctypes.unsig_longint)
+        il_code.register_literal_var(out, ctype.size)
+        return out
+
+
+class SizeofExpr(_SizeofNode):
+    """
+    Node representing sizeof with expression operand.
+
+    expr (_ExprNode) - the expression to get the size of
+    """
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+    def make_il(self, il_code, symbol_table, c):
+        """Return a compile-time integer literal as the expression size."""
+
+        dummy_il_code = il_code.copy()
+        expr = self.expr.make_il_raw(dummy_il_code, symbol_table, c)
+        return self.sizeof_ctype(expr.ctype, self.expr.r, il_code)
+
+
+class SizeofType(_SizeofNode, Declaration):
+    """
+    Node representing sizeof with expression operand.
+
+    node (decl_nodes.Root) - a declaration tree for the type
+    """
+    def __init__(self, node):
+        _SizeofNode.__init__(self)
+        Declaration.__init__(self, node)   # sets self.node = node
+
+    def make_il(self, il_code, symbol_table, c):
+        """Return a compile-time integer literal as the expression size."""
+
+        self.set_self_vars(il_code, symbol_table, c)
+        base_type, _ = self.make_specs_ctype(self.node.specs, False)
+        ctype, _ = self.make_ctype(self.node.decls[0], base_type)
+        return self.sizeof_ctype(ctype, self.node.decls[0].r, il_code)
+
+
 class Cast(Declaration, _RExprNode):
     """
     Node representing a cast operation, like `(void*)p`.
@@ -934,8 +993,8 @@ class Cast(Declaration, _RExprNode):
 
     TODO: Share code between Cast and Declaration nodes more cleanly.
     """
-    def __init__(self, type_node, expr):
-        Declaration.__init__(self, type_node)
+    def __init__(self, node, expr):
+        Declaration.__init__(self, node)   # sets self.node = node
         _RExprNode.__init__(self)
 
         self.expr = expr
@@ -943,10 +1002,7 @@ class Cast(Declaration, _RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make IL for this cast operation."""
 
-        self.il_code = il_code
-        self.symbol_table = symbol_table
-        self.c = c
-
+        self.set_self_vars(il_code, symbol_table, c)
         base_type, _ = self.make_specs_ctype(self.node.specs, False)
         ctype, _ = self.make_ctype(self.node.decls[0], base_type)
 

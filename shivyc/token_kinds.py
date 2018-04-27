@@ -29,6 +29,7 @@ struct_kw = TokenKind("struct", keyword_kinds)
 union_kw = TokenKind("union", keyword_kinds)
 const_kw = TokenKind("const", keyword_kinds)
 typedef_kw = TokenKind("typedef", keyword_kinds)
+sizeof_kw = TokenKind("sizeof", keyword_kinds)
 
 plus = TokenKind("+", symbol_kinds)
 minus = TokenKind("-", symbol_kinds)
