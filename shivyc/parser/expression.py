@@ -144,7 +144,6 @@ def parse_cast(index):
 @add_range
 def parse_unary(index):
     """Parse unary expression."""
-<<<<<<< HEAD
 
     unary_args = {token_kinds.incr: (parse_unary, expr_nodes.PreIncr),
                   token_kinds.decr: (parse_unary, expr_nodes.PreDecr),
