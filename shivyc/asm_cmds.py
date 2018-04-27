@@ -150,6 +150,9 @@ class Sub(_ASMCommand): name = "sub"  # noqa: D101
 class Neg(_ASMCommand): name = "neg"  # noqa: D101
 
 
+class Not(_ASMCommand): name = "not"  # noqa: D101
+
+
 class Div(_ASMCommand): name = "div"  # noqa: D101
 
 
@@ -181,3 +184,9 @@ class Call(_ASMCommand): name = "call"  # noqa: D101
 
 
 class Ret(_ASMCommand): name = "ret"  # noqa: D101
+
+
+class Sar(_ASMCommandMultiSize): name = "sar"  # noqa: D101
+
+
+class Sal(_ASMCommandMultiSize): name = "sal"  # noqa: D101

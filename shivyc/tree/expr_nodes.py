@@ -251,7 +251,7 @@ class _ArithBinOp(_RExprNode):
         left = self.left.make_il(il_code, symbol_table, c)
         right = self.right.make_il(il_code, symbol_table, c)
 
-        if left.ctype.is_arith() and right.ctype.is_arith():
+        if self._check_type(left, right):
             left, right = arith_convert(left, right, il_code)
 
             if left.literal_val is not None and right.literal_val is not None:
@@ -274,6 +274,14 @@ class _ArithBinOp(_RExprNode):
             return self._nonarith(left, right, il_code)
 
     default_il_cmd = None
+
+    def _check_type(self, left, right):
+        """Returns True if both arguments has arithmetic type.
+
+        left - ILValue for left operand
+        right - ILValue for right operand
+        """
+        return left.ctype.is_arith() and right.ctype.is_arith()
 
     def _arith(self, left, right, il_code):
         """Return the result of this operation on given arithmetic operands.
@@ -437,6 +445,18 @@ class Mult(_ArithBinOp):
         raise CompilerError(err, self.op.r)
 
 
+class _IntBinOp(_ArithBinOp):
+    """Base class for operations that works with integral type operands."""
+
+    def _check_type(self, left, right):
+        """Performs additional type check for operands.
+
+        left - ILValue for left operand
+        right - ILValue for right operand
+        """
+        return left.ctype.is_integral() and right.ctype.is_integral()
+
+
 class Div(_ArithBinOp):
     """Expression that is quotient of two expressions."""
 
@@ -454,7 +474,7 @@ class Div(_ArithBinOp):
         raise CompilerError(err, self.op.r)
 
 
-class Mod(_ArithBinOp):
+class Mod(_IntBinOp):
     """Expression that is modulus of two expressions."""
 
     def __init__(self, left, right, op):
@@ -466,6 +486,32 @@ class Mod(_ArithBinOp):
     def _nonarith(self, left, right, il_code):
         err = "invalid operand types for modulus"
         raise CompilerError(err, self.op.r)
+
+
+class _BitShift(_IntBinOp):
+    """Represents a `<<` and `>>` bitwise shift operators.
+    Each of operands must have integer type.
+    """
+
+    def __init__(self, left, right, op):
+        """Initialize node."""
+        super().__init__(left, right, op)
+
+    def _nonarith(self, left, right, il_code):
+        err = "invalid operand types for bitwise shift"
+        raise CompilerError(err, self.op.r)
+
+
+class RBitShift(_BitShift):
+    """Represent a `>>` operator."""
+
+    default_il_cmd = math_cmds.RBitShift
+
+
+class LBitShift(_BitShift):
+    """Represent a `<<` operator."""
+
+    default_il_cmd = math_cmds.LBitShift
 
 
 class _Equality(_ArithBinOp):
@@ -844,9 +890,10 @@ class PostDecr(_IncrDecr):
 
 
 class _ArithUnOp(_RExprNode):
-    """Base class for unary plus and minus."""
+    """Base class for unary plus, minus, and bit-complement."""
 
     descrip = None
+    opnd_descrip = "arithmetic"
     cmd = None
 
     def __init__(self, expr):
@@ -857,35 +904,66 @@ class _ArithUnOp(_RExprNode):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this node."""
         expr = self.expr.make_il(il_code, symbol_table, c)
-        if not expr.ctype.is_arith():
-            err = f"unary {self.descrip} requires arithmetic type operand"
+        if not self._check_type(expr):
+            err = f"{self.descrip} requires {self.opnd_descrip} type operand"
             raise CompilerError(err, self.expr.r)
+        # perform integer promotion
         if expr.ctype.size < 4:
             expr = set_type(expr, ctypes.integer, il_code)
         if self.cmd:
             out = ILValue(expr.ctype)
+            # perform constant folding
             if expr.literal_val is not None:
-                val = -shift_into_range(expr.literal_val, expr.ctype)
+                val = self._arith_const(expr.literal_val, expr.ctype)
                 val = shift_into_range(val, expr.ctype)
                 il_code.register_literal_var(out, val)
             else:
                 il_code.add(self.cmd(out, expr))
             return out
-        else:
-            return expr
+        return expr
+
+    def _check_type(self, expr):
+        """Returns True if the argument has arithmetic type.
+
+        This default implementation can be overriden by derived classes if a
+        different type is required.
+
+        """
+        return expr.ctype.is_arith()
+
+    def _arith_const(self, expr, ctype):
+        """Return the result on compile-time constant operand."""
+        raise NotImplementedError
 
 
 class UnaryPlus(_ArithUnOp):
     """Positive."""
 
-    descrip = 'plus'
+    descrip = "unary plus"
 
 
 class UnaryMinus(_ArithUnOp):
     """Negative."""
 
-    descrip = 'minus'
+    descrip = "unary minus"
     cmd = math_cmds.Neg
+
+    def _arith_const(self, expr, ctype):
+        return -shift_into_range(expr, ctype)
+
+
+class Compl(_ArithUnOp):
+    """Logical bitwise negative."""
+
+    descrip = "bit-complement"
+    opnd_descrip = "integral"
+    cmd = math_cmds.Not
+
+    def _check_type(self, expr):
+        return expr.ctype.is_integral()
+
+    def _arith_const(self, expr, ctype):
+        return ~shift_into_range(expr, ctype)
 
 
 class BoolNot(_RExprNode):

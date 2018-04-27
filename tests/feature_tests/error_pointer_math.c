@@ -21,6 +21,9 @@ int main() {
   // error: invalid operand types for subtraction
   3 - a;
 
+  // error: invalid operand types for bitwise shift
+  int* c; c << 3;
+
   void *p, *q;
   // error: invalid arithmetic on pointer to incomplete type
   p + 1;

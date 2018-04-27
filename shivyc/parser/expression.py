@@ -87,11 +87,19 @@ def parse_equality(index):
 def parse_relational(index):
     """Parse relational expression."""
     return parse_series(
-        index, parse_additive,
+        index, parse_bitwise,
         {token_kinds.lt: expr_nodes.LessThan,
          token_kinds.gt: expr_nodes.GreaterThan,
          token_kinds.ltoe: expr_nodes.LessThanOrEq,
          token_kinds.gtoe: expr_nodes.GreaterThanOrEq})
+
+
+@add_range
+def parse_bitwise(index):
+    return parse_series(
+        index, parse_additive,
+        {token_kinds.lbitshift: expr_nodes.LBitShift,
+         token_kinds.rbitshift: expr_nodes.RBitShift})
 
 
 @add_range
@@ -136,6 +144,7 @@ def parse_cast(index):
 @add_range
 def parse_unary(index):
     """Parse unary expression."""
+<<<<<<< HEAD
 
     unary_args = {token_kinds.incr: (parse_unary, expr_nodes.PreIncr),
                   token_kinds.decr: (parse_unary, expr_nodes.PreDecr),
@@ -143,7 +152,8 @@ def parse_unary(index):
                   token_kinds.star: (parse_cast, expr_nodes.Deref),
                   token_kinds.bool_not: (parse_cast, expr_nodes.BoolNot),
                   token_kinds.plus: (parse_cast, expr_nodes.UnaryPlus),
-                  token_kinds.minus: (parse_cast, expr_nodes.UnaryMinus)}
+                  token_kinds.minus: (parse_cast, expr_nodes.UnaryMinus),
+                  token_kinds.compl: (parse_cast, expr_nodes.Compl)}
 
     if token_in(index, unary_args):
         parse_func, NodeClass = unary_args[p.tokens[index].kind]

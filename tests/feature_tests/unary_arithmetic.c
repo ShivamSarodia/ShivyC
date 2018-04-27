@@ -14,8 +14,16 @@ int main() {
   if(+(n-2) != 3) return 7;
   if(+(-n) != -5) return 8;
 
+  // test bitwise complement
+  if(~0 != -1) return 9;
+  if(~n != -6) return 10;
+  if(-n-1 != ~5) return 11;
+  if(~(n+2) != ~7) return 12;
+  if(~(~n) != 5) return 13;
+
   // test type promotion
-  if(-c != -32) return 9;
+  if(-c != -32) return 14;
+  if(~c != -33) return 15;
 
   return 0;
 }
