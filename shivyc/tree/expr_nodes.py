@@ -1027,8 +1027,7 @@ class _SizeofNode(_RExprNode):
 
 
 class SizeofExpr(_SizeofNode):
-    """
-    Node representing sizeof with expression operand.
+    """Node representing sizeof with expression operand.
 
     expr (_ExprNode) - the expression to get the size of
     """
@@ -1045,8 +1044,7 @@ class SizeofExpr(_SizeofNode):
 
 
 class SizeofType(_SizeofNode, Declaration):
-    """
-    Node representing sizeof with expression operand.
+    """Node representing sizeof with abstract type as operand.
 
     node (decl_nodes.Root) - a declaration tree for the type
     """
@@ -1064,8 +1062,7 @@ class SizeofType(_SizeofNode, Declaration):
 
 
 class Cast(Declaration, _RExprNode):
-    """
-    Node representing a cast operation, like `(void*)p`.
+    """Node representing a cast operation, like `(void*)p`.
 
     node (decl_nodes.Root) - a declaration tree for this line
 
