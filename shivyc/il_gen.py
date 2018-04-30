@@ -27,6 +27,23 @@ class ILCode:
         self.literals = {}
         self.string_literals = {}
 
+    def copy(self):
+        """Make copy of this object.
+
+        Preserves identity of all ILValues stored within, but modifying the
+        commands, literals, etc. in the returned object does not modify the
+        original.
+        """
+        new = ILCode()
+        new.commands = {name: self.commands[name].copy()
+                        for name in self.commands}
+        new.cur_func = self.cur_func
+        self.label_num = self.label_num
+        self.static_inits = self.static_inits.copy()
+        self.literals = self.literals.copy()
+        self.string_literals = self.string_literals.copy()
+        return new
+
     def start_func(self, func):
         """Start a new function in the IL code.
 

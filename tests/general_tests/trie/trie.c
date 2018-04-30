@@ -49,10 +49,7 @@ int main() {
 }
 
 Node* load(const char* dictionary) {
-  // sizeof is still in PR, so we hardcode this value
-  int sizeof_node = 27 * 8 + 4;
-
-  Node* root = malloc(sizeof_node);
+  Node* root = malloc(sizeof(Node));
   for(int i = 0; i < 27; i++) root->next[i] = 0;
   root->complete = 1;
 
@@ -71,7 +68,7 @@ Node* load(const char* dictionary) {
       else n = &((*n)->next[c - 'a']);
 
       if(!(*n)) {
-        *n = malloc(sizeof_node);
+        *n = malloc(sizeof(Node));
         (*n)->complete = 0;
         for(int i = 0; i < 27; i++) (*n)->next[i] = 0;
       }

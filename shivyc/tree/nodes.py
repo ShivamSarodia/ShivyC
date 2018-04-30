@@ -517,15 +517,22 @@ class Declaration(Node):
     def make_il(self, il_code, symbol_table, c):
         """Make code for this declaration."""
 
-        # So we don't need to pass these variables to every function
-        self.il_code = il_code
-        self.symbol_table = symbol_table
-        self.c = c
-
+        self.set_self_vars(il_code, symbol_table, c)
         decl_infos = self.get_decl_infos(self.node)
         for info in decl_infos:
             with report_err():
                 info.process(il_code, symbol_table, c)
+
+    def set_self_vars(self, il_code, symbol_table, c):
+        """Set il_code, symbol_table, and context as attributes of self.
+
+        Helper function to prevent us from having to pass these three
+        arguments into almost all functions in this class.
+
+        """
+        self.il_code = il_code
+        self.symbol_table = symbol_table
+        self.c = c
 
     def get_decl_infos(self, node):
         """Given a node, returns a list of decl_info objects for that node."""
