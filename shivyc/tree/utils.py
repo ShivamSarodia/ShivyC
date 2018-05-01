@@ -284,7 +284,7 @@ def check_cast(il_value, ctype, range):
             return
 
     # Cast from null pointer constant to pointer okay
-    elif ctype.is_pointer() and il_value.literal_val == 0:
+    elif ctype.is_pointer() and getattr(il_value.literal, "val", None) == 0:
         return
 
     # Cast from pointer to boolean okay
@@ -314,12 +314,12 @@ def set_type(il_value, ctype, il_code, output=None):
         return il_value
     elif output == il_value:
         return il_value
-    elif not output and il_value.literal_val is not None:
+    elif not output and il_value.literal:
         output = ILValue(ctype)
         if ctype.is_integral():
-            val = shift_into_range(il_value.literal_val, ctype)
+            val = shift_into_range(il_value.literal.val, ctype)
         else:
-            val = il_value.literal_val
+            val = il_value.literal.val
         il_code.register_literal_var(output, val)
         return output
     else:
