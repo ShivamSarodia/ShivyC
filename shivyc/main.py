@@ -33,7 +33,11 @@ def main():
     if any(not obj for obj in objs):
         return 1
     else:
-        if not link("out", objs):
+        # set the output ELF name
+        out = "out"
+        if arguments.output_name is not None:
+            out = arguments.output_name
+        if not link(out, objs):
             err = "linker returned non-zero status"
             print(CompilerError(err))
             return 1
@@ -118,6 +122,12 @@ def get_arguments():
     parser.add_argument("-z-reg-alloc-perf",
                         help="display register allocator performance info",
                         dest="show_reg_alloc_perf", action="store_true")
+    parser.add_argument(
+        "-o",
+        nargs="?",
+        metavar="file",
+        help="Place output into <file>",
+        dest="output_name")
 
     return parser.parse_args()
 
