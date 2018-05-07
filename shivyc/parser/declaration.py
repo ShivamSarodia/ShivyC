@@ -252,10 +252,21 @@ def parse_parameter_list(index):
     if token_is(index, token_kinds.close_paren):
         return params, index
 
+    # argument is void and is not function declaration
+    if token_is(index, token_kinds.void_kw) \
+            and token_is(index + 1, token_kinds.close_paren):
+        if token_is(index + 2, token_kinds.open_brack):
+            return params, index + 1
+        elif token_is(index + 1, token_kinds.identifier):
+            err = "'void' must be the only parameter"
+            raise_error(err, index, ParserError.AT)
+
     while True:
         # Try parsing declaration specifiers, quit if no more exist
         specs, index = parse_decl_specifiers(index)
         decl, index = parse_declarator(index)
+
+        # New ast root
         params.append(decl_nodes.Root(specs, [decl]))
 
         # Expect a comma, and break if there isn't one
@@ -357,8 +368,8 @@ def _find_decl_end(index):
     greater than the last index in this declarator.
     """
     if (token_is(index, token_kinds.star) or
-         token_is(index, token_kinds.identifier) or
-         token_is(index, token_kinds.const_kw)):
+            token_is(index, token_kinds.identifier) or
+            token_is(index, token_kinds.const_kw)):
         return _find_decl_end(index + 1)
     elif token_is(index, token_kinds.open_paren):
         close = _find_pair_forward(index)
@@ -392,7 +403,7 @@ def _parse_declarator_raw(start, end, is_typedef):
         return decl_nodes.Identifier(None)
 
     elif (start + 1 == end and
-           p.tokens[start].kind == token_kinds.identifier):
+          p.tokens[start].kind == token_kinds.identifier):
         p.symbols.add_symbol(p.tokens[start], is_typedef)
         return decl_nodes.Identifier(p.tokens[start])
 
@@ -402,7 +413,8 @@ def _parse_declarator_raw(start, end, is_typedef):
             _parse_declarator(index, end, is_typedef), const)
 
     func_decl = _try_parse_func_decl(start, end, is_typedef)
-    if func_decl: return func_decl
+    if func_decl:
+        return func_decl
 
     # First and last elements make a parenthesis pair
     elif (p.tokens[start].kind == token_kinds.open_paren and
