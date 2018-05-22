@@ -379,12 +379,12 @@ class DeclInfo:
         # implemented shortly
 
         init = self.init.make_il(il_code, symbol_table, c)
-        if storage == symbol_table.STATIC and init.literal_val is None:
+        if storage == symbol_table.STATIC and not init.literal:
             err = ("non-constant initializer for variable with static "
                    "storage duration")
             raise CompilerError(err, self.init.r)
         elif storage == symbol_table.STATIC:
-            il_code.static_initialize(var, init.literal_val)
+            il_code.static_initialize(var, getattr(init.literal, "val", None))
         elif var.ctype.is_arith() or var.ctype.is_pointer():
             lval = DirectLValue(var)
             lval.set_to(init, il_code, self.identifier.r)
@@ -585,16 +585,16 @@ class Declaration(Node):
             if not il_value.ctype.is_integral():
                 err = "array size must have integral type"
                 raise CompilerError(err, decl.r)
-            if il_value.literal_val is None:
+            if not il_value.literal:
                 err = "array size must be compile-time constant"
                 raise CompilerError(err, decl.r)
-            if il_value.literal_val <= 0:
+            if il_value.literal.val <= 0:
                 err = "array size must be positive"
                 raise CompilerError(err, decl.r)
             if not prev_ctype.is_complete():
                 err = "array elements must have complete type"
                 raise CompilerError(err, decl.r)
-            return ArrayCType(prev_ctype, il_value.literal_val)
+            return ArrayCType(prev_ctype, il_value.literal.val)
         else:
             return ArrayCType(prev_ctype, None)
 
