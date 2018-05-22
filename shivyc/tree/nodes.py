@@ -600,6 +600,8 @@ class Declaration(Node):
 
     def _generate_func_ctype(self, decl, prev_ctype):
         """Generate a function ctype from a given a decl_node."""
+        # save identifiers
+        identifiers = []
 
         # Prohibit storage class specifiers in parameters.
         for param in decl.args:
@@ -607,6 +609,14 @@ class Declaration(Node):
             if decl_info.storage:
                 err = "storage class specified for function parameter"
                 raise CompilerError(err, decl_info.range)
+
+            if decl_info.identifier:
+                identifier = str(decl_info.identifier)
+                if identifier not in identifiers:
+                    identifiers.append(str(decl_info.identifier))
+                else:
+                    err = f"redefinition of '{identifier}'"
+                    raise CompilerError(err, decl_info.range)
 
         # Create a new scope because if we create a new struct type inside
         # the function parameters, it should be local to those parameters.
