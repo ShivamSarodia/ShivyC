@@ -4,7 +4,7 @@ import shivyc.asm_cmds as asm_cmds
 import shivyc.ctypes as ctypes
 import shivyc.spots as spots
 from shivyc.il_cmds.base import ILCommand
-from shivyc.spots import RegSpot, MemSpot, LiteralSpot
+from shivyc.spots import RegSpot, MemSpot, LiteralSpot, StackSpot
 
 
 class _ValueCmd(ILCommand):
@@ -48,7 +48,7 @@ class _ValueCmd(ILCommand):
 
     def _reg_size(self, size):
         """Return largest register size that does not overfit given size."""
-        reg_sizes = [8, 4, 2, 1]
+        reg_sizes = [4, 2, 1]
         for reg_size in reg_sizes:
             if size >= reg_size:
                 return reg_size
@@ -71,11 +71,17 @@ class LoadArg(ILCommand):
     in order to load the first function argument into the variable a and
     the second function argument into the variable b.
     """
-    arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX, spots.R8, spots.R9]
+    
+    # THIS WAS MODIFIED TO COMPLY WITH THE 'CDECL' CALLING CONVENTION
+
+    #arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX]
 
     def __init__(self, output, arg_num):
         self.output = output
-        self.arg_reg = self.arg_regs[arg_num]
+        #self.arg_reg = self.arg_regs[arg_num]
+        
+        # always put an argument into local memory
+        self.arg_reg = StackSpot((arg_num + 2) * 4, local=False) # always 4 bytes per argument
 
     def inputs(self):
         return []
@@ -93,8 +99,18 @@ class LoadArg(ILCommand):
         if spotmap[self.output] == self.arg_reg:
             return
         else:
-            asm_code.add(asm_cmds.Mov(
-                spotmap[self.output], self.arg_reg, self.output.ctype.size))
+            #if isinstance(spotmap[self.output], MemSpot):
+            #asm_code.add(asm_cmds.Pop(spotmap[self.output], size=4))
+
+            if isinstance(spotmap[self.output], MemSpot):
+                # 'spotmap[self.output]' may be a MemSpot, as well as 'self.arg_reg', but
+                # the Mov instruction doesn't accept two memory operands, so we do this with a push and a pop. Ugly but works...
+                asm_code.add(asm_cmds.Push(self.arg_reg, size=4))
+                asm_code.add(asm_cmds.Pop(spotmap[self.output], size=4))
+            else:
+                asm_code.add(asm_cmds.Mov(spotmap[self.output], self.arg_reg, size=4))
+
+            #asm_code.add(asm_cmds.Mov(spotmap[self.output], self.arg_reg, self.output.ctype.size))
 
 
 class Set(_ValueCmd):
@@ -257,7 +273,7 @@ class ReadAt(_ValueCmd):
             addr_r = addr_spot
         else:
             addr_r = get_reg([], [output_spot])
-            asm_code.add(asm_cmds.Mov(addr_r, addr_spot, 8))
+            asm_code.add(asm_cmds.Mov(addr_r, addr_spot, 4))
 
         indir_spot = MemSpot(addr_r)
         if isinstance(output_spot, RegSpot):
@@ -297,7 +313,7 @@ class SetAt(_ValueCmd):
             addr_r = addr_spot
         else:
             addr_r = get_reg([], [value_spot])
-            asm_code.add(asm_cmds.Mov(addr_r, addr_spot, 8))
+            asm_code.add(asm_cmds.Mov(addr_r, addr_spot, 4))
 
         indir_spot = MemSpot(addr_r)
         if isinstance(value_spot, RegSpot):
@@ -439,7 +455,7 @@ class AddrRel(_RelCommand):
         asm_code.add(asm_cmds.Lea(out_spot, rel_spot))
 
         if out_spot != spotmap[self.output]:
-            asm_code.add(asm_cmds.Mov(spotmap[self.output], out_spot, 8))
+            asm_code.add(asm_cmds.Mov(spotmap[self.output], out_spot, 4))
 
 
 class ReadRel(_RelCommand):
