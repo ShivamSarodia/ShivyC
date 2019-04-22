@@ -3,7 +3,7 @@ python:
   - "3.6"
   # - "pypy3"  # might be faster that CPython for big compiles
 install:
-  - pip install codecov flake8
+  - pip install codecov flake8==3.5
 addons:
   apt:
     packages:
