@@ -133,7 +133,7 @@ def tokenize_line(line, in_comment):
 
     while chunk_end < len(line):
         symbol_kind = match_symbol_kind_at(line, chunk_end)
-        next = match_symbol_kind_at(line, chunk_end + 1)
+        next_symbol_kind = match_symbol_kind_at(line, chunk_end + 1)
 
         # Set include_line flag True as soon as a `#include` is detected.
         if match_include_command(tokens):
@@ -141,7 +141,8 @@ def tokenize_line(line, in_comment):
 
         if in_comment:
             # If next characters end the comment...
-            if symbol_kind == token_kinds.star and next == token_kinds.slash:
+            if (symbol_kind == token_kinds.star and
+                    next_symbol_kind == token_kinds.slash):
                 in_comment = False
                 chunk_start = chunk_end + 2
                 chunk_end = chunk_start
@@ -152,12 +153,14 @@ def tokenize_line(line, in_comment):
 
         # If next characters start a comment, process previous chunk and set
         # in_comment to true.
-        elif symbol_kind == token_kinds.slash and next == token_kinds.star:
+        elif (symbol_kind == token_kinds.slash and
+                next_symbol_kind == token_kinds.star):
             add_chunk(line[chunk_start:chunk_end], tokens)
             in_comment = True
 
         # If next two characters are //, we skip the rest of this line.
-        elif symbol_kind == token_kinds.slash and next == token_kinds.slash:
+        elif (symbol_kind == token_kinds.slash and
+                next_symbol_kind == token_kinds.slash):
             break
 
         # Skip spaces and process previous chunk.
