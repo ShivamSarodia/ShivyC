@@ -22,6 +22,9 @@ int var1;
 // error: redeclared 'var1' with different linkage
 static int var1;
 
+// error: redefinition of 'a'
+void repeat_param(int a, int a);
+
 int main() {
   // error: variable of incomplete type declared
   void a;
