@@ -72,7 +72,7 @@ class Comment:
         self.msg = msg
 
     def __str__(self):  # noqa: D102
-        return "\t// " + self.msg
+        return "\t# " + self.msg
 
 
 class Label:
@@ -95,7 +95,7 @@ class Lea:
         self.source = source
 
     def __str__(self):  # noqa: D102
-        return ("\t" + self.name + " " + self.dest.asm_str(8) + ", "
+        return ("\t" + self.name + " " + self.dest.asm_str(4) + ", "
                 "" + self.source.asm_str(0))
 
 

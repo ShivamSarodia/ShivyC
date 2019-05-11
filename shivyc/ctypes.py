@@ -190,7 +190,7 @@ class PointerCType(CType):
     def __init__(self, arg, const=False):
         """Initialize type."""
         self.arg = arg
-        super().__init__(8, const)
+        super().__init__(4, const)
 
     def weak_compat(self, other):
         """Return True iff other is a compatible type to self."""
@@ -395,8 +395,8 @@ unsig_int = IntegerCType(4, False)
 int_max = 2147483647
 int_min = -2147483648
 
-longint = IntegerCType(8, True)
-unsig_longint = IntegerCType(8, False)
+longint = IntegerCType(4, True)
+unsig_longint = IntegerCType(4, False)
 long_max = 9223372036854775807
 long_min = -9223372036854775808
 

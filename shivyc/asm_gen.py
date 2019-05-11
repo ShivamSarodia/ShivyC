@@ -4,7 +4,8 @@ import itertools
 
 import shivyc.asm_cmds as asm_cmds
 import shivyc.spots as spots
-from shivyc.spots import Spot, RegSpot, MemSpot, LiteralSpot
+import shivyc.il_cmds.value as value
+from shivyc.spots import Spot, RegSpot, MemSpot, LiteralSpot, StackSpot
 
 
 class ASMCode:
@@ -292,6 +293,10 @@ class ASMGen:
         # permanent memory spot if it doesn't yet have one.
         move_to_mem = []
         for command in commands:
+            if isinstance(command, value.LoadArg):
+                # it always loads arguments into local memory,
+                # so check the offset
+                ...
             refs = command.references().values()
             for line in refs:
                 for v in line:
@@ -301,7 +306,7 @@ class ASMGen:
         # In addition, move all IL values of strange size to memory because
         # they won't fit in a register.
         for v in free_values:
-            if v.ctype.size not in {1, 2, 4, 8}:
+            if v.ctype.size not in {1, 2, 4}:
                 move_to_mem.append(v)
 
         # TODO: All non-free IL values are automatically assigned distinct
@@ -773,7 +778,14 @@ class ASMGen:
                         regs.remove(spotmap[n2])
 
                 # Based on algorithm, there should always be register remaining
-                reg = regs.pop()
+                # ...not if there's a function with lots of arguments...
+                try:
+                    reg = regs.pop()
+                except IndexError:
+                    # there's no register, so use the memory!
+                    self.offset += 4 # 'reg' is 4 bytes anyway
+                    reg = StackSpot(self.offset, local=True)
+                    self.alloc_registers.append(reg) # it could be used later on
 
             # Assign this register to every node merged into n1
             for n2 in get_merged(n1):
@@ -790,11 +802,11 @@ class ASMGen:
             max_offset += 16 - max_offset % 16
 
         # Back up rbp and move rsp
-        self.asm_code.add(asm_cmds.Push(spots.RBP, None, 8))
-        self.asm_code.add(asm_cmds.Mov(spots.RBP, spots.RSP, 8))
+        self.asm_code.add(asm_cmds.Push(spots.RBP, None, 4))
+        self.asm_code.add(asm_cmds.Mov(spots.RBP, spots.RSP, 4))
 
         offset_spot = LiteralSpot(str(max_offset))
-        self.asm_code.add(asm_cmds.Sub(spots.RSP, offset_spot, 8))
+        self.asm_code.add(asm_cmds.Sub(spots.RSP, offset_spot, 4))
 
         # Generate code for each command
         for i, command in enumerate(commands):
