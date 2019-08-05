@@ -46,6 +46,7 @@ def compile_with_shivyc(test_file_names):
         files = test_file_names
         show_reg_alloc_perf = False
         variables_on_stack = False
+        output_name = None
 
     shivyc.main.get_arguments = lambda: MockArguments()
 

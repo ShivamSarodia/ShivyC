@@ -33,7 +33,13 @@ def main():
     if any(not obj for obj in objs):
         return 1
     else:
-        if not link("out", objs):
+        # set the output ELF name
+        out = "out"
+        if arguments.output_name is not None and \
+                len(arguments.output_name) == 1:
+            # set the output ELF name
+            out = arguments.output_name[0]
+        if not link(out, objs):
             err = "linker returned non-zero status"
             print(CompilerError(err))
             return 1
@@ -109,7 +115,9 @@ def get_arguments():
     desc = """Compile, assemble, and link C files. Option flags starting
     with `-z` are primarily for debugging or diagnostic purposes."""
     parser = argparse.ArgumentParser(
-        description=desc, usage="shivyc [-h] [options] files...")
+        prog='ShivyC',
+        description=desc,
+        usage="shivyc [-h] [options] files...")
 
     # Files to compile
     parser.add_argument("files", metavar="files", nargs="+")
@@ -118,6 +126,13 @@ def get_arguments():
     parser.add_argument("-z-reg-alloc-perf",
                         help="display register allocator performance info",
                         dest="show_reg_alloc_perf", action="store_true")
+    # Generate binary file with file name
+    parser.add_argument(
+        "-o",
+        nargs=1,
+        metavar="file",
+        help="place output into <file>",
+        dest="output_name")
 
     return parser.parse_args()
 
