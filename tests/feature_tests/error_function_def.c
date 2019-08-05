@@ -58,6 +58,24 @@ const int func() {
   return 4;
 }
 
+int func_void(void)
+{
+    return 4;
+}
+
+
+// error: 'void' must be the only parameter
+int func_void_void_failed(void, void, void)
+{
+    return 0;
+}
+
+
+// error: 'void' must be the only parameter
+int func_void_void(void a, void b){
+    return 1;
+}
+
 // error: redefinition of 'a'
 void repeat_param(int a, int a) { }
 
