@@ -254,12 +254,12 @@ class _ArithBinOp(_RExprNode):
         if self._check_type(left, right):
             left, right = arith_convert(left, right, il_code)
 
-            if left.literal_val is not None and right.literal_val is not None:
+            if left.literal and right.literal:
                 # If NotImplementedError is raised, continue with execution.
                 try:
                     val = self._arith_const(
-                        shift_into_range(left.literal_val, left.ctype),
-                        shift_into_range(right.literal_val, right.ctype),
+                        shift_into_range(left.literal.val, left.ctype),
+                        shift_into_range(right.literal.val, right.ctype),
                         left.ctype)
                     out = ILValue(left.ctype)
                     il_code.register_literal_var(out, val)
@@ -534,9 +534,11 @@ class _Equality(_ArithBinOp):
 
         # If either operand is a null pointer constant, cast it to the
         # other's pointer type.
-        if left.ctype.is_pointer() and right.literal_val == 0:
+        if (left.ctype.is_pointer()
+             and getattr(right.literal, "val", None) == 0):
             right = set_type(right, left.ctype, il_code)
-        elif right.ctype.is_pointer() and left.literal_val == 0:
+        elif (right.ctype.is_pointer()
+              and getattr(left.literal, "val", None) == 0):
             left = set_type(left, right.ctype, il_code)
 
         # If both operands are not pointer types, quit now
@@ -913,8 +915,8 @@ class _ArithUnOp(_RExprNode):
         if self.cmd:
             out = ILValue(expr.ctype)
             # perform constant folding
-            if expr.literal_val is not None:
-                val = self._arith_const(expr.literal_val, expr.ctype)
+            if expr.literal:
+                val = self._arith_const(expr.literal.val, expr.ctype)
                 val = shift_into_range(val, expr.ctype)
                 il_code.register_literal_var(out, val)
             else:

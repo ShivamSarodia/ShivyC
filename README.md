@@ -80,7 +80,7 @@ Many thanks to our current and past contributers:
 * [TBladen](https://github.com/tbladen)
 * [christian-stephen](https://github.com/christian-stephen)
 * [jubnzv](https://github.com/jubnzv)
-* [splasky](https://github.com/splasky)
+* [eriols](https://github.com/eriols)
 
 ## References
 - [ShivC](https://github.com/ShivamSarodia/ShivC) - ShivyC is a rewrite from scratch of my old C compiler, ShivC, with much more emphasis on feature completeness and code quality. See the ShivC README for more details.

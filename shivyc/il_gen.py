@@ -72,7 +72,7 @@ class ILCode:
         il_value - ILValue object that has a literal value
         value - Literal value to store in the ILValue
         """
-        il_value.literal_val = int(value)
+        il_value.literal = IntegerLiteral(value)
         self.literals[il_value] = value
 
     def register_string_literal(self, il_value, chars):
@@ -82,6 +82,7 @@ class ILCode:
         the string.
 
         """
+        il_value.literal = StringLiteral(chars)
         self.string_literals[il_value] = chars
 
     def static_initialize(self, il_value, init_val):
@@ -115,13 +116,31 @@ class ILValue:
     def __init__(self, ctype):
         """Initialize IL value."""
         self.ctype = ctype
-        self.literal_val = None
+        self.literal = None
 
     def __str__(self):  # pragma: no cover
         return f'{id(self) % 1000:03}'
 
     def __repr__(self):  # pragma: no cover
         return str(self)
+
+
+class _Literal:
+    """Base class for integer literals, string literals, etc."""
+    def __init__(self, val):
+        self.val = val
+
+
+class IntegerLiteral(_Literal):
+    """Class for integer literals."""
+    def __init__(self, val):
+        super().__init__(int(val))
+
+
+class StringLiteral(_Literal):
+    """Class for string literals."""
+    def __init__(self, val):
+        super().__init__(str(val))
 
 
 class SymbolTable:
