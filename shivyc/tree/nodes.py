@@ -668,6 +668,10 @@ class Declaration(Node):
 
         for param in func_decl.args:
             decl_info = self.get_decl_infos(param)[0]
+            # check if "void" is the function argument, and skip it.
+            if decl_info.identifier is None and \
+                    decl_info.ctype == ctypes.void:
+                continue
             identifiers.append(decl_info.identifier)
 
         return identifiers
