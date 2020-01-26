@@ -70,8 +70,6 @@ def split_to_tagged_lines(text, filename):
             tagged_line.append(Tagged(char, p))
         tagged_lines.append(tagged_line)
 
-        line_num += 1
-
     return tagged_lines
 
 
