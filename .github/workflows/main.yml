@@ -23,12 +23,6 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - name: "🛠️ Docker QEMU"
-        working-directory: ./docker
-        run: make qemu
       - name: "🛠️ Build"
         working-directory: ./docker
-        run: make all
-      - name: "🧹 Clean"
-        working-directory: ./docker
-        run: make clean
+        run: ./build.sh

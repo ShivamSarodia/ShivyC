@@ -1,17 +1,4 @@
 #!/bin/bash
-#//////////////////////////////////////////////////////////////
-#//                                                          //
-#//  Script, 2021                                            //
-#//  Created: 27, May, 2021                                  //
-#//  Modified: 27, May, 2021                                 //
-#//  file: -                                                 //
-#//  -                                                       //
-#//  Source: https://github.com/bensuperpc/docker-ShivyC     //
-#//  OS: ALL                                                 //
-#//  CPU: ALL                                                //
-#//                                                          //
-#//////////////////////////////////////////////////////////////
-
 TAG_VERSION=latest
 DOCKER_IMAGE=shivyc/shivyc
 COMPILER_EXEC=shivyc
