@@ -63,7 +63,7 @@ ShivyC today has a very limited preprocessor that parses out comments and expand
 The ShivyC lexer is implemented primarily in [`lexer.py`](shivyc/lexer.py). Additionally, [`tokens.py`](shivyc/tokens.py) contains definitions of the token classes used in the lexer and [`token_kinds.py`](shivyc/token_kinds.py) contains instances of recognized keyword and symbol tokens.
 
 #### Parser
-The ShivyC parser uses recursive descent techniques for all parsing. It is implented in [`parser/*.py`](shivyc/parser/) and creates a parse tree of nodes defined in [`tree/nodes.py`](shivyc/tree/nodes.py) and [`tree/expr_nodes.py`](shivyc/tree/expr_nodes.py).
+The ShivyC parser uses recursive descent techniques for all parsing. It is implemented in [`parser/*.py`](shivyc/parser/) and creates a parse tree of nodes defined in [`tree/nodes.py`](shivyc/tree/nodes.py) and [`tree/expr_nodes.py`](shivyc/tree/expr_nodes.py).
 
 #### IL generation
 ShivyC traverses the parse tree to generate a flat custom IL (intermediate language). The commands for this IL are in [`il_cmds/*.py`](shivyc/il_cmds/) . Objects used for IL generation are in [`il_gen.py`](shivyc/il_gen.py) , but most of the IL generating code is in the `make_code` function of each tree node in [`tree/*.py`](shivyc/tree/).
