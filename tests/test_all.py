@@ -1,6 +1,6 @@
 """Integration test driver for the compiler.
 
-This module defines metaclassis which generate test cases from files on disk,
+This module defines metaclasses which generate test cases from files on disk,
 and a test class based off that metaclass. For each file that matches
 "tests/feature_tests/*.c", a feature test function is generated, and for
 each file that matches "tests/frontend_tests/*.c", a frontend test function
