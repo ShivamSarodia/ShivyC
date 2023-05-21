@@ -92,9 +92,13 @@ class ASMCode:
             header += [""]
 
         header += ["\t.section .text"] + self.globals
-        header += [str(line) for line in self.lines]
 
-        return "\n".join(header + ["\t.att_syntax noprefix", ""])
+        code = [str(line) for line in self.lines]
+
+        footer = ["\t.section\t.note.GNU-stack,\"\",@progbits"]
+        footer += ["\t.att_syntax noprefix", ""]
+
+        return "\n".join(header + code + footer)
 
 
 class NodeGraph:
