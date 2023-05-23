@@ -121,8 +121,8 @@ class Return(ILCommand):
             size = self.arg.ctype.size
             asm_code.add(asm_cmds.Mov(spots.RAX, spotmap[self.arg], size))
 
-        asm_code.add(asm_cmds.Mov(spots.RSP, spots.RBP, 8))
-        asm_code.add(asm_cmds.Pop(spots.RBP, None, 8))
+        asm_code.add(asm_cmds.Mov(spots.RSP, spots.RBP, 4))
+        asm_code.add(asm_cmds.Pop(spots.RBP, None, 4))
         asm_code.add(asm_cmds.Ret())
 
 
@@ -135,17 +135,20 @@ class Call(ILCommand):
     ret - If function has non-void return type, IL value to save the return
     value. Its type must match the function return value.
     """
+    
+    # THIS WAS MODIFIED TO COMPLY WITH THE 'CDECL' CALLING CONVENTION
 
-    arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX, spots.R8, spots.R9]
+    #arg_regs = [spots.RDI, spots.RSI, spots.RDX, spots.RCX]
 
     def __init__(self, func, args, ret): # noqa D102
         self.func = func
-        self.args = args
+        self.args = list(reversed(args)) # RIGHT-TO-LEFT
         self.ret = ret
         self.void_return = self.func.ctype.arg.ret.is_void()
-
-        if len(self.args) > len(self.arg_regs):
-            raise NotImplementedError("too many arguments")
+        
+        self.arg_regs = [spots.StackSpot((i + 1) * 4, local=True) for i in range(len(self.args) - 1, -1, -1)] # arguments on the stack
+        
+        assert len(args) == len(self.arg_regs)
 
     def inputs(self): # noqa D102
         return [self.func] + self.args
@@ -154,9 +157,8 @@ class Call(ILCommand):
         return [] if self.void_return else [self.ret]
 
     def clobber(self): # noqa D102
-        # All caller-saved registers are clobbered by function call
-        return [spots.RAX, spots.RCX, spots.RDX, spots.RSI, spots.RDI,
-                spots.R8, spots.R9, spots.R10, spots.R11]
+        # arguments and output register
+        return set(self.arg_regs + [spots.RAX, spots.RDI, spots.RSI, spots.RDX, spots.RCX] + self.outputs())
 
     def abs_spot_pref(self): # noqa D102
         prefs = {} if self.void_return else {self.ret: [spots.RAX]}
@@ -168,7 +170,8 @@ class Call(ILCommand):
     def abs_spot_conf(self): # noqa D102
         # We don't want the function pointer to be in the same register as
         # an argument will be placed into.
-        return {self.func: self.arg_regs[0:len(self.args)]}
+        return {self.func: self.arg_regs}
+        #return {self.func: self.arg_regs[0:len(self.args)]}
 
     def indir_write(self): # noqa D102
         return self.args
@@ -184,18 +187,24 @@ class Call(ILCommand):
 
         # Check if function pointer spot will be clobbered by moving the
         # arguments into the correct registers.
-        if spotmap[self.func] in self.arg_regs[0:len(self.args)]:
+        if spotmap[self.func] in self.arg_regs:
             # Get a register which isn't one of the unallowed registers.
-            r = get_reg([], self.arg_regs[0:len(self.args)])
+            r = get_reg([], self.arg_regs)
             asm_code.add(asm_cmds.Mov(r, spotmap[self.func], func_size))
             func_spot = r
 
+        # push arguments onto stack
         for arg, reg in zip(self.args, self.arg_regs):
-            if spotmap[arg] == reg:
-                continue
-            asm_code.add(asm_cmds.Mov(reg, spotmap[arg], arg.ctype.size))
+            # this can be optimized
+            #if spotmap[arg] == reg:
+                #asm_code.add(asm_cmds.Sub(spots.RSP, LiteralSpot('4'), 4))
+                #continue
+            asm_code.add(asm_cmds.Push(spotmap[arg], None, 4))
 
         asm_code.add(asm_cmds.Call(func_spot, None, self.func.ctype.size))
+        
+        # pop arguments from stack
+        asm_code.add(asm_cmds.Add(spots.RSP, LiteralSpot(str(4 * len(self.args))), 4))
 
         if not self.void_return and spotmap[self.ret] != spots.RAX:
             asm_code.add(asm_cmds.Mov(spotmap[self.ret], spots.RAX, ret_size))

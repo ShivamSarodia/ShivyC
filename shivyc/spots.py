@@ -58,7 +58,7 @@ class Spot:
         return self
 
     def __repr__(self):  # pragma: no cover
-        return self.detail
+        return repr(self.detail)
 
     def __eq__(self, other):
         """Test equality by comparing Spot type and detail."""
@@ -78,18 +78,14 @@ class RegSpot(Spot):
     # Mapping from the 64-bit register name to the 64-bit, 32-bit, 16-bit,
     # and 8-bit register names for each register.
     # TODO: Do I need rex prefix on any of the 8-bit?
-    reg_map = {"rax": ["rax", "eax", "ax", "al"],
-               "rbx": ["rbx", "ebx", "bx", "bl"],
-               "rcx": ["rcx", "ecx", "cx", "cl"],
-               "rdx": ["rdx", "edx", "dx", "dl"],
-               "rsi": ["rsi", "esi", "si", "sil"],
-               "rdi": ["rdi", "edi", "di", "dil"],
-               "r8": ["r8", "r8d", "r8w", "r8b"],
-               "r9": ["r9", "r9d", "r9w", "r9b"],
-               "r10": ["r10", "r10d", "r10w", "r10b"],
-               "r11": ["r11", "r11d", "r11w", "r11b"],
-               "rbp": ["rbp", "", "", ""],
-               "rsp": ["rsp", "", "", ""]}
+    reg_map = {"rax": ["eax", "ax", "al"],
+               "rbx": ["ebx", "bx", "bl"],
+               "rcx": ["ecx", "cx", "cl"],
+               "rdx": ["edx", "dx", "dl"],
+               "rsi": ["esi", "si", "dh"],
+               "rdi": ["edi", "di", "bh"],
+               "rbp": ["ebp", "bp", "ch"],
+               "rsp": ["esp", "sp", "ah"]}
 
     def __init__(self, name):
         """Initialize this spot.
@@ -101,13 +97,11 @@ class RegSpot(Spot):
         self.name = name
 
     def asm_str(self, size):  # noqa D102
-        if size == 0 or size == 8:
+        if size == 0 or size == 4:
             i = 0
         elif size == 1:
-            i = 3
-        elif size == 2:
             i = 2
-        elif size == 4:
+        elif size == 2:
             i = 1
         else:
             raise NotImplementedError("unexpected register size")
@@ -125,8 +119,7 @@ class MemSpot(Spot):
 
     size_map = {1: "BYTE PTR ",
                 2: "WORD PTR ",
-                4: "DWORD PTR ",
-                8: "QWORD PTR "}
+                4: "DWORD PTR "}
 
     def __init__(self, base, offset=0, chunk=0, count=None):  # noqa D102
         super().__init__((base, offset, chunk, count))
@@ -154,9 +147,9 @@ class MemSpot(Spot):
             simple = f"{base_str}-{-total_offset}"
 
         if self.count and self.chunk > 0:
-            final = f"{simple}+{self.chunk}*{self.count.asm_str(8)}"
+            final = f"{simple}+{self.chunk}*{self.count.asm_str(4)}"
         elif self.count and self.chunk < 0:
-            final = f"{simple}-{-self.chunk}*{self.count.asm_str(8)}"
+            final = f"{simple}-{-self.chunk}*{self.count.asm_str(4)}"
         else:
             final = simple
 
@@ -175,7 +168,7 @@ class MemSpot(Spot):
         chunk - A Python integer representing the size of each chunk of offset
         count - If provided, a register spot storing the number of chunks to
         be offset. If this value is provided, then `chunk` must be in {1, 2,
-        4, 8}.
+        4}.
         """
         if count and self.count:
             raise NotImplementedError("cannot shift by count")
@@ -190,6 +183,12 @@ class MemSpot(Spot):
             new_count = self.count
 
         return MemSpot(self.base, new_offset, new_chunk, new_count)
+        
+        
+class StackSpot(MemSpot):
+    def __init__(self, offset, local=False):
+        # we need '(-1 if local else 1)' because 'StackSpot.rbp_offset' messes with the sign of the offset
+        super().__init__(RBP, (-1 if local else 1) * offset, 0, None)
 
 
 class LiteralSpot(Spot):
@@ -216,12 +215,8 @@ RCX = RegSpot("rcx")
 RDX = RegSpot("rdx")
 RSI = RegSpot("rsi")
 RDI = RegSpot("rdi")
-R8 = RegSpot("r8")
-R9 = RegSpot("r9")
-R10 = RegSpot("r10")
-R11 = RegSpot("r11")
 
-registers = [RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11]
+registers = [RAX, RCX, RDX, RSI, RDI]
 
 RBP = RegSpot("rbp")
 RSP = RegSpot("rsp")
