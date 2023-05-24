@@ -1,5 +1,4 @@
 """Nodes in the AST which represent statements or declarations."""
-
 import shivyc.ctypes as ctypes
 import shivyc.il_cmds.control as control_cmds
 import shivyc.il_cmds.value as value_cmds
@@ -479,7 +478,7 @@ class DeclInfo:
     def get_defined(self, symbol_table, c):
         """Determine whether this is a definition."""
         if (c.is_global and self.storage in {None, self.STATIC}
-              and self.ctype.is_object() and not self.init):
+                and self.ctype.is_object() and not self.init):
             return symbol_table.TENTATIVE
         elif self.storage == self.EXTERN and not (self.init or self.body):
             return symbol_table.UNDEFINED
@@ -598,8 +597,34 @@ class Declaration(Node):
         else:
             return ArrayCType(prev_ctype, None)
 
+    def _check_redefinition(self, decl):
+        """
+        If identifier is redefinition inside function arguments, raise error
+        :param decl:declaration of function arguments
+        """
+        # Save identifiers
+        identifiers = [decl_info.identifier for param
+                       in decl.args for decl_info in
+                       self.get_decl_infos(param)]
+
+        # Remove None inside identifiers
+        identifiers = [str(x) for x in identifiers if x is not None]
+
+        # Exit if no identifiers exist
+        if len(identifiers) == 0:
+            return
+
+        # Check duplicate identifier
+        for identifier in identifiers:
+            if identifiers.count(identifier) > 1:
+                err = f"redefinition of '{identifier}'"
+                raise CompilerError(err, self.r)
+
     def _generate_func_ctype(self, decl, prev_ctype):
         """Generate a function ctype from a given a decl_node."""
+
+        # Prohibit redefinition of identifer
+        self._check_redefinition(decl)
 
         # Prohibit storage class specifiers in parameters.
         for param in decl.args:
