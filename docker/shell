@@ -1,3 +1,0 @@
-#!/bin/bash
-
-docker run -it -v $PWD:/ShivyC -w /ShivyC shivyc

@@ -1,0 +1,28 @@
+name: shivyc
+
+on:
+  push:
+    branches:
+    - 'main'
+    - 'master'
+    - 'dev'
+    paths-ignore:
+    - '**/README.md'
+  pull_request:
+    branches:
+    - '*'
+  workflow_dispatch:
+
+jobs:
+  image:
+    name: shivyc
+    runs-on: ubuntu-20.04
+    steps:
+      - name: "📥 Checkout Code"
+        uses: actions/checkout@v2.3.4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - name: "🛠️ Build"
+        working-directory: ./docker
+        run: ./build.sh
