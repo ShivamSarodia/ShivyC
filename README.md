@@ -45,7 +45,6 @@ For the convenience of those not running Linux, the [`docker/`](docker/) directo
 ```
 git clone https://github.com/ShivamSarodia/ShivyC.git
 cd ShivyC
-docker build -t shivyc docker/
 docker/shell
 ```
 This will open up a shell in an environment with ShivyC installed and ready to use with
