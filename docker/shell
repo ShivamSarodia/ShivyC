@@ -5,4 +5,4 @@ if ! docker image inspect shivyc > /dev/null 2>&1; then
     ./docker/build_image
 fi
 
-docker run -it -v $PWD:/ShivyC -w /ShivyC shivyc
+docker run --platform linux/amd64 -it -v $PWD:/ShivyC -w /ShivyC shivyc
