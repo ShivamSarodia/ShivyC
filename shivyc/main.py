@@ -150,7 +150,7 @@ def write_asm(asm_source, asm_filename):
 def assemble(asm_name, obj_name):
     """Assemble the given assembly file into an object file."""
     try:
-        subprocess.check_call(["as", "-64", "-o", obj_name, asm_name])
+        subprocess.check_call(["as", "-o", obj_name, asm_name])
         return True
     except subprocess.CalledProcessError:
         err = "assembler returned non-zero status"

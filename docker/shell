@@ -1,3 +1,8 @@
 #!/bin/bash
 
+# Run the build script if the image doesn't exist yet.
+if ! docker image inspect shivyc > /dev/null 2>&1; then
+    ./docker/build_image
+fi
+
 docker run -it -v $PWD:/ShivyC -w /ShivyC shivyc

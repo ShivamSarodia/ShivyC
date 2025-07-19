@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# The linux/amd64 platform is required for the `as` assembler to be happy 
+# when running on an ARM host.
+docker build --platform linux/amd64 -t shivyc docker/
