@@ -248,10 +248,10 @@ class NodeGraph:
 
     def __str__(self):  # pragma: no cover
         """Return this graph as a string for debugging purposes."""
-        return ("Conf\n" +
-                "\n".join(str((v, self._conf[v])) for v in self._all_nodes)
-                + "\nPref\n" +
-                "\n".join(str((v, self._pref[v])) for v in self._all_nodes))
+        return ("Conf\n"
+                + "\n".join(str((v, self._conf[v])) for v in self._all_nodes)
+                + "\nPref\n"
+                + "\n".join(str((v, self._pref[v])) for v in self._all_nodes))
 
 
 class ASMGen:
@@ -427,9 +427,9 @@ class ASMGen:
 
         num = 0
 
-        for value in (set(self.il_code.literals.keys()) |
-                      set(self.il_code.string_literals.keys()) |
-                      set(self.symbol_table.storage.keys())):
+        for value in (set(self.il_code.literals.keys())
+                      | set(self.il_code.string_literals.keys())
+                      | set(self.symbol_table.storage.keys())):
             num += 1
             spot = self._get_nondynamic_spot(value, num)
             if spot: global_spotmap[value] = spot
@@ -730,9 +730,9 @@ class ASMGen:
         # Now, the earlier pairs in `pairs` have lower conflict degree and
         # are thus superior candidates for freezing.
         for n1, n2 in pairs:
-                if n1 in g.prefs(n2):
-                    g.remove_pref(n1, n2)
-                    return True
+            if n1 in g.prefs(n2):
+                g.remove_pref(n1, n2)
+                return True
 
         return False
 

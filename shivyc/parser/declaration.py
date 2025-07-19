@@ -356,9 +356,9 @@ def _find_decl_end(index):
     guaranteed to return the correct end point. Returns an index one
     greater than the last index in this declarator.
     """
-    if (token_is(index, token_kinds.star) or
-         token_is(index, token_kinds.identifier) or
-         token_is(index, token_kinds.const_kw)):
+    if (token_is(index, token_kinds.star)
+         or token_is(index, token_kinds.identifier)
+         or token_is(index, token_kinds.const_kw)):
         return _find_decl_end(index + 1)
     elif token_is(index, token_kinds.open_paren):
         close = _find_pair_forward(index)
@@ -391,8 +391,8 @@ def _parse_declarator_raw(start, end, is_typedef):
     if start == end:
         return decl_nodes.Identifier(None)
 
-    elif (start + 1 == end and
-           p.tokens[start].kind == token_kinds.identifier):
+    elif (start + 1 == end
+           and p.tokens[start].kind == token_kinds.identifier):
         p.symbols.add_symbol(p.tokens[start], is_typedef)
         return decl_nodes.Identifier(p.tokens[start])
 
@@ -405,8 +405,8 @@ def _parse_declarator_raw(start, end, is_typedef):
     if func_decl: return func_decl
 
     # First and last elements make a parenthesis pair
-    elif (p.tokens[start].kind == token_kinds.open_paren and
-          _find_pair_forward(start) == end - 1):
+    elif (p.tokens[start].kind == token_kinds.open_paren
+          and _find_pair_forward(start) == end - 1):
         return _parse_declarator(start + 1, end - 1, is_typedef)
 
     # Last element indicates an array type

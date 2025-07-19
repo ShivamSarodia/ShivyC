@@ -20,10 +20,10 @@ def process(tokens, this_file):
     processed = []
     i = 0
     while i < len(tokens) - 2:
-        if (tokens[i].kind == token_kinds.pound and
-            tokens[i + 1].kind == token_kinds.identifier and
-            tokens[i + 1].content == "include" and
-             tokens[i + 2].kind == token_kinds.include_file):
+        if (tokens[i].kind == token_kinds.pound
+                and tokens[i + 1].kind == token_kinds.identifier
+                and tokens[i + 1].content == "include"
+                and tokens[i + 2].kind == token_kinds.include_file):
 
             # Replace tokens[i] -> tokens[i+2] with preprocessed contents of
             # the included file.

@@ -7,7 +7,7 @@ from setuptools import find_packages, setup
 
 import shivyc
 
-f"ShivyC only supports Python 3.6 or later"  # f-str is Syntax Err before Py3.6
+"ShivyC only supports Python 3.6 or later"  # f-str is Syntax Err before Py3.6
 
 VERSION = str(shivyc.__version__)
 DOWNLOAD_URL = ('https://github.com/ShivamSarodia/ShivyC/archive/'

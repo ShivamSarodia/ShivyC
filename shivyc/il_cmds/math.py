@@ -63,16 +63,16 @@ class _AddMult(ILCommand):
                 asm_code.add(asm_cmds.Neg(temp, None, size))
 
         else:
-            if (not self._is_imm64(arg1_spot) and
-                 not self._is_imm64(arg2_spot)):
+            if (not self._is_imm64(arg1_spot)
+                 and not self._is_imm64(arg2_spot)):
                 asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
                 asm_code.add(self.Inst(temp, arg2_spot, size))
-            elif (self._is_imm64(arg1_spot) and
-                  not self._is_imm64(arg2_spot)):
+            elif (self._is_imm64(arg1_spot)
+                  and not self._is_imm64(arg2_spot)):
                 asm_code.add(asm_cmds.Mov(temp, arg1_spot, size))
                 asm_code.add(self.Inst(temp, arg2_spot, size))
-            elif (not self._is_imm64(arg1_spot) and
-                  self._is_imm64(arg2_spot)):
+            elif (not self._is_imm64(arg1_spot)
+                  and self._is_imm64(arg2_spot)):
                 asm_code.add(asm_cmds.Mov(temp, arg2_spot, size))
                 asm_code.add(self.Inst(temp, arg1_spot, size))
                 if not self.comm:
@@ -235,8 +235,8 @@ class _DivMod(ILCommand):
 
         # If the divisor is a literal or in a bad register, we must move it
         # to a register.
-        if (self._is_imm(spotmap[self.arg2]) or
-             spotmap[self.arg2] in [spots.RAX, spots.RDX]):
+        if (self._is_imm(spotmap[self.arg2])
+             or spotmap[self.arg2] in [spots.RAX, spots.RDX]):
             r = get_reg([], [spots.RAX, spots.RDX])
             asm_code.add(asm_cmds.Mov(r, arg2_spot, size))
             arg2_final_spot = r

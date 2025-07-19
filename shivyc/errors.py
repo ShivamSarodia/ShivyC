@@ -122,18 +122,18 @@ class CompilerError(Exception):
             indicator = warn_color
             indicator += " " * (self.range.start.col - 1)
 
-            if (self.range.start.line == self.range.end.line and
-                 self.range.start.file == self.range.end.file):
+            if (self.range.start.line == self.range.end.line
+                 and self.range.start.file == self.range.end.file):
 
                 if self.range.end.col == self.range.start.col:
                     indicator += "^"
                 else:
-                    indicator += "-" * (self.range.end.col -
-                                        self.range.start.col + 1)
+                    indicator += "-" * (self.range.end.col
+                                        - self.range.start.col + 1)
 
             else:
-                indicator += "-" * (len(self.range.start.full_line) -
-                                    self.range.start.col + 1)
+                indicator += "-" * (len(self.range.start.full_line)
+                                    - self.range.start.col + 1)
 
             indicator += reset_color
             return (f"{bold_color}{self.range.start.file}:"

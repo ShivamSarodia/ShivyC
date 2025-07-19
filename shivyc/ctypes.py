@@ -127,8 +127,8 @@ class IntegerCType(CType):
 
         # TODO: _orig stuff is hacky...
         # Find a more reliable way to talk about types being equal.
-        return (other._orig == self._orig and self.signed == other.signed and
-                self.is_bool() == other.is_bool())
+        return (other._orig == self._orig and self.signed == other.signed
+                and self.is_bool() == other.is_bool())
 
     def is_complete(self):
         """Check if this is a complete type."""
@@ -225,8 +225,8 @@ class ArrayCType(CType):
 
     def compatible(self, other):
         """Return True iff other is a compatible type to self."""
-        return (other.is_array() and self.el.compatible(other.el) and
-                (self.n is None or other.n is None or self.n == other.n))
+        return (other.is_array() and self.el.compatible(other.el)
+                and (self.n is None or other.n is None or self.n == other.n))
 
     def is_complete(self):
         """Check if this is a complete type."""

@@ -334,8 +334,8 @@ class _RelCommand(_ValueCmd):
         # that register for the count. (Because we require the count be 32-
         # or 64-bit, we know the full register stores exactly the value of
         # count).
-        if (isinstance(spotmap[self.count], LiteralSpot) or
-             isinstance(spotmap[self.count], RegSpot)):
+        if (isinstance(spotmap[self.count], LiteralSpot)
+             or isinstance(spotmap[self.count], RegSpot)):
             return spotmap[self.base].shift(self.chunk, spotmap[self.count])
 
         # Otherwise, move count to a register.
@@ -350,8 +350,8 @@ class _RelCommand(_ValueCmd):
     def get_reg_spot(self, reg_val, spotmap, get_reg):
         """Get a register or literal spot for self.reg_val."""
 
-        if (isinstance(spotmap[reg_val], LiteralSpot) or
-             isinstance(spotmap[reg_val], RegSpot)):
+        if (isinstance(spotmap[reg_val], LiteralSpot)
+             or isinstance(spotmap[reg_val], RegSpot)):
             return spotmap[reg_val]
 
         val_spot = get_reg([], [spotmap[self.count]] + self._used_regs)

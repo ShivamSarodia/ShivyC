@@ -113,7 +113,6 @@ class ParserError(CompilerError):
 
 def raise_error(err, index, error_type):
     """Raise a parser error."""
-    global tokens
     raise ParserError(err, index, tokens, error_type)
 
 
@@ -153,13 +152,11 @@ def log_error():
 
 def token_is(index, kind):
     """Return true if the next token is of the given kind."""
-    global tokens
     return len(tokens) > index and tokens[index].kind == kind
 
 
 def token_in(index, kinds):
     """Return true if the next token is in the given list/set of kinds."""
-    global tokens
     return len(tokens) > index and tokens[index].kind in kinds
 
 
@@ -171,7 +168,6 @@ def match_token(index, kind, message_type, message=None):
     message_type.
 
     """
-    global tokens
     if not message:
         message = f"expected '{kind.text_repr}'"
 
@@ -183,8 +179,6 @@ def match_token(index, kind, message_type, message=None):
 
 def token_range(start, end):
     """Generate a range that encompasses tokens[start] to tokens[end-1]"""
-    global tokens
-
     start_index = min(start, len(tokens) - 1, end - 1)
     end_index = min(end - 1, len(tokens) - 1)
     return tokens[start_index].r + tokens[end_index].r
@@ -197,8 +191,6 @@ def add_range(parse_func):
     the returned node has its range attribute set
 
     """
-    global tokens
-
     def parse_with_range(index, *args):
         start_index = index
         node, end_index = parse_func(index, *args)

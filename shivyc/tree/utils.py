@@ -53,8 +53,8 @@ class LValue:
             return False
         if ctype.is_const():
             return False
-        if (ctype.is_struct_union() and
-             any(m[1].is_const() for m in ctype.members)):
+        if (ctype.is_struct_union()
+             and any(m[1].is_const() for m in ctype.members)):
             return False
 
         return True
@@ -254,8 +254,8 @@ def check_cast(il_value, ctype, range):
         return
 
     # Cast between weak compatible structs is okay
-    if (ctype.is_struct_union() and il_value.ctype.is_struct_union() and
-         il_value.ctype.weak_compat(ctype)):
+    if (ctype.is_struct_union() and il_value.ctype.is_struct_union()
+         and il_value.ctype.weak_compat(ctype)):
         return
 
     elif ctype.is_pointer() and il_value.ctype.is_pointer():
@@ -263,17 +263,17 @@ def check_cast(il_value, ctype, range):
         # both operands are pointers to qualified or unqualified versions
         # of compatible types, and the type pointed to by the left has all
         # the qualifiers of the type pointed to by the right
-        if (ctype.arg.weak_compat(il_value.ctype.arg) and
-             (not il_value.ctype.arg.const or ctype.arg.const)):
+        if (ctype.arg.weak_compat(il_value.ctype.arg)
+             and (not il_value.ctype.arg.const or ctype.arg.const)):
             return
 
         # Cast between void pointer and pointer to object type okay
-        elif (ctype.arg.is_void() and il_value.ctype.arg.is_object() and
-              (not il_value.ctype.arg.const or ctype.arg.const)):
+        elif (ctype.arg.is_void() and il_value.ctype.arg.is_object()
+              and (not il_value.ctype.arg.const or ctype.arg.const)):
             return
 
-        elif (ctype.arg.is_object() and il_value.ctype.arg.is_void() and
-              (not il_value.ctype.arg.const or ctype.arg.const)):
+        elif (ctype.arg.is_object() and il_value.ctype.arg.is_void()
+              and (not il_value.ctype.arg.const or ctype.arg.const)):
             return
 
         # error on any other kind of pointer cast - TODO: better errors

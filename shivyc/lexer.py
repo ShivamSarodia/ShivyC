@@ -139,8 +139,8 @@ def tokenize_line(line, in_comment):
 
         if in_comment:
             # If next characters end the comment...
-            if (symbol_kind == token_kinds.star and
-                    next_symbol_kind == token_kinds.slash):
+            if (symbol_kind == token_kinds.star
+                    and next_symbol_kind == token_kinds.slash):
                 in_comment = False
                 chunk_start = chunk_end + 2
                 chunk_end = chunk_start
@@ -151,14 +151,14 @@ def tokenize_line(line, in_comment):
 
         # If next characters start a comment, process previous chunk and set
         # in_comment to true.
-        elif (symbol_kind == token_kinds.slash and
-                next_symbol_kind == token_kinds.star):
+        elif (symbol_kind == token_kinds.slash
+                and next_symbol_kind == token_kinds.star):
             add_chunk(line[chunk_start:chunk_end], tokens)
             in_comment = True
 
         # If next two characters are //, we skip the rest of this line.
-        elif (symbol_kind == token_kinds.slash and
-                next_symbol_kind == token_kinds.slash):
+        elif (symbol_kind == token_kinds.slash
+                and next_symbol_kind == token_kinds.slash):
             break
 
         # Skip spaces and process previous chunk.
@@ -274,10 +274,10 @@ def match_symbol_kind_at(content, start):
 
 def match_include_command(tokens):
     """Check if end of `tokens` is a `#include` directive."""
-    return (len(tokens) == 2 and
-            tokens[-2].kind == token_kinds.pound and
-            tokens[-1].kind == token_kinds.identifier and
-            tokens[-1].content == "include")
+    return (len(tokens) == 2
+            and tokens[-2].kind == token_kinds.pound
+            and tokens[-1].kind == token_kinds.identifier
+            and tokens[-1].content == "include")
 
 
 def read_string(line, start, delim, null):

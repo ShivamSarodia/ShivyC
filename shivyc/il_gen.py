@@ -62,9 +62,9 @@ class ILCode:
 
     def always_returns(self):
         """Return true if this function ends in a return command."""
-        return (self.commands[self.cur_func] and
-                isinstance(self.commands[self.cur_func][-1],
-                           control_cmds.Return))
+        return (self.commands[self.cur_func]
+                and isinstance(self.commands[self.cur_func][-1],
+                               control_cmds.Return))
 
     def register_literal_var(self, il_value, value):
         """Register a literal IL value.

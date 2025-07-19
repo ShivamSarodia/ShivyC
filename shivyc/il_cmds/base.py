@@ -145,6 +145,6 @@ class ILCommand:
 
     def _is_imm64(self, spot):
         """Return True if given spot is a 64-bit immediate operand."""
-        return (isinstance(spot, LiteralSpot) and
-                (int(spot.detail) > ctypes.int_max or
-                 int(spot.detail) < ctypes.int_min))
+        return (isinstance(spot, LiteralSpot)
+                and (int(spot.detail) > ctypes.int_max
+                     or int(spot.detail) < ctypes.int_min))

@@ -127,7 +127,7 @@ def read_file(file):
     try:
         with open(file) as c_file:
             return c_file.read()
-    except IOError as e:
+    except IOError:
         descrip = f"could not read file: '{file}'"
         error_collector.add(CompilerError(descrip))
 

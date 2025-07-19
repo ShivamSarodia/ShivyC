@@ -38,10 +38,10 @@ class _GeneralCmp(ILCommand):
         first element is new spot of arg1 and second element is new spot of
         arg2.
         """
-        if ((isinstance(arg1_spot, LiteralSpot) and
-             isinstance(arg2_spot, LiteralSpot)) or
-            (isinstance(arg1_spot, MemSpot) and
-             isinstance(arg2_spot, MemSpot))):
+        if ((isinstance(arg1_spot, LiteralSpot)
+             and isinstance(arg2_spot, LiteralSpot))
+            or (isinstance(arg1_spot, MemSpot)
+                and isinstance(arg2_spot, MemSpot))):
 
             # No need to worry about r overlapping with arg1 or arg2 because
             # in this case both are literal/memory.

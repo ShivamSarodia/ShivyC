@@ -394,8 +394,8 @@ class Minus(_ArithBinOp):
         if (left.ctype.is_pointer() and right.ctype.is_pointer()
              and left.ctype.compatible(right.ctype)):
 
-            if (not left.ctype.arg.is_complete() or
-                  not right.ctype.arg.is_complete()):
+            if (not left.ctype.arg.is_complete()
+                  or not right.ctype.arg.is_complete()):
                 err = "invalid arithmetic on pointers to incomplete types"
                 raise CompilerError(err, self.op.r)
 
