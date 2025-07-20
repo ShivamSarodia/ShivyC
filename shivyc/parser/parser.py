@@ -15,7 +15,7 @@ the function cannot parse the entity from the tokens.
 
 """
 import shivyc.parser.utils as p
-import shivyc.tree.nodes as nodes
+import shivyc.tree.general_nodes as general_nodes
 
 from shivyc.errors import error_collector
 from shivyc.parser.utils import (add_range, log_error, ParserError,
@@ -59,6 +59,6 @@ def parse_root(index):
 
     # If there are tokens that remain unparsed, complain
     if not p.tokens[index:]:
-        return nodes.Root(items), index
+        return general_nodes.Root(items), index
     else:
         raise_error("unexpected token", index, ParserError.AT)

@@ -1,13 +1,15 @@
 """Parser logic that parses statement nodes."""
 
 import shivyc.token_kinds as token_kinds
-import shivyc.tree.nodes as nodes
+import shivyc.tree.general_nodes as general_nodes
 import shivyc.parser.utils as p
 
 from shivyc.parser.declaration import parse_declaration
 from shivyc.parser.expression import parse_expression
 from shivyc.parser.utils import (add_range, log_error, match_token, token_is,
                                  ParserError)
+from shivyc.tree import (Return, Break, Continue, IfStatement, WhileStatement,
+                         ForStatement)
 
 
 @add_range
@@ -56,7 +58,7 @@ def parse_compound_statement(index):
     index = match_token(index, token_kinds.close_brack, ParserError.GOT)
     p.symbols.end_scope()
 
-    return nodes.Compound(items), index
+    return general_nodes.Compound(items), index
 
 
 @add_range
@@ -68,12 +70,12 @@ def parse_return(index):
     """
     index = match_token(index, token_kinds.return_kw, ParserError.GOT)
     if token_is(index, token_kinds.semicolon):
-        return nodes.Return(None), index
+        return Return(None), index
 
     node, index = parse_expression(index)
 
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return nodes.Return(node), index
+    return Return(node), index
 
 
 @add_range
@@ -81,7 +83,7 @@ def parse_break(index):
     """Parse a break statement."""
     index = match_token(index, token_kinds.break_kw, ParserError.GOT)
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return nodes.Break(), index
+    return Break(), index
 
 
 @add_range
@@ -89,13 +91,12 @@ def parse_continue(index):
     """Parse a continue statement."""
     index = match_token(index, token_kinds.continue_kw, ParserError.GOT)
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return nodes.Continue(), index
+    return Continue(), index
 
 
 @add_range
 def parse_if_statement(index):
     """Parse an if statement."""
-
     index = match_token(index, token_kinds.if_kw, ParserError.GOT)
     index = match_token(index, token_kinds.open_paren, ParserError.AFTER)
     conditional, index = parse_expression(index)
@@ -110,7 +111,7 @@ def parse_if_statement(index):
         index = match_token(index, token_kinds.else_kw, ParserError.GOT)
         else_statement, index = parse_statement(index)
 
-    return nodes.IfStatement(conditional, statement, else_statement), index
+    return IfStatement(conditional, statement, else_statement), index
 
 
 @add_range
@@ -122,7 +123,7 @@ def parse_while_statement(index):
     index = match_token(index, token_kinds.close_paren, ParserError.AFTER)
     statement, index = parse_statement(index)
 
-    return nodes.WhileStatement(conditional, statement), index
+    return WhileStatement(conditional, statement), index
 
 
 @add_range
@@ -134,7 +135,7 @@ def parse_for_statement(index):
     first, second, third, index = _get_for_clauses(index)
     stat, index = parse_statement(index)
 
-    return nodes.ForStatement(first, second, third, stat), index
+    return ForStatement(first, second, third, stat), index
 
 
 def _get_for_clauses(index):
@@ -198,8 +199,8 @@ def parse_expr_statement(index):
 
     """
     if token_is(index, token_kinds.semicolon):
-        return nodes.EmptyStatement(), index + 1
+        return general_nodes.EmptyStatement(), index + 1
 
     node, index = parse_expression(index)
     index = match_token(index, token_kinds.semicolon, ParserError.AFTER)
-    return nodes.ExprStatement(node), index
+    return general_nodes.ExprStatement(node), index

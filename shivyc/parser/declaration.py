@@ -13,7 +13,7 @@ from shivyc.errors import error_collector, CompilerError
 import shivyc.parser.utils as p
 import shivyc.token_kinds as token_kinds
 import shivyc.tree.decl_nodes as decl_nodes
-import shivyc.tree.nodes as nodes
+import shivyc.tree.general_nodes as general_nodes
 from shivyc.parser.expression import parse_expression
 from shivyc.parser.utils import (add_range, ParserError, match_token, token_is,
                                  raise_error, log_error, token_in)
@@ -33,7 +33,7 @@ def parse_func_definition(index):
     body, index = parse_compound_statement(index)
 
     root = decl_nodes.Root(specs, [decl])
-    return nodes.Declaration(root, body), index
+    return general_nodes.Declaration(root, body), index
 
 
 @add_range
@@ -45,7 +45,7 @@ def parse_declaration(index):
 
     """
     node, index = parse_decls_inits(index)
-    return nodes.Declaration(node), index
+    return general_nodes.Declaration(node), index
 
 
 @add_range
