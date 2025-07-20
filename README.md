@@ -62,7 +62,7 @@ ShivyC today has a very limited preprocessor that parses out comments and expand
 The ShivyC lexer is implemented primarily in [`lexer.py`](shivyc/lexer.py). Additionally, [`tokens.py`](shivyc/tokens.py) contains definitions of the token classes used in the lexer and [`token_kinds.py`](shivyc/token_kinds.py) contains instances of recognized keyword and symbol tokens.
 
 #### Parser
-The ShivyC parser uses recursive descent techniques for all parsing. It is implemented in [`parser/*.py`](shivyc/parser/) and creates a parse tree of nodes defined in [`tree/nodes.py`](shivyc/tree/nodes.py) and [`tree/expr_nodes.py`](shivyc/tree/expr_nodes.py).
+The ShivyC parser uses recursive descent techniques for all parsing. It is implemented in [`parser/*.py`](shivyc/parser/) and creates a parse tree of nodes defined in [`tree/*.py`](shivyc/tree/).
 
 #### IL generation
 ShivyC traverses the parse tree to generate a flat custom IL (intermediate language). The commands for this IL are in [`il_cmds/*.py`](shivyc/il_cmds/) . Objects used for IL generation are in [`il_gen.py`](shivyc/il_gen.py) , but most of the IL generating code is in the `make_code` function of each tree node in [`tree/*.py`](shivyc/tree/).
@@ -71,15 +71,10 @@ ShivyC traverses the parse tree to generate a flat custom IL (intermediate langu
 ShivyC sequentially reads the IL commands, converting each into Intel-format x86-64 assembly code. ShivyC performs register allocation using George and Appel’s iterated register coalescing algorithm (see References below). The general ASM generation functionality is in [`asm_gen.py`](shivyc/asm_gen.py) , but much of the ASM generating code is in the `make_asm` function of each IL command in [`il_cmds/*.py`](shivyc/il_cmds/).
 
 ## Contributing
-Pull requests to ShivyC are very welcome. A good place to start is the [Issues page](https://github.com/ShivamSarodia/ShivyC/issues). All [issues labeled "feature"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Afeature) are TODO tasks. [Issues labeled "bug"](https://github.com/ShivamSarodia/ShivyC/issues?q=is%3Aopen+is%3Aissue+label%3Abug) are individual miscompilations in ShivyC. If you have any questions, please feel free to ask in the comments of the relevant issue or create a new issue labeled "question". Of course, please add test(s) for all new functionality.
+This project is no longer under active development and I'm unlikely to review non-trivial PRs. However:
 
-Many thanks to our current and past contributers:
-* [ShivamSarodia](https://github.com/ShivamSarodia)
-* [cclauss](https://github.com/cclauss)
-* [TBladen](https://github.com/tbladen)
-* [christian-stephen](https://github.com/christian-stephen)
-* [jubnzv](https://github.com/jubnzv)
-* [eriols](https://github.com/eriols)
+- If you have a question about ShivyC, the best way to ask is via Github Issues. I'll answer when I can, but my response may not be so helpful because it's been a while since I've had time to think about this project.
+- If you have an perspective on how ShivyC can be made practically helpful to a group, please make an Issue. I'd love to hear from you, although unfortunately I may not be in a position to implement any changes depending on my other interests and obligations.
 
 ## References
 - [ShivC](https://github.com/ShivamSarodia/ShivC) - ShivyC is a rewrite from scratch of my old C compiler, ShivC, with much more emphasis on feature completeness and code quality. See the ShivC README for more details.
